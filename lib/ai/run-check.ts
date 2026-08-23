@@ -3,7 +3,7 @@ import { callModelForCheck } from './call-claude-for-check';
 import { CHECK_INSTRUCTIONS, buildCompetitionContext } from './prompts';
 import { SCHEMAS, type CriteriaScoringPayload } from './schemas';
 import { deriveVerdict, processCriteriaScoring } from './evidence';
-import type { CheckType } from './config';
+import { SIMILARITY_MIN_LEXICAL, type CheckType } from './config';
 
 /**
  * Tek bir analiz işini çalıştırır ve analysis_results'a yazar.
@@ -71,7 +71,12 @@ export async function runCheck(reportId: string, checkType: CheckType): Promise<
     });
     if (ce) throw new Error(`aday eleme hatası: ${ce.message}`);
 
-    const list = (candidates ?? []) as Array<{ candidate_id: string; lexical_score: number }>;
+    // SQL tabanı bilinçli olarak gevşek; asıl eşik burada uygulanıyor ki
+    // tek yerden ayarlanabilsin (bkz. SIMILARITY_MIN_LEXICAL).
+    const list = (
+      (candidates ?? []) as Array<{ candidate_id: string; lexical_score: number }>
+    ).filter((c) => Number(c.lexical_score) >= SIMILARITY_MIN_LEXICAL);
+
     if (list.length === 0) {
       // Karşılaştıracak rapor yok → model çağrısı YAPMA, kota harcama.
       // Bu bir "kanıt yok" durumu değil; gerçekten örtüşme yok.
@@ -82,8 +87,10 @@ export async function runCheck(reportId: string, checkType: CheckType): Promise<
           overlap_type: 'none',
           matched_passages: [],
           assessment:
-            'Aynı yarışma ve kategoride karşılaştırılacak başka rapor bulunmadığı için ' +
-            'benzerlik taraması yapılmadı.',
+            'Aynı yarışma ve kategoride, ön eleme eşiğini (%' +
+            Math.round(SIMILARITY_MIN_LEXICAL * 100) +
+            ' sözcük örtüşmesi) geçen bir rapor bulunmadı. Ortak şablon ve ' +
+            'terminoloji kaynaklı benzerlikler bu eşiğin altında kalır.',
         },
         model: 'skipped:no-candidates',
         promptVersion: 'v1',

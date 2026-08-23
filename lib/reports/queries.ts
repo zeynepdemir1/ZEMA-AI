@@ -602,6 +602,7 @@ export type MyReport = {
   id: string;
   code: string;
   title: string;
+  team: string;
   category: string;
   status: string;
   checksDone: number;
@@ -619,19 +620,28 @@ export async function loadMySubmissions() {
   if (!user) return null;
   const profile = { id: user.id, full_name: user.fullName };
 
-  const { data: membership } = await db
+  // ⚠️ maybeSingle() KULLANMA: bir kullanıcı birden çok takımda olabilir
+  // (demo seed'i yarışmacıyı 9 takıma ekliyor) ve maybeSingle çok satırda
+  // hata verip sayfayı boşaltıyor.
+  const { data: memberships } = await db
     .from('team_members')
     .select('team_id, teams(id, name, competition_id)')
-    .eq('user_id', profile.id)
-    .maybeSingle();
-  if (!membership) return null;
-  const team = membership.teams as unknown as { id: string; name: string; competition_id: string };
+    .eq('user_id', profile.id);
+  if (!memberships?.length) return null;
+
+  const teams = memberships
+    .map((m) => m.teams as unknown as { id: string; name: string; competition_id: string })
+    .filter(Boolean);
+  const team = teams[0];
 
   const [{ data: reports }, { data: categories }, { data: competition }] = await Promise.all([
     db
       .from('reports')
-      .select('id, title, category_id, status, created_at')
-      .eq('team_id', team.id)
+      .select('id, title, category_id, status, created_at, team_id')
+      .in(
+        'team_id',
+        teams.map((t) => t.id),
+      )
       .order('created_at', { ascending: false }),
     db
       .from('categories')
@@ -646,6 +656,11 @@ export async function loadMySubmissions() {
   ]);
 
   const ids = (reports ?? []).map((r) => r.id);
+  // ⚠️ analysis_jobs yarışmacı için RLS ile GİZLİ (§3.1: ham AI analizi
+  // yarışmacıya açılmaz) — bu sorgu bilinçli olarak 0 satır döner ve
+  // kontrol ilerlemesi çubuğu render edilmez. Yarışmacı durumu
+  // reports.status rozetinden görür. Yükleme sırasındaki canlı ilerleme
+  // /api/jobs/tick yanıtından besleniyor, bu sorgudan değil.
   const [{ data: jobs }, { data: fb }] = await Promise.all([
     ids.length
       ? db.from('analysis_jobs').select('report_id, status').in('report_id', ids)
@@ -662,6 +677,7 @@ export async function loadMySubmissions() {
       id: r.id,
       code: reportCode(r.id),
       title: r.title,
+      team: teams.find((t) => t.id === r.team_id)?.name ?? '—',
       category: catName.get(r.category_id ?? '') ?? 'Beyan edilmemiş',
       status: r.status,
       checksDone: rJobs.filter((j) => j.status === 'done').length,
@@ -672,8 +688,12 @@ export async function loadMySubmissions() {
     };
   });
 
+  const teamNameById = new Map(teams.map((t) => [t.id, t.name]));
+
   return {
-    team: { name: team.name },
+    // Birden çok takım varsa hepsini göster (demo verisinde 9 takım var).
+    team: { name: teams.length > 1 ? `${teams.length} takım` : team.name },
+    teamNameById,
     competitor: profile.full_name ?? '—',
     competition: competition ?? { name: '—', submission_deadline: null },
     categories: categories ?? [],

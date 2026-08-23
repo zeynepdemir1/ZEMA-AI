@@ -96,7 +96,9 @@ export default async function SubmissionsPage() {
                     )}
                   </div>
                   <div className="text-ink text-[16px] font-semibold">{r.title}</div>
-                  <div className="text-ink/[.55] mt-1 text-[13px]">{r.category}</div>
+                  <div className="text-ink/[.55] mt-1 text-[13px]">
+                    {r.team} · {r.category}
+                  </div>
 
                   {r.checksTotal > 0 && (
                     <div className="mt-3 max-w-[280px]">

@@ -60,15 +60,15 @@ export async function POST(req: Request) {
   }
   const profileRow = { id: user.id };
 
-  const { data: membership, error: me } = await db
+  // maybeSingle() kullanılmıyor: kullanıcı birden çok takımda olabilir.
+  const { data: memberships, error: me } = await db
     .from('team_members')
     .select('team_id, teams(id, competition_id)')
-    .eq('user_id', user.id)
-    .maybeSingle();
-  if (me || !membership) {
+    .eq('user_id', user.id);
+  if (me || !memberships?.length) {
     return NextResponse.json({ error: 'Kullanıcı bir takıma bağlı değil' }, { status: 409 });
   }
-  const team = membership.teams as unknown as { id: string; competition_id: string };
+  const team = memberships[0].teams as unknown as { id: string; competition_id: string };
 
   // ── PDF metnini çıkar (§2: unpdf) ──
   const bytes = new Uint8Array(await file.arrayBuffer());

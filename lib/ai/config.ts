@@ -111,3 +111,17 @@ export const PROMPT_VERSIONS: Record<CheckType, string> = {
  * Varsayılan AÇIK: env'de açıkça 'false' yazmadıkça gerçek API çağrılmaz.
  */
 export const MOCK_AI = process.env.MOCK_AI !== 'false';
+
+/**
+ * §4.4 aşama 1 — trigram aday eşiği.
+ *
+ * SQL fonksiyonundaki taban 0.05'ti ve pratikte HER çifti modele gönderiyordu:
+ * aynı yarışmadaki raporlar ortak şablon/terminoloji yüzünden doğal olarak
+ * 0.50-0.60 bandında benziyor. Sonuç, dokuz demo raporunun hepsinin
+ * "benzerlik: fail" alması oldu — gürültü, bulgu değil.
+ *
+ * 0.65 eşiği ortak-şablon gürültüsünü keser, gerçek metin örtüşmesini geçirir.
+ * Ayrıca modele giden çift sayısını düşürerek kotayı korur.
+ * Değeri değiştirirken similarity_pairs'i temizleyip yeniden analiz gerekir.
+ */
+export const SIMILARITY_MIN_LEXICAL = Number(process.env.SIMILARITY_MIN_LEXICAL ?? '0.65');
