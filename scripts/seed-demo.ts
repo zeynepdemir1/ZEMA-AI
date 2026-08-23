@@ -9,7 +9,7 @@
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { supabaseAdmin } from '../lib/supabase/admin';
-import { DEV_COMPETITION_NAME, DEV_USERS } from '../lib/dev-session';
+import { DEV_COMPETITION_NAME } from '../lib/dev-session';
 import { DEMO_REPORTS, type DemoReport } from './demo-reports';
 
 const OUT = 'scripts/fixtures/demo';
