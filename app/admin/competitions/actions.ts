@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { authorize } from '@/lib/supabase/server';
 
 /**
  * §4.4: similarity_threshold SADECE bir UI filtresi — değiştirmek yeniden
@@ -12,6 +13,10 @@ export async function saveSimilarityThreshold(
   competitionId: string,
   value: number,
 ): Promise<{ ok: boolean; error?: string }> {
+  // Yarışma yapılandırması yalnızca Yarışma Yöneticisinde (§3.1).
+  const auth = await authorize(['competition_admin']);
+  if ('error' in auth) return { ok: false, error: auth.error };
+
   if (!Number.isInteger(value) || value < 0 || value > 100) {
     return { ok: false, error: 'Eşik 0-100 arası tam sayı olmalı.' };
   }
@@ -23,6 +28,7 @@ export async function saveSimilarityThreshold(
   if (error) return { ok: false, error: error.message };
 
   await db.from('audit_log').insert({
+    actor: auth.user.id,
     action: 'competition.threshold_changed',
     entity: 'competitions',
     entity_id: competitionId,

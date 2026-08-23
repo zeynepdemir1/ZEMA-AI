@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { assertReportAccess, authorize } from '@/lib/supabase/server';
 
 /** §4.4: hakem HER eşleşmeyi bağımsız değerlendirir. */
 export async function setPairVerdict(
@@ -9,6 +10,11 @@ export async function setPairVerdict(
   pairId: string,
   verdict: 'pending' | 'confirmed' | 'false_positive',
 ): Promise<{ ok: boolean; error?: string }> {
+  const auth = await authorize(['judge']);
+  if ('error' in auth) return { ok: false, error: auth.error };
+  const denied = await assertReportAccess(auth.user, reportId);
+  if (denied) return { ok: false, error: denied };
+
   const db = supabaseAdmin();
   const { error } = await db
     .from('similarity_pairs')

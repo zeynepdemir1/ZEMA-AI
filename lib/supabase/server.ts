@@ -91,3 +91,44 @@ export async function requireRole(allowed: UserRole[]): Promise<SessionUser> {
   if (!allowed.includes(user.role)) return redirect(ROLE_HOME[user.role]);
   return user;
 }
+
+/**
+ * Server action'lar için yetki kontrolü.
+ *
+ * `requireRole` sayfalar için: yönlendirme yapıyor. Action'lar yönlendiremez,
+ * hata DÖNDÜRMELİ — çağıran istemci onu kullanıcıya gösteriyor.
+ *
+ * ⚠️ Bu kontrol zorunlu çünkü action'ların bir kısmı `supabaseAdmin()`
+ * kullanıyor (job runner mantığı, yayımlama, eşik ayarı) ve admin istemcisi
+ * RLS'i BAYPAS EDER. Yani RLS burada kalkan değil; kalkan bu fonksiyon.
+ */
+export async function authorize(
+  allowed: UserRole[],
+): Promise<{ user: SessionUser } | { error: string }> {
+  const user = await currentUser();
+  if (!user) return { error: 'Oturum bulunamadı. Yeniden giriş yapın.' };
+  if (!allowed.includes(user.role)) {
+    return { error: `Bu işlem için yetkiniz yok (rolünüz: ${ROLE_LABEL[user.role]}).` };
+  }
+  return { user };
+}
+
+/**
+ * Hakem SADECE kendisine atanmış rapora müdahale edebilir.
+ * Rol kontrolü yetmez: hakem A, hakem B'nin raporunu mühürlememeli.
+ * Yarışma/Değerlendirme Yöneticisi için atama şartı aranmaz.
+ */
+export async function assertReportAccess(
+  user: SessionUser,
+  reportId: string,
+): Promise<string | null> {
+  if (user.role !== 'judge') return null;
+  const db = await supabaseServer();
+  const { data } = await db
+    .from('assignments')
+    .select('id')
+    .eq('report_id', reportId)
+    .eq('judge_id', user.id)
+    .maybeSingle();
+  return data ? null : 'Bu rapor size atanmamış.';
+}

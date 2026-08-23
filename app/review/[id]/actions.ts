@@ -2,18 +2,22 @@
 
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { assertReportAccess, authorize } from '@/lib/supabase/server';
 
 /**
  * Hakem aksiyonları (PLAN.md §4.5).
  * "AI ile Konuş" iptal edildi — yalnızca doğrudan düzenleme ve onay/geri alma.
  *
- * ⚠️ GEÇİCİ: aktör kimliği auth'tan gelmiyor; service_role ile yazılıyor.
+ * Bu dosya supabaseAdmin() kullanıyor (RLS baypas) → her action'da rol VE
+ * atama kontrolü zorunlu. Aktör oturumdan alınıyor.
  */
 
-async function judgeId(): Promise<string | null> {
-  const db = supabaseAdmin();
-  const { data } = await db.from('profiles').select('id').eq('role', 'judge').limit(1).maybeSingle();
-  return data?.id ?? null;
+/** Rol + atama kontrolünü tek yerde yap. */
+async function guard(reportId: string) {
+  const auth = await authorize(['judge']);
+  if ('error' in auth) return auth;
+  const denied = await assertReportAccess(auth.user, reportId);
+  return denied ? { error: denied } : auth;
 }
 
 /** Doğrudan düzenle → final_text yazılır ve metin hakem onaylı sayılır. */
@@ -22,6 +26,9 @@ export async function saveCriterionText(
   criterionId: string,
   text: string,
 ): Promise<{ ok: boolean; error?: string }> {
+  const auth = await guard(reportId);
+  if ('error' in auth) return { ok: false, error: auth.error };
+
   const db = supabaseAdmin();
   const trimmed = text.trim();
   if (!trimmed) return { ok: false, error: 'Metin boş olamaz.' };
@@ -34,7 +41,7 @@ export async function saveCriterionText(
   if (error) return { ok: false, error: error.message };
 
   await db.from('audit_log').insert({
-    actor: await judgeId(),
+    actor: auth.user.id,
     action: 'criterion.edited',
     entity: 'ai_criterion_scores',
     entity_id: reportId,
@@ -50,6 +57,9 @@ export async function setCriterionApproval(
   criterionId: string,
   approved: boolean,
 ): Promise<{ ok: boolean; error?: string }> {
+  const auth = await guard(reportId);
+  if ('error' in auth) return { ok: false, error: auth.error };
+
   const db = supabaseAdmin();
   const { data: row } = await db
     .from('ai_criterion_scores')
@@ -70,7 +80,7 @@ export async function setCriterionApproval(
   if (error) return { ok: false, error: error.message };
 
   await db.from('audit_log').insert({
-    actor: await judgeId(),
+    actor: auth.user.id,
     action: approved ? 'criterion.approved' : 'criterion.unapproved',
     entity: 'ai_criterion_scores',
     entity_id: reportId,
@@ -84,6 +94,9 @@ export async function setCriterionApproval(
 export async function approveAllCriteria(
   reportId: string,
 ): Promise<{ ok: boolean; count: number; error?: string }> {
+  const auth = await guard(reportId);
+  if ('error' in auth) return { ok: false, count: 0, error: auth.error };
+
   const db = supabaseAdmin();
   const { data: rows, error: re } = await db
     .from('ai_criterion_scores')
@@ -100,7 +113,7 @@ export async function approveAllCriteria(
   }
   await db.from('reports').update({ status: 'completed' }).eq('id', reportId);
   await db.from('audit_log').insert({
-    actor: await judgeId(),
+    actor: auth.user.id,
     action: 'report.review_submitted',
     entity: 'reports',
     entity_id: reportId,

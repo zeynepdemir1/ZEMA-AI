@@ -51,15 +51,18 @@ Veri düzeyinde: anonim her tabloda 0 satır · yarışmacı `ai_criterion_score
 0 satır (ham AI analizi gizli) · yarışmacının UPDATE denemesi 0 satır etkiledi
 ve hiçbir veriyi değiştirmedi · hakem yalnızca ATANDIĞI raporu görüyor.
 
+### Action yetkilendirmesi — KAPATILDI (23 Ağustos)
+
+Sekiz mutasyon action'ının hepsinde `authorize()` var. Hakem action'larında
+ayrıca `assertReportAccess()`: hakem A, hakem B'nin raporunu mühürleyemez.
+Aktör artık oturumdan alınıyor (önce "herhangi bir hakem" sorgulanıyordu).
+
+Gerçek exploit denemesiyle doğrulandı: yarışmacı oturumuyla Next.js action
+protokolü üzerinden `publishFeedback` çağrıldı → üç action da
+"yetkiniz yok (rolünüz: YARIŞMACI)" döndü, DB değişmedi.
+
 ### Auth sonrası kalan açıklar
 
-- [ ] **Server action'lar rol kontrolü yapmıyor.** `saveCriterionText`,
-      `approveAllCriteria`, `publishFeedback`, `saveSimilarityThreshold`
-      oturum ister (middleware) ama ROL kontrolü içermiyor. RLS yazmayı
-      engelliyor (yarışmacı için 0 satır) ama `publishFeedback` ve
-      `saveSimilarityThreshold` admin istemcisi kullandığı için RLS'i
-      baypas ediyor → **giriş yapmış bir yarışmacı geri bildirim
-      yayımlayabilir.** Action'lara `requireRole` eklenmeli.
 - [ ] **`/evaluation/assignments` yok.** Atama şu an seed ile yapılıyor;
       hakem atanmamış raporu RLS gereği göremiyor.
 

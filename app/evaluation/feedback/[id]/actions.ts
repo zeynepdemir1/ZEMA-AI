@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { authorize } from '@/lib/supabase/server';
 import type { FeedbackContent } from '@/lib/reports/queries';
 
 /**
@@ -10,21 +11,23 @@ import type { FeedbackContent } from '@/lib/reports/queries';
  * Yarışmacı YALNIZCA yayımlanmış sürümü görür (§3.1).
  */
 
-async function evalAdminId(): Promise<string | null> {
-  const db = supabaseAdmin();
-  const { data } = await db
-    .from('profiles')
-    .select('id')
-    .in('role', ['evaluation_admin', 'judge'])
-    .limit(1)
-    .maybeSingle();
-  return data?.id ?? null;
-}
+/**
+ * Yayımlama YALNIZCA Değerlendirme Yöneticisinde (§3.1: feedback CRUD +
+ * publish). Hakem onaylar ama yayımlamaz; yarışmacı hiçbir şey yapamaz.
+ *
+ * Bu dosya supabaseAdmin() kullandığı için RLS burada koruma sağlamıyor —
+ * kontrol authorize() ile yapılıyor.
+ */
+const PUBLISHERS = ['evaluation_admin', 'competition_admin'] as const;
 
 export async function saveFeedbackDraft(
   reportId: string,
   content: FeedbackContent,
 ): Promise<{ ok: boolean; error?: string }> {
+  const auth = await authorize([...PUBLISHERS]);
+  if ('error' in auth) return { ok: false, error: auth.error };
+  void auth;
+
   const db = supabaseAdmin();
   const { data: existing } = await db
     .from('feedback')
@@ -49,12 +52,15 @@ export async function publishFeedback(
   reportId: string,
   content: FeedbackContent,
 ): Promise<{ ok: boolean; error?: string }> {
+  const auth = await authorize([...PUBLISHERS]);
+  if ('error' in auth) return { ok: false, error: auth.error };
+
   const db = supabaseAdmin();
   if (!content.strengths?.length || !content.improvements?.length) {
     return { ok: false, error: 'Güçlü yönler ve geliştirilecek alanlar boş olamaz.' };
   }
 
-  const actor = await evalAdminId();
+  const actor = auth.user.id;
   const { data: existing } = await db
     .from('feedback')
     .select('id')
@@ -90,6 +96,9 @@ export async function publishFeedback(
 export async function unpublishFeedback(
   reportId: string,
 ): Promise<{ ok: boolean; error?: string }> {
+  const auth = await authorize([...PUBLISHERS]);
+  if ('error' in auth) return { ok: false, error: auth.error };
+
   const db = supabaseAdmin();
   const { error } = await db
     .from('feedback')
@@ -98,7 +107,7 @@ export async function unpublishFeedback(
   if (error) return { ok: false, error: error.message };
 
   await db.from('audit_log').insert({
-    actor: await evalAdminId(),
+    actor: auth.user.id,
     action: 'feedback.unpublished',
     entity: 'feedback',
     entity_id: reportId,
