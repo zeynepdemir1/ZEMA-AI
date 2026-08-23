@@ -1,0 +1,9 @@
+{
+  "_TODO": "PLAN.md §4.1 LanguageTemplateSchema'ya göre doldurulacak. Demo seed R2/R8 kusurlarını tetikleyecek şekilde yaz.",
+  "language_detected": "tr",
+  "is_expected_language": true,
+  "sections": [],
+  "language_issues": [],
+  "compliance_score": 0,
+  "verdict": "pass"
+}
