@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import type { CriterionCardData, ReviewData } from '@/lib/reports/queries';
 import { approveAllCriteria, saveCriterionText, setCriterionApproval } from './actions';
+import { CheckPanels } from './check-panels';
 
 const STATUS_META = {
   done: { label: 'YAPILDI', tone: 'text-success border-success' },
@@ -107,8 +108,12 @@ export function ReviewPanel({ data }: { data: ReviewData }) {
         </div>
       )}
 
-      {/* ─── Kriter kartları ─── */}
+      {/* ─── Altı AI kontrolü + kriter kartları ─── */}
       <div className="bg-canvas flex flex-1 flex-col gap-4 overflow-auto px-8 pt-6 pb-[60px]">
+        {/* Şartnamenin altı gereksinimi burada görünür.
+            Bu blok eklenene kadar dört kontrol çalışıp gösterilmiyordu. */}
+        <CheckPanels checks={data.checks} reportId={report.id} />
+
         {cards.length === 0 && (
           <div className="border-ink/[.22] border border-dashed bg-white p-10 text-center">
             <div className="font-heading mb-2 text-[18px] font-semibold">

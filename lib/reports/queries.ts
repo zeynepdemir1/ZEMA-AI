@@ -32,6 +32,24 @@ export type CriterionCardData = {
   ref: string;
 };
 
+/**
+ * Bir AI kontrolünün hakem ekranında gösterilecek hali.
+ *
+ * ⚠️ Bu tip eklenene kadar dört kontrol (language_template, title_content,
+ * category_fit, feedback_synthesis) çalışıyor ama SONUÇLARI HİÇ
+ * GÖSTERİLMİYORDU: loadReview analysis_results'u sorguluyor, yalnızca
+ * benzerlik yüzdesini alıp geri kalanını atıyordu. Şartname altı
+ * gereksinimin hepsinin görünür olmasını gerektiriyor.
+ */
+export type CheckResultView = {
+  type: string;
+  label: string;
+  verdict: string;
+  score: number | null;
+  model: string;
+  payload: Record<string, unknown>;
+};
+
 export type ReviewData = {
   report: {
     id: string;
@@ -42,6 +60,8 @@ export type ReviewData = {
     status: string;
   };
   cards: CriterionCardData[];
+  /** Altı kontrolün tamamı — kriter kartları dışındakiler de gösterilir. */
+  checks: CheckResultView[];
   similarity: { maxPct: number; matchCount: number; threshold: number };
   /** Analiz hâlâ sürüyorsa kısmi sonuç gösterilir (§2.1). */
   progress: { done: number; total: number; failed: number };
@@ -91,7 +111,7 @@ export async function loadReview(reportId: string): Promise<ReviewData | null> {
         .eq('report_id', reportId),
       db
         .from('analysis_results')
-        .select('check_type, verdict, score, payload')
+        .select('check_type, verdict, score, payload, model')
         .eq('report_id', reportId),
       db.from('analysis_jobs').select('status').eq('report_id', reportId),
     ]);
@@ -121,6 +141,48 @@ export async function loadReview(reportId: string): Promise<ReviewData | null> {
     };
   });
 
+  const CHECK_LABELS: Record<string, string> = {
+    language_template: 'Dil ve Şablon Uyumu',
+    title_content: 'Başlık-İçerik Tutarlılığı',
+    category_fit: 'Kategori Uygunluğu',
+    similarity: 'Benzerlik / Özgünlük',
+    criteria_scoring: 'Kriter Bazlı Değerlendirme',
+    feedback_synthesis: 'Yarışmacı Geri Bildirimi',
+  };
+  const CHECK_ORDER = Object.keys(CHECK_LABELS);
+
+  // category_fit payload'ında kategori UUID'si var; hakeme UUID göstermek
+  // anlamsız — okunabilir adla zenginleştir.
+  const allCats = await db.from('categories').select('id, name');
+  const catNameById = new Map((allCats.data ?? []).map((c) => [c.id, c.name]));
+
+  const checks: CheckResultView[] = CHECK_ORDER.flatMap((type) => {
+    const r = (results ?? []).find((x) => x.check_type === type);
+    if (!r) return [];
+    let payload = (r.payload ?? {}) as Record<string, unknown>;
+    if (type === 'category_fit' && Array.isArray(payload.ranked_categories)) {
+      payload = {
+        ...payload,
+        ranked_categories: (payload.ranked_categories as Array<Record<string, unknown>>).map(
+          (rc) => ({
+            ...rc,
+            category_name: catNameById.get(String(rc.category_id)) ?? String(rc.category_id).slice(0, 8),
+          }),
+        ),
+      };
+    }
+    return [
+      {
+        type,
+        label: CHECK_LABELS[type],
+        verdict: r.verdict ?? 'insufficient_evidence',
+        score: r.score ?? null,
+        model: r.model ?? '—',
+        payload,
+      },
+    ];
+  });
+
   const simResult = (results ?? []).find((r) => r.check_type === 'similarity');
   const simPayload = (simResult?.payload ?? {}) as {
     semantic_score?: number;
@@ -138,6 +200,7 @@ export async function loadReview(reportId: string): Promise<ReviewData | null> {
       status: report.status,
     },
     cards,
+    checks,
     similarity: {
       maxPct: Math.round(simPayload.semantic_score ?? 0),
       matchCount: (simPayload.matched_passages ?? []).length,

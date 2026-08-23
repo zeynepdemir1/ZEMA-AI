@@ -96,10 +96,10 @@ const SECTIONS = [
   {
     title: 'Başvuru',
     body:
-      'Haklarınızı kullanmak için [İLETİŞİM E-POSTASI] adresine yazılı olarak ' +
-      'başvurabilirsiniz. Başvurunuz en geç otuz gün içinde yanıtlanır. Hesap ' +
-      'ayarlarınızdaki "Hesabımı ve Verilerimi Sil" işlemi silme talebini doğrudan ' +
-      'iletmenizi sağlar.',
+      'Haklarınızı kullanmak için — silme talebi dahil — [İLETİŞİM E-POSTASI] ' +
+      'adresine yazılı olarak başvurabilirsiniz. Başvurunuz en geç otuz gün içinde ' +
+      'yanıtlanır. Uygulama içinden tek tıkla hesap silme özelliği henüz sunulmuyor; ' +
+      'talebiniz bu adres üzerinden işlenir.',
   },
 ];
 

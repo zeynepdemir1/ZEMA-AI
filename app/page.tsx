@@ -206,7 +206,10 @@ export default function LandingPage() {
         </div>
         <div className="border-ink/10 text-ink/[.45] mt-[34px] flex flex-wrap justify-between gap-4 border-t pt-5 font-mono text-[11px] tracking-[.1em]">
           <span>ZEMA · T3 VAKFI CREATHON</span>
-          <span>KVKK UYUMLU · VERİLER TÜRKİYE&apos;DE İŞLENİR</span>
+          {/* Eski metin "VERİLER TÜRKİYE'DE İŞLENİR" idi ve KVKK aydınlatma
+              metniyle ÇELİŞİYORDU: rapor içeriği analiz için Google Gemini'ye,
+              yani yurt dışına aktarılıyor. Gerçekle uyumlu ifadeye çevrildi. */}
+          <span>KVKK UYUMLU · AÇIK RIZA İLE ANALİZ EDİLİR</span>
         </div>
       </div>
     </div>
