@@ -499,3 +499,185 @@ export async function loadSetup(): Promise<SetupData | null> {
     overThresholdPct: total ? Math.round((over / total) * 100) : 0,
   };
 }
+
+// ─────────────────────────────────────────────────────────────
+// /evaluation/feedback/[id] — yayımlama akışı (§4.6)
+// ─────────────────────────────────────────────────────────────
+
+export type FeedbackContent = {
+  summary?: string;
+  strengths?: string[];
+  improvements?: Array<{ area: string; what: string; how: string; priority: string }>;
+  next_steps?: string[];
+};
+
+export type FeedbackDraft = {
+  report: { id: string; code: string; title: string; team: string; category: string };
+  feedbackId: string | null;
+  isPublished: boolean;
+  publishedAt: string | null;
+  content: FeedbackContent | null;
+  /** Kontrol tamamlanmadıysa taslak henüz üretilmemiş olabilir. */
+  synthesisDone: boolean;
+};
+
+export async function loadFeedbackDraft(reportId: string): Promise<FeedbackDraft | null> {
+  const db = supabaseAdmin();
+  const { data: report } = await db
+    .from('reports')
+    .select('id, title, team_id, category_id')
+    .eq('id', reportId)
+    .maybeSingle();
+  if (!report) return null;
+
+  const [{ data: fb }, { data: team }, { data: category }, { data: job }] = await Promise.all([
+    db
+      .from('feedback')
+      .select('id, content, is_published, published_at')
+      .eq('report_id', reportId)
+      .maybeSingle(),
+    db.from('teams').select('name').eq('id', report.team_id).maybeSingle(),
+    report.category_id
+      ? db.from('categories').select('name').eq('id', report.category_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+    db
+      .from('analysis_jobs')
+      .select('status')
+      .eq('report_id', reportId)
+      .eq('check_type', 'feedback_synthesis')
+      .maybeSingle(),
+  ]);
+
+  return {
+    report: {
+      id: report.id,
+      code: reportCode(report.id),
+      title: report.title,
+      team: team?.name ?? '—',
+      category: category?.name ?? '—',
+    },
+    feedbackId: fb?.id ?? null,
+    isPublished: Boolean(fb?.is_published),
+    publishedAt: fb?.published_at ?? null,
+    content: (fb?.content ?? null) as FeedbackContent | null,
+    synthesisDone: job?.status === 'done',
+  };
+}
+
+/** Yayımlanmayı bekleyen raporlar — /evaluation'dan buraya giriş için. */
+export async function loadFeedbackQueue() {
+  const db = supabaseAdmin();
+  const { data: rows } = await db
+    .from('feedback')
+    .select('report_id, is_published, published_at');
+  const ids = (rows ?? []).map((r) => r.report_id);
+  if (!ids.length) return [];
+  const [{ data: reports }, { data: teams }] = await Promise.all([
+    db.from('reports').select('id, title, team_id').in('id', ids),
+    db.from('teams').select('id, name'),
+  ]);
+  const teamName = new Map((teams ?? []).map((t) => [t.id, t.name]));
+  return (rows ?? []).map((r) => {
+    const rep = (reports ?? []).find((x) => x.id === r.report_id);
+    return {
+      reportId: r.report_id,
+      code: reportCode(r.report_id),
+      title: rep?.title ?? '—',
+      team: rep ? (teamName.get(rep.team_id) ?? '—') : '—',
+      isPublished: r.is_published,
+      publishedAt: r.published_at,
+    };
+  });
+}
+
+// ─────────────────────────────────────────────────────────────
+// /submissions — yarışmacının rapor listesi
+// ─────────────────────────────────────────────────────────────
+
+export type MyReport = {
+  id: string;
+  code: string;
+  title: string;
+  category: string;
+  status: string;
+  checksDone: number;
+  checksTotal: number;
+  failed: number;
+  feedbackPublished: boolean;
+  createdAt: string;
+};
+
+/** Yarışmacının takımına ait raporlar + yükleme formu için kategoriler. */
+export async function loadMySubmissions() {
+  const db = supabaseAdmin();
+
+  // GEÇİCİ: kullanıcı auth'tan değil sabit test hesabından bulunuyor.
+  const { data: profile } = await db
+    .from('profiles')
+    .select('id, full_name')
+    .eq('role', 'competitor')
+    .limit(1)
+    .maybeSingle();
+  if (!profile) return null;
+
+  const { data: membership } = await db
+    .from('team_members')
+    .select('team_id, teams(id, name, competition_id)')
+    .eq('user_id', profile.id)
+    .maybeSingle();
+  if (!membership) return null;
+  const team = membership.teams as unknown as { id: string; name: string; competition_id: string };
+
+  const [{ data: reports }, { data: categories }, { data: competition }] = await Promise.all([
+    db
+      .from('reports')
+      .select('id, title, category_id, status, created_at')
+      .eq('team_id', team.id)
+      .order('created_at', { ascending: false }),
+    db
+      .from('categories')
+      .select('id, name')
+      .eq('competition_id', team.competition_id)
+      .order('name'),
+    db
+      .from('competitions')
+      .select('name, submission_deadline')
+      .eq('id', team.competition_id)
+      .maybeSingle(),
+  ]);
+
+  const ids = (reports ?? []).map((r) => r.id);
+  const [{ data: jobs }, { data: fb }] = await Promise.all([
+    ids.length
+      ? db.from('analysis_jobs').select('report_id, status').in('report_id', ids)
+      : Promise.resolve({ data: [] }),
+    ids.length
+      ? db.from('feedback').select('report_id, is_published').in('report_id', ids)
+      : Promise.resolve({ data: [] }),
+  ]);
+  const catName = new Map((categories ?? []).map((c) => [c.id, c.name]));
+
+  const list: MyReport[] = (reports ?? []).map((r) => {
+    const rJobs = (jobs ?? []).filter((j) => j.report_id === r.id);
+    return {
+      id: r.id,
+      code: reportCode(r.id),
+      title: r.title,
+      category: catName.get(r.category_id ?? '') ?? 'Beyan edilmemiş',
+      status: r.status,
+      checksDone: rJobs.filter((j) => j.status === 'done').length,
+      checksTotal: rJobs.length,
+      failed: rJobs.filter((j) => j.status === 'failed').length,
+      feedbackPublished: Boolean((fb ?? []).find((f) => f.report_id === r.id)?.is_published),
+      createdAt: r.created_at,
+    };
+  });
+
+  return {
+    team: { name: team.name },
+    competitor: profile.full_name ?? '—',
+    competition: competition ?? { name: '—', submission_deadline: null },
+    categories: categories ?? [],
+    reports: list,
+  };
+}

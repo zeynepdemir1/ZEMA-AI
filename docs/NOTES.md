@@ -5,12 +5,18 @@
 Sıralama gerekçesi: §9'daki demo zinciri şu an **iki yerde kopuk**. Auth bir
 güvenlik açığı ama demoyu bozmuyor; kopuk halkalar bozuyor.
 
+**Auth aynı gün yapılacak, yarına bırakılmayacak.** Gerekçe: RLS ilk kez
+gerçekten devreye girdiğinde (şu an `service_role` ile baypas ediliyor)
+beklenmedik erişim hataları çıkması muhtemel. Bunları çözmek için tampon
+süre gerekiyor; son güne bırakılamaz.
+
 1. **`/evaluation/feedback/[id]` — yayımlama akışı.** `feedback` satırı
    `is_published=false` olarak yazılıyor ve onu yayımlayacak hiçbir şey yok.
    Yani yarışmacı ekranı KALICI olarak boş. §9 adım 5 imkânsız. *Küçük iş.*
 2. **`/submissions` + `/submissions/new` — yükleme arayüzü.** Rapor yükleme
    yalnızca `curl` ile çalışıyor. §9 adım 2 imkânsız. *Küçük iş.*
-3. **Auth.** PLAN'da Gün 1 işi, gecikti. Detay aşağıda. *Büyük iş.*
+3. **Auth — TAM KAPSAM.** PLAN'da Gün 1 işi, gecikti. Detay aşağıda.
+   *Büyük iş, ama bölünmez.*
 
 Bunlardan sonra sırada: `/evaluation/assignments` (atama), `/admin/criteria`
 ve `/admin/categories` (§8 kesme listesi 6: seed SQL ile yönetilebilir),
@@ -35,9 +41,10 @@ ile yapılıyor → **RLS tamamen baypas ediliyor.** Sonuçları:
 Gerçek API çağrısı yapılmadığı sürece endpoint'leri dövmek kota harcamıyor.
 Yani bu bayrak şu an bir geliştirme kolaylığı değil, **güvenlik kontrolü.**
 
-**Asgari savunulabilir hedef** (tam §3.1 uygulamasına vakit yetmezse):
-tüm uygulamayı girişin arkasına al. Rol ayrımı olmasa bile ham analizin
-herkese açık olması sona erer.
+**Kapsam pazarlığa açık DEĞİL.** "Rol ayrımı olmadan girişin arkasına almak"
+bir yedek plan olarak değerlendirilip REDDEDİLDİ: şartname 4 farklı kullanıcı
+rolü istiyor, giriş kapısı bu gereksinimi karşılamaz. Aşağıdaki maddelerin
+tamamı yapılacak.
 
 **Auth işinin kapsamı:**
 - `lib/supabase/server.ts` — `@supabase/ssr` ile cookie tabanlı istemci

@@ -121,11 +121,19 @@ export default async function EvaluationDashboard() {
                         {q.checksDone}/{q.checksTotal} KONTROL · {q.approved}/{q.total || 6} ONAY
                       </div>
                     </div>
-                    <span
-                      className={`justify-self-start border px-[7px] py-[3px] font-mono text-[9.5px] tracking-[.1em] ${BADGE[q.tone]}`}
-                    >
-                      {q.badge}
-                    </span>
+                    <div className="flex flex-col items-start gap-1.5">
+                      <span
+                        className={`border px-[7px] py-[3px] font-mono text-[9.5px] tracking-[.1em] ${BADGE[q.tone]}`}
+                      >
+                        {q.badge}
+                      </span>
+                      <Link
+                        href={`/evaluation/feedback/${q.reportId}`}
+                        className="text-teal text-[11.5px] no-underline hover:underline"
+                      >
+                        geri bildirim →
+                      </Link>
+                    </div>
                   </div>
                 ))}
               </div>
