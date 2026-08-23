@@ -76,26 +76,23 @@ protokolü üzerinden `publishFeedback` çağrıldı → üç action da
 
 ---
 
-## 🎨 Kozmetik cila (son gün)
+## ✅ Kozmetik cila — TAMAMLANDI (24 Ağustos)
 
-- [ ] **Ana sayfa üst menüsündeki üç öğe tıklanamıyor.**
-      `app/page.tsx:39-41` — "Nasıl Çalışır", "Roller", "İletişim" düz `<span>`,
-      link değil; sadece "Giriş Yap" çalışıyor. Tasarım dosyasında da `<span>`
-      olarak geliyorlardı, yani sadakat hatası değil — ama ürün boşluğu.
-      *Çözüm:* Ya sayfa içi bölümlere `#` çapa linki yap (`Nasıl Çalışır` için
-      §"NASIL ÇALIŞIR" bloğu hazır), ya da menüden tamamen çıkar. Yarı yolda
-      bırakılmış link jüriye kötü görünür.
+- [x] Ana sayfa üst menüsü: "Nasıl Çalışır" ve "Roller" artık çalışan sayfa
+      içi çapa linkleri. "İletişim" kaldırıldı — verilecek bir iletişim
+      bilgisi yoktu ve ölü link jüriye kötü görünür. Ayrıca yeni bir
+      "Roller" bölümü eklendi: şartnamenin dört rol gereksinimini ve her
+      rolün kayıt koduyla mı açıldığını doğrudan gösteriyor.
+- [x] Placeholder kontrastı: `placeholder:text-ink/40` eklendi ve "Ad Soyad"
+      ipucu jenerikleştirildi ("Adınız ve soyadınız"). Tailwind v4 preflight
+      placeholder'ı currentColor'ın %50'si yapıyor; Ink Navy üzerinde bu
+      fazla koyu kalıyor ve ipucu dolu bir DEĞER gibi okunuyordu.
 
-- [ ] **"Ad Soyad" placeholder'ı dolu değer gibi okunuyor.**
-      `app/auth/auth-panel.tsx:126` — `placeholder="Zeynep Demir"`.
-      Teknik olarak `value` değil, placeholder; ama Tailwind v4 preflight
-      placeholder rengini `currentcolor %50` yapıyor → beyaz üstünde okunaklı
-      koyu lacivert. Akla yatkın gerçek bir isimle birleşince ipucu değil
-      içerik gibi görünüyor.
-      *Çözüm:* Metni jenerik yap (`"Adınız ve soyadınız"`) **ve** placeholder'ı
-      soluklaştır (`placeholder:text-ink/40`). Aynı gözden geçirmeyi diğer
-      alanlara da uygula: `ad.soyad@ornek.com` ve `En az 8 karakter` talimat
-      gibi okunuyor, sorun değil.
+## ✂️ Eklenmeyecek — karar verildi
+
+- **§9 adım 4, AI vs Hakem kalibrasyon tablosu.** §8 kesme listesinde 5.
+  sıradaydı. İki gün kaldığı ve demo senaryosu bu adım olmadan da güçlü
+  olduğu için ATLANDI. Demo anlatısından da çıkarılmalı.
 
 ---
 

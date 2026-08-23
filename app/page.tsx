@@ -23,6 +23,34 @@ const STEPS = [
   },
 ];
 
+/** PLAN.md §3.2 — dört rol ve nasıl atandıkları. */
+const ROLES = [
+  {
+    name: 'Yarışmacı',
+    accent: 'border-l-ink',
+    code: false,
+    body: 'Raporunu yükler, analiz durumunu izler ve hakemin onayladığı geri bildirimi görür. Ham AI çıktısına erişemez.',
+  },
+  {
+    name: 'Hakem',
+    accent: 'border-l-teal',
+    code: true,
+    body: 'Yalnızca kendisine atanan raporları görür. Her kriteri düzenler veya onaylar; onaylanmayan metin yayınlanmaz.',
+  },
+  {
+    name: 'Değerlendirme Yöneticisi',
+    accent: 'border-l-gold',
+    code: true,
+    body: 'Hakem atamasını yapar, süreci izler ve geri bildirimi yarışmacıya yayımlayan tek roldür.',
+  },
+  {
+    name: 'Yarışma Yöneticisi',
+    accent: 'border-l-ink',
+    code: true,
+    body: 'Yarışmayı, kategorileri, rubriği ve benzerlik eşiğini tanımlar. Bu ayarlar AI analizinin referansıdır.',
+  },
+];
+
 export default function LandingPage() {
   return (
     <div>
@@ -36,9 +64,15 @@ export default function LandingPage() {
             <ZemaWordmark />
           </div>
           <div className="flex items-center gap-7 text-[13.5px]">
-            <span className="opacity-[.62]">Nasıl Çalışır</span>
-            <span className="opacity-[.62]">Roller</span>
-            <span className="opacity-[.62]">İletişim</span>
+            {/* Tasarımda bu üçü düz <span>'di, yani tıklanamıyordu.
+                İkisi sayfa içi bölüme bağlandı; "İletişim" kaldırıldı —
+                verilecek bir iletişim bilgisi yok ve ölü link kötü görünür. */}
+            <a href="#nasil-calisir" className="text-white/[.62] no-underline hover:text-white">
+              Nasıl Çalışır
+            </a>
+            <a href="#roller" className="text-white/[.62] no-underline hover:text-white">
+              Roller
+            </a>
             <Link
               href="/auth"
               className="cursor-pointer border border-white/[.35] px-4 py-2 text-[13px] font-semibold text-white no-underline"
@@ -106,7 +140,7 @@ export default function LandingPage() {
       </div>
 
       {/* ─── Nasıl çalışır ─── */}
-      <div className="mx-auto max-w-[1180px] px-10 pt-[72px] pb-5">
+      <div id="nasil-calisir" className="mx-auto max-w-[1180px] scroll-mt-6 px-10 pt-[72px] pb-5">
         <div className="text-teal mb-[10px] font-mono text-[11px] tracking-[.18em]">
           NASIL ÇALIŞIR
         </div>
@@ -122,6 +156,36 @@ export default function LandingPage() {
               <div className="text-ink/[.22] mb-[14px] font-mono text-[26px]">{s.n}</div>
               <h3 className="font-heading m-0 mb-[10px] text-[19px] font-semibold">{s.title}</h3>
               <p className="text-ink/[.68] m-0 text-[14.5px] leading-[1.62]">{s.body}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ─── Roller ─── */}
+      <div id="roller" className="mx-auto max-w-[1180px] scroll-mt-6 px-10 pt-14 pb-5">
+        <div className="text-teal mb-[10px] font-mono text-[11px] tracking-[.18em]">ROLLER</div>
+        <h2 className="font-heading m-0 mb-3 text-[30px] font-semibold tracking-[-.01em]">
+          Dört rol, tek kayıt akışı
+        </h2>
+        <p className="text-ink/[.68] m-0 mb-[30px] max-w-[620px] text-[14.5px] leading-[1.62]">
+          Kayıt ekranında rol seçilmez. Yarışmacılar doğrudan kaydolur; hakem ve yönetici
+          hesapları yalnızca yarışma yönetiminin verdiği kayıt koduyla açılır.
+        </p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {ROLES.map((r) => (
+            <div
+              key={r.name}
+              className={`border-ink/10 ${r.accent} border border-l-[3px] bg-white px-5 pt-5 pb-6`}
+            >
+              <div className="font-heading mb-2 text-[16px] font-semibold">{r.name}</div>
+              <p className="text-ink/[.68] m-0 mb-3 text-[13.5px] leading-[1.6]">{r.body}</p>
+              <div
+                className={`font-mono text-[10px] tracking-[.12em] ${
+                  r.code ? 'text-gold' : 'text-teal'
+                }`}
+              >
+                {r.code ? 'KAYIT KODU GEREKLİ' : 'SERBEST KAYIT'}
+              </div>
             </div>
           ))}
         </div>

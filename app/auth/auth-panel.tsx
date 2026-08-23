@@ -6,8 +6,13 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { checkRegistrationCode, signIn, signUp, type CodeCheck } from './actions';
 
 const LABEL = 'text-ink/60 mb-[7px] block font-mono text-[10.5px] tracking-[.12em]';
+/**
+ * placeholder:text-ink/40 — Tailwind v4 preflight placeholder'ı currentColor'ın
+ * %50'si yapıyor; Ink Navy üzerinde bu fazla koyu kalıyor ve ipucu metni dolu
+ * bir DEĞER gibi okunuyordu ("Zeynep Demir" örneği). Açıkça soluklaştırıldı.
+ */
 const INPUT =
-  'border-ink/[.18] text-ink mb-[18px] w-full border bg-white px-[14px] py-3 font-sans text-[14.5px]';
+  'border-ink/[.18] text-ink placeholder:text-ink/40 mb-[18px] w-full border bg-white px-[14px] py-3 font-sans text-[14.5px]';
 
 export function AuthPanel() {
   const [tab, setTab] = useState<'login' | 'register'>('login');
@@ -193,7 +198,7 @@ function RegisterForm() {
             name="code"
             placeholder="ZEMA-XXXX-0000"
             aria-label="Kayıt kodu"
-            className={`text-ink w-full border ${borderColor} bg-white px-[13px] py-[11px] font-mono text-[13.5px] tracking-[.06em]`}
+            className={`text-ink placeholder:text-ink/40 w-full border ${borderColor} bg-white px-[13px] py-[11px] font-mono text-[13.5px] tracking-[.06em]`}
           />
 
           {check.state === 'invalid' && (
