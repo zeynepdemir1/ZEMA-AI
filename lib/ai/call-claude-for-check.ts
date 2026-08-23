@@ -7,6 +7,7 @@ import {
   MOCK_AI,
   PROMPT_VERSIONS,
   THINKING_LEVEL,
+  modelChainFor,
   modelFor,
   type CheckType,
   type Effort,
@@ -123,10 +124,52 @@ export async function callModelForCheck<S extends z.ZodType = z.ZodType<unknown>
     thinkingLevel: THINKING_LEVEL[opts.effort ?? EFFORT[checkType]],
   };
 
-  let response;
-  try {
-    response = await genai().models.generateContent({
-      model,
+  const chain = modelChainFor(checkType);
+  let response: Awaited<ReturnType<ReturnType<typeof genai>['models']['generateContent']>> | undefined;
+  let lastError: unknown = null;
+  let servedBy = model;
+
+  for (let i = 0; i < chain.length; i++) {
+    const candidate = chain[i];
+    try {
+      response = await callOnce(candidate);
+      servedBy = candidate;
+      if (i > 0 && process.env.NODE_ENV !== 'production') {
+        console.warn(
+          `[zema:ai] ${checkType}: ${chain.slice(0, i).join(', ')} kotası/erişimi ` +
+            `başarısız → ${candidate} ile yanıt alındı.`,
+        );
+      }
+      break;
+    } catch (e) {
+      lastError = e;
+      // Yalnızca KOTA (429) ve MODEL YOK (404) durumunda sıradakine geç.
+      // 400 gibi istek hataları zincirin geri kalanında da başarısız olur;
+      // boşuna kota harcamak yerine hemen yükselt.
+      const status = e instanceof ApiError ? e.status : undefined;
+      const fallthrough = status === 429 || status === 404;
+      if (!fallthrough || i === chain.length - 1) break;
+    }
+  }
+
+  if (!response) {
+    if (lastError instanceof ApiError) {
+      const retryable = lastError.status === 503 || lastError.status >= 500;
+      throw new CheckCallError(
+        `callModelForCheck(${checkType}): zincirdeki modellerin hiçbiri yanıt vermedi ` +
+          `(${chain.join(' → ')}). Son hata: ${lastError.status} — ${lastError.message}`,
+        { retryable, cause: lastError },
+      );
+    }
+    throw new CheckCallError(`callModelForCheck(${checkType}): ağ hatası`, {
+      retryable: true,
+      cause: lastError,
+    });
+  }
+
+  async function callOnce(useModel: string) {
+    return genai().models.generateContent({
+      model: useModel,
       // Sabit içerik önce, değişken talimat en sonda — örtük önbelleğin
       // ortak öneki yakalayabilmesi için sıra korunuyor.
       contents: [
@@ -141,21 +184,6 @@ export async function callModelForCheck<S extends z.ZodType = z.ZodType<unknown>
         responseJsonSchema,
         thinkingConfig,
       },
-    });
-  } catch (e) {
-    // PLAN.md §5.3'ün Gemini karşılığı: en spesifikten genele.
-    // 429 kota, 5xx geçici → job'u yeniden dene; 4xx (429 hariç) → kalıcı hata.
-    if (e instanceof ApiError) {
-      const retryable = e.status === 429 || e.status >= 500;
-      throw new CheckCallError(
-        `callModelForCheck(${checkType}): Gemini ${e.status} — ${e.message}`,
-        { retryable, cause: e },
-      );
-    }
-    // Ağ kopması vb. — yeniden denenebilir.
-    throw new CheckCallError(`callModelForCheck(${checkType}): ağ hatası`, {
-      retryable: true,
-      cause: e,
     });
   }
 
@@ -202,7 +230,7 @@ export async function callModelForCheck<S extends z.ZodType = z.ZodType<unknown>
 
   return {
     payload,
-    model: response.modelVersion ?? model,
+    model: response.modelVersion ?? servedBy,
     promptVersion,
     usage: {
       input_tokens: u?.promptTokenCount ?? 0,

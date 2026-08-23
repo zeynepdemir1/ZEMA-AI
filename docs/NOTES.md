@@ -93,6 +93,16 @@ protokolü üzerinden `publishFeedback` çağrıldı → üç action da
       placeholder'ı currentColor'ın %50'si yapıyor; Ink Navy üzerinde bu
       fazla koyu kalıyor ve ipucu dolu bir DEĞER gibi okunuyordu.
 
+## 📅 Gelecek geliştirme — 5-6 Eylül'e bırakıldı
+
+- **Google ile giriş (OAuth).** Bilinçli olarak ŞİMDİ eklenmiyor. İki gerekçe:
+  (1) dış OAuth kurulumu (Google Cloud konsolu, redirect URI, onay ekranı)
+  teslime iki gün kalırken zaman riski taşıyor; (2) bugün sağlamlaştırılan
+  kayıt kodu ile rol atama akışına, test edilmemiş ikinci bir kullanıcı
+  oluşturma yolu açıyor — OAuth'la gelen kullanıcının rolü nasıl atanacak
+  sorusu ayrıca tasarım gerektiriyor. Finale kalınırsa Demo Day öncesi
+  eklenebilir.
+
 ## ✂️ Eklenmeyecek — karar verildi
 
 - **Demo sırasında canlı rapor yükleme.** Production'da `MOCK_AI=true`
@@ -121,7 +131,47 @@ protokolü üzerinden `publishFeedback` çağrıldı → üç action da
 ## 🗄️ Gün 2–6 — veri katmanı
 
 
-## 🚀 Demo günü kuralları
+## 🚀 DEMO GÜNÜ KONTROL LİSTESİ
+
+**Canlı yükleme demoda OLACAK** — gerçek hakemler yeni bir rapor yükleyip
+gerçek AI analizini görecek. Bunun için `MOCK_AI=false` gerekiyor ve bu
+adım UNUTULURSA jüri yer tutucu metin görür.
+
+### Prova sırasında, sırayla
+
+- [ ] **1. Kuyruğun boş olduğunu doğrula.**
+      `analysis_jobs` içinde `pending`/`running` iş kalmamalı. Kalırsa yeni
+      yüklemenin ilerleme çubuğu FIFO gereği önce onları bekler ve 0/6'da
+      takılı görünür.
+- [ ] **2. Vercel'de `MOCK_AI=false` yap** → Environment Variables → Production.
+- [ ] **3. REDEPLOY et.** Env değişikliği tek başına yetmez.
+- [ ] **4. Prova yüklemesi yap** ve altı kontrolün gerçek modelle bittiğini gör.
+      Yüklediğin prova raporunu demo öncesi SİL (kuyruk temiz kalsın).
+- [ ] **5. Kota kontrolü:** prova 6 istek harcadı. Ücretsiz katman model
+      başına günde 20 istek veriyor; zincir üç modele yayıldığı için
+      (`gemini-3.5-flash → 3.5-flash-lite → 3.7-flash`) toplam ~60 istek
+      var. Yine de demo öncesi başka analiz çalıştırma.
+- [ ] **6. Demo sonrası `MOCK_AI=true`'ya dön** ve redeploy et.
+
+### Neden bu kadar dikkat gerekiyor
+
+Mock modda tick çalıştırmak gerçek analiz sonuçlarını fixture ile eziyordu.
+**Artık kalıcı koruma var:** mock sonuç, gerçek bir modelden gelen sonucun
+üstüne yazılmıyor (`run-check.ts`). Yani en kötü senaryoda yeni yükleme
+fixture alır, mevcut dokuz raporun verisi bozulmaz.
+
+### Kota güvenliği — otomatik model fallback var
+
+Bir model 429 (günlük kota) veya 404 (model kaldırılmış) verirse
+`callModelForCheck` zincirdeki sıradaki modele otomatik geçiyor. Hangi
+modelin yanıt verdiği `analysis_results.model`'e yazılıyor. Zincir
+`GEMINI_MODEL_CHAIN` ile değiştirilebilir. Test edildi: geçersiz model
+zincirin başına konduğunda ikinciye düşüp gerçek yanıt alındı.
+
+### Diğer kurallar
+
+- `NEXT_PUBLIC_DEMO_MODE=true` kalıyor — `/demo` rol geçişinin tek yolu.
+- Kalibrasyon panosu senaryodan çıkarıldı.
 
 - **Canlı yükleme yok** (PLAN §9). `MOCK_AI=true` kalıyor.
 - **Kota: model başına günde 20 istek.** Demo günü deneme analizi çalıştırma.
@@ -135,11 +185,17 @@ protokolü üzerinden `publishFeedback` çağrıldı → üç action da
 
 ## ⚖️ Hukuki / uyum
 
-- [ ] **KVKK aydınlatma metni gözden geçirilmeli.** `app/gizlilik/page.tsx`
-      taslak; hukuki son hali onaylanmalı. Özellikle şu madde: ücretsiz
-      Gemini katmanında gönderilen verilerin hizmet iyileştirme amacıyla
-      kullanılabilmesi. Yarışmacıların rapor içeriği işlendiği için bu
-      önemsiz bir detay değil — şartname KVKK uyumunu açıkça istiyor.
+- [ ] **KVKK metninde DOLDURULACAK ALANLAR var.** `app/gizlilik/page.tsx`
+      KVKK m.10 kontrol listesine göre yeniden yazıldı (10 bölüm: veri
+      sorumlusu, veri kategorileri, amaçlar, toplama yöntemi ve hukuki sebep,
+      aktarım, yurt dışına aktarım, otomatik analiz ve insan denetimi,
+      saklama, m.11 hakları, başvuru). **Üç alan köşeli parantez içinde
+      boş:** `[VERİ SORUMLUSU UNVANI / AD SOYAD]`, `[ADRES]`,
+      `[İLETİŞİM E-POSTASI]` (iki yerde). Bunlar doldurulmadan teslim
+      edilmemeli — m.10 veri sorumlusunun kimliğini ve başvuru yolunu
+      zorunlu kılıyor.
+      Ayrıca metin hukukçu onayından GEÇMEDİ; yapılan iş m.10/m.11
+      unsurlarını eksiksiz hale getirmek oldu, hukuki mütalaa değil.
 
 ---
 

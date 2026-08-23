@@ -256,6 +256,30 @@ async function writeResult(
     }
   }
 
+  /**
+   * KORUMA: mock sonuç, GERÇEK bir sonucun üstüne YAZILMAZ.
+   *
+   * Yaşanmış olay: demo verisi hazırken MOCK_AI=true ile tick çalıştırıldı ve
+   * referans raporun beş gerçek sonucu fixture ile ezildi. Demo günü aynı şey
+   * olursa jüri yer tutucu metin görür. Bu yüzden mock yazımı, mevcut sonuç
+   * gerçek bir modelden geliyorsa sessizce atlanır.
+   */
+  if (result.mocked) {
+    const { data: existing } = await db
+      .from('analysis_results')
+      .select('model')
+      .eq('report_id', reportId)
+      .eq('check_type', checkType)
+      .maybeSingle();
+    if (existing && !existing.model.startsWith('mock:')) {
+      return {
+        kind: 'done',
+        verdict: verdict ?? 'pass',
+        mocked: true,
+      };
+    }
+  }
+
   const { error } = await db.from('analysis_results').upsert(
     {
       report_id: reportId,

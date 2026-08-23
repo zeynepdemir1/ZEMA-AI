@@ -49,13 +49,19 @@ export function UploadForm({ categories }: { categories: Array<{ id: string; nam
     setPhase('analyzing');
 
     // Kuyruğu döndür — her tick 1-2 iş çalıştırır.
+    // reportId gönderiliyor: global `pending` ilerleme çubuğu için yanlış,
+    // başka raporun kuyruğu varsa çubuk 0'da takılıyor.
     for (let i = 0; i < MAX_TICKS; i++) {
-      const t = await fetch('/api/jobs/tick', { method: 'POST' });
+      const t = await fetch('/api/jobs/tick', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reportId: body.report_id }),
+      });
       const td = await t.json().catch(() => ({}));
-      if (typeof td.pending === 'number') {
-        setProgress((p) => ({ ...p, done: Math.max(0, p.total - td.pending) }));
+      if (typeof td.reportPending === 'number') {
+        setProgress((p) => ({ ...p, done: Math.max(0, p.total - td.reportPending) }));
       }
-      if (td.done || td.pending === 0) break;
+      if (td.done || td.reportPending === 0) break;
     }
 
     setPhase('done');

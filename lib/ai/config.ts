@@ -53,6 +53,36 @@ export function modelFor(checkType: CheckType): string {
   return MODEL_OVERRIDES[checkType] ?? DEFAULT_MODEL;
 }
 
+/**
+ * KOTA FALLBACK ZİNCİRİ.
+ *
+ * Ücretsiz katman kotası MODEL BAŞINA günde 20 istek. Tek modele bağlı kalmak
+ * demo sırasında "kota doldu" hatası anlamına gelir — kabul edilemez. Bir model
+ * 429 (kota) veya 404 (model kaldırılmış) verirse sıradaki denenir.
+ *
+ * Sıra bilinçli: en yetenekliden en dayanıklıya. 3.7-flash en sonda çünkü
+ * ölçümlerde MINIMAL düşünme seviyesini desteklemiyor ve 503'e daha yatkın.
+ *
+ * Hangi modelin gerçekten yanıt verdiği analysis_results.model'e yazılıyor,
+ * yani denetlenebilirlik korunuyor.
+ */
+export const MODEL_CHAIN: string[] = (
+  process.env.GEMINI_MODEL_CHAIN ??
+  'gemini-3.5-flash,gemini-3.5-flash-lite,gemini-3.7-flash'
+)
+  .split(',')
+  .map((m) => m.trim())
+  .filter(Boolean);
+
+/**
+ * Bir kontrol için denenecek model sırası: önce o kontrole atanmış model,
+ * sonra zincirdeki diğerleri (tekrar etmeden).
+ */
+export function modelChainFor(checkType: CheckType): string[] {
+  const primary = modelFor(checkType);
+  return [primary, ...MODEL_CHAIN.filter((m) => m !== primary)];
+}
+
 /** Kullanılmıyor — sağlayıcı geri alınırsa referans olsun diye bırakıldı. */
 export const ANTHROPIC_MODEL_LEGACY = 'claude-sonnet-5';
 

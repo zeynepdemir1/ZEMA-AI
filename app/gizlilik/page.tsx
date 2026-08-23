@@ -2,34 +2,104 @@ import Link from 'next/link';
 
 /**
  * KVKK aydınlatma metni — PLAN.md §3.2 ve §8 ("asla kesme").
- * Tasarım dosyasında bu ekran yoktu; kayıt formundaki zorunlu onay bu sayfaya
- * link verdiği için iskeleti burada kuruldu. Metnin hukuki son hali gözden
- * geçirilmeli — aşağıdaki içerik plandaki kapsam maddelerini karşılıyor.
+ *
+ * ⚠️ HUKUKİ GÖZDEN GEÇİRME GEREKLİ. Bu metin KVKK m.10'un saydığı zorunlu
+ * unsurları kapsayacak şekilde yapılandırıldı, ama hukukçu onayından
+ * geçmedi. Aşağıda [KÖŞELİ PARANTEZ] içindeki alanlar doldurulmalı.
+ *
+ * m.10 kontrol listesi ve karşılıkları:
+ *   veri sorumlusunun kimliği        → "Veri sorumlusu"
+ *   işlenen veri kategorileri        → "İşlenen kişisel veriler"
+ *   işleme amacı                     → "İşleme amaçları"
+ *   toplama yöntemi ve hukuki sebep  → "Toplama yöntemi ve hukuki sebep"
+ *   kimlere/hangi amaçla aktarılacağı→ "Aktarım" + "Yurt dışına aktarım"
+ *   m.11'deki haklar                 → "Haklarınız" + "Başvuru"
  */
 const SECTIONS = [
   {
     title: 'Veri sorumlusu',
-    body: 'ZEMA, T3 Vakfı Bursiyer Yapay Zeka Creathonu kapsamında geliştirilen bir rapor değerlendirme uygulamasıdır. Kişisel verileriniz bu kapsamda işlenir.',
+    body:
+      'ZEMA, T3 Vakfı Bursiyer Yapay Zeka Creathonu kapsamında geliştirilen bir rapor ' +
+      'değerlendirme uygulamasıdır. Bu metin kapsamında veri sorumlusu ' +
+      '[VERİ SORUMLUSU UNVANI / AD SOYAD], adres [ADRES], e-posta [İLETİŞİM E-POSTASI].',
   },
   {
-    title: 'İşlenen veriler',
-    body: 'Ad-soyad, e-posta adresi ve hesap rolü; yüklediğiniz rapor dosyaları ile bu dosyalardan çıkarılan metin içeriği; değerlendirme sürecinde oluşan puan, geri bildirim ve işlem kayıtları.',
+    title: 'İşlenen kişisel veriler',
+    body:
+      'Kimlik ve iletişim verisi: ad-soyad, e-posta adresi. Hesap verisi: kullanıcı rolü, ' +
+      'KVKK onay tarihi. İşlem güvenliği verisi: giriş kayıtları ve uygulama içi işlem ' +
+      'kayıtları (audit log). Ayrıca yüklediğiniz rapor dosyaları ile bu dosyalardan ' +
+      'çıkarılan metin içeriği ve bu içerik üzerinden üretilen değerlendirme kayıtları.',
   },
   {
-    title: 'İşleme amacı',
-    body: 'Yarışma başvurularının alınması, raporların şablon uyumu, içerik tutarlılığı, kategori uygunluğu ve benzerlik açısından incelenmesi, hakem değerlendirmesinin yürütülmesi ve sonucun tarafınıza iletilmesi.',
+    title: 'İşleme amaçları',
+    body:
+      'Yarışma başvurularının alınması ve yönetilmesi; raporların şablon uyumu, içerik ' +
+      'tutarlılığı, kategori uygunluğu ve benzerlik açısından incelenmesi; hakem ' +
+      'değerlendirmesinin yürütülmesi; değerlendirme sonucunun tarafınıza iletilmesi; ' +
+      'itiraz süreçlerinin yürütülmesi ve işlem güvenliğinin sağlanması.',
+  },
+  {
+    title: 'Toplama yöntemi ve hukuki sebep',
+    body:
+      'Veriler tamamen otomatik yollarla, uygulamadaki kayıt formu ve dosya yükleme ' +
+      'arayüzü üzerinden elektronik ortamda toplanır. Hukuki sebep, yarışma katılım ' +
+      'ilişkisinin kurulması ve yürütülmesi bakımından KVKK m.5/2-c (sözleşmenin ' +
+      'ifası) ve m.5/2-f (veri sorumlusunun meşru menfaati); yurt dışına aktarım ' +
+      'bakımından ise m.9 uyarınca AÇIK RIZANIZDIR. Kayıt formundaki onay kutusu bu ' +
+      'açık rızayı verir; onay verilmeden hesap oluşturulamaz.',
+  },
+  {
+    title: 'Aktarım',
+    body:
+      'Verileriniz yarışma organizasyonu içinde yalnızca yetkili rollere açılır: hakem ' +
+      'kendisine atanan raporu görür, yarışma yönetimi süreci izler. Rapor ' +
+      'değerlendirmesinin ham çıktısı diğer yarışmacılara hiçbir koşulda açılmaz.',
   },
   {
     title: 'Yurt dışına aktarım',
-    body: 'Rapor metinleri, analiz üretmek amacıyla Google tarafından işletilen Gemini API hizmetine aktarılır. Aktarım yalnızca analiz amacıyla yapılır. Google\'ın ücretsiz katmanında gönderilen verilerin hizmet iyileştirme amacıyla kullanılabildiğini not ediyoruz; ücretli katmana geçildiğinde bu durum değişir.',
+    body:
+      'Rapor metinleri, analiz üretmek amacıyla Google LLC tarafından işletilen Gemini ' +
+      'API hizmetine aktarılır; bu hizmetin sunucuları Türkiye dışında bulunur. Aktarım ' +
+      'yalnızca analiz amacıyla ve açık rızanıza dayanarak yapılır. Hizmetin ücretsiz ' +
+      'katmanında gönderilen içeriğin hizmet iyileştirme amacıyla kullanılabildiğini ' +
+      'ayrıca bildiririz. Açık rıza vermek istemiyorsanız uygulamaya rapor yüklemeyiniz.',
+  },
+  {
+    title: 'Otomatik analiz ve insan denetimi',
+    body:
+      'Raporunuz otomatik bir sistem tarafından analiz edilir. Bu analiz TEK BAŞINA ' +
+      'sonuç doğurmaz: üretilen her değerlendirme hakeme öneri olarak sunulur, hakem ' +
+      'onaylamadıkça size iletilmez ve hakem öneriyi değiştirebilir veya reddedebilir. ' +
+      'KVKK m.11/1-g uyarınca, münhasıran otomatik sistemler vasıtasıyla yapılan ' +
+      'analiz sonucu aleyhinize bir sonuç doğduğunu düşünüyorsanız buna itiraz etme ' +
+      'hakkınız vardır.',
   },
   {
     title: 'Saklama süresi',
-    body: 'Veriler yarışma sürecinin tamamlanmasını takip eden itiraz süresi boyunca saklanır, sonrasında silinir veya anonim hale getirilir.',
+    body:
+      'Veriler yarışma sürecinin tamamlanmasını takip eden itiraz süresi boyunca ' +
+      'saklanır, bu sürenin sonunda silinir veya anonim hale getirilir. Mevzuatın daha ' +
+      'uzun saklama öngördüğü hâllerde ilgili süre uygulanır.',
   },
   {
     title: 'Haklarınız',
-    body: 'KVKK m.11 uyarınca verilerinize erişme, düzeltilmesini veya silinmesini isteme hakkına sahipsiniz. Hesap ayarlarınızdaki "Hesabımı ve Verilerimi Sil" işlemiyle bu talebi doğrudan iletebilirsiniz.',
+    body:
+      'KVKK m.11 uyarınca; kişisel verinizin işlenip işlenmediğini öğrenme, işlenmişse ' +
+      'bilgi talep etme, işleme amacını ve amaca uygun kullanılıp kullanılmadığını ' +
+      'öğrenme, yurt içinde/yurt dışında aktarıldığı üçüncü kişileri bilme, eksik veya ' +
+      'yanlış işlenmişse düzeltilmesini isteme, silinmesini veya yok edilmesini isteme, ' +
+      'düzeltme/silme işlemlerinin aktarıldığı üçüncü kişilere bildirilmesini isteme, ' +
+      'münhasıran otomatik analiz sonucu aleyhinize çıkan sonuca itiraz etme ve zarara ' +
+      'uğramanız hâlinde giderilmesini talep etme haklarına sahipsiniz.',
+  },
+  {
+    title: 'Başvuru',
+    body:
+      'Haklarınızı kullanmak için [İLETİŞİM E-POSTASI] adresine yazılı olarak ' +
+      'başvurabilirsiniz. Başvurunuz en geç otuz gün içinde yanıtlanır. Hesap ' +
+      'ayarlarınızdaki "Hesabımı ve Verilerimi Sil" işlemi silme talebini doğrudan ' +
+      'iletmenizi sağlar.',
   },
 ];
 
@@ -60,7 +130,9 @@ export default function PrivacyPage() {
         <div className="border-ink/[.12] bg-ink/[.03] mt-5 flex items-center gap-[14px] border px-[22px] py-[18px]">
           <span className="text-gold font-mono text-[13px]">◆</span>
           <span className="text-ink/[.72] text-[13.5px] leading-[1.6]">
-            Kayıt formundaki onay kutusu işaretlenmeden hesap oluşturulamaz.
+            Kayıt formundaki onay kutusu işaretlenmeden hesap oluşturulamaz; bu onay
+            aynı zamanda rapor içeriğinizin analiz amacıyla yurt dışına aktarılmasına
+            verdiğiniz açık rızayı kapsar.
           </span>
         </div>
       </div>

@@ -20,11 +20,31 @@ const MAX_BYTES = 20 * 1024 * 1024; // 20 MB
 export async function POST(req: Request) {
   const db = supabaseAdmin();
 
+  // Boyut kontrolü formData() AYRIŞTIRMASINDAN ÖNCE: büyük gövdede
+  // formData() kendisi patlıyor ve kullanıcı "multipart bekleniyor" gibi
+  // alakasız bir mesaj görüyordu. Content-Length ile önden kes.
+  const declared = Number(req.headers.get('content-length') ?? '0');
+  if (declared > MAX_BYTES) {
+    return NextResponse.json(
+      {
+        error: `Dosya çok büyük (${(declared / 1024 / 1024).toFixed(1)} MB). Sınır 20 MB.`,
+      },
+      { status: 413 },
+    );
+  }
+
   let form: FormData;
   try {
     form = await req.formData();
   } catch {
-    return NextResponse.json({ error: 'multipart/form-data bekleniyor' }, { status: 400 });
+    return NextResponse.json(
+      {
+        error:
+          'Dosya okunamadı. 20 MB sınırını aşmadığından ve geçerli bir PDF ' +
+          'seçtiğinizden emin olun.',
+      },
+      { status: 400 },
+    );
   }
 
   const file = form.get('file');

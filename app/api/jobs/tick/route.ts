@@ -31,8 +31,23 @@ type Job = {
   attempts: number;
 };
 
-export async function POST() {
+export async function POST(req?: Request) {
   const db = supabaseAdmin();
+
+  /**
+   * İstemci hangi raporun ilerlemesini gösterdiğini bildirebilir.
+   * Global `pending` sayısı ilerleme çubuğu için YANLIŞ: başka raporun
+   * kuyruğu varsa çubuk 0'da takılıp sonra zıplıyor. Rapora özel sayaç
+   * bu yüzden ayrıca dönüyor.
+   */
+  let reportId: string | null = null;
+  try {
+    const body = req ? await req.json() : null;
+    const raw = body?.reportId;
+    if (typeof raw === 'string' && /^[0-9a-f-]{36}$/i.test(raw)) reportId = raw;
+  } catch {
+    // Gövdesiz çağrı (cron, elle tetikleme) — sorun değil.
+  }
 
   const { data: claimed, error: ce } = await db.rpc('claim_analysis_jobs', { p_limit: BATCH });
   if (ce) {
@@ -41,7 +56,15 @@ export async function POST() {
 
   const jobs = (claimed ?? []) as Job[];
   if (jobs.length === 0) {
-    return NextResponse.json({ claimed: 0, results: [], pending: await countPending(), done: true });
+    const pending = await countPending();
+    const reportPending = reportId ? await countPending(reportId) : pending;
+    return NextResponse.json({
+      claimed: 0,
+      results: [],
+      pending,
+      reportPending,
+      done: reportPending === 0,
+    });
   }
 
   const results: Array<Record<string, unknown>> = [];
@@ -111,20 +134,29 @@ export async function POST() {
   await advanceReportStatuses(jobs.map((j) => j.report_id));
 
   const pending = await countPending();
-  return NextResponse.json({ claimed: jobs.length, results, pending, done: pending === 0 });
+  const reportPending = reportId ? await countPending(reportId) : pending;
+  return NextResponse.json({
+    claimed: jobs.length,
+    results,
+    pending,
+    reportPending,
+    done: reportPending === 0,
+  });
 }
 
 /** Tick'i cron/tarayıcıdan elle tetiklemek için GET de kabul edilir. */
 export async function GET() {
-  return POST();
+  return POST(undefined);
 }
 
-async function countPending(): Promise<number> {
+async function countPending(reportId?: string): Promise<number> {
   const db = supabaseAdmin();
-  const { count } = await db
+  let q = db
     .from('analysis_jobs')
     .select('*', { count: 'exact', head: true })
     .in('status', ['pending', 'running']);
+  if (reportId) q = q.eq('report_id', reportId);
+  const { count } = await q;
   return count ?? 0;
 }
 
