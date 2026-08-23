@@ -707,28 +707,69 @@ Bu üçü yukarıdaki günlük planın **dışında**, paralel ilerliyor — gel
 
 ## 9. Demo Stratejisi (jüri puanının yarısı burada)
 
-Seed veri setini **kusurları planlanmış** şekilde hazırla — her kontrolün gözle görülür şekilde tetiklenmesi lazım:
+**⚠️ Bu bölüm 24 Ağustos'ta gerçekleşen duruma göre yeniden yazıldı.** Veri seti
+üretildi ve GERÇEK Gemini analizinden geçirildi; senaryo da buna göre sadeleşti.
 
-| Seed rapor | Planlanan kusur | Tetiklediği kontrol |
-|---|---|---|
-| R1 | Temiz, iyi rapor | Referans — hepsi yeşil |
-| R2 | "Sonuç" ve "Kaynakça" bölümleri eksik | `language_template` |
-| R3 | Başlık "Otonom Su Altı Aracı", içerik dron hakkında | `title_content` |
-| R4 | Ulaşım kategorisine gönderilmiş ama içerik sağlık teknolojisi | `category_fit` |
-| R5, R6, R9 | R5, hem R6 (%70, metin) hem R9 (%45, tablo/bütçe) ile ayrı ayrı benziyor — 1'e-N eşleşme demoda gösterilsin | `similarity` |
-| R7 | Yöntem bölümü çok zayıf, sonuç kısmı güçlü | `criteria_scoring` — kriterler arası ayrışma |
-| R8 | Ağır imla/anlatım bozuklukları | `language_template` dil kısmı |
+### Hazır veri seti — dokuz rapor, hepsi gerçek analizden geçmiş
 
-**5 dakikalık demo akışı:**
-1. (20 sn) Problem: "X rapor, Y hakem, Z gün. Darboğaz nerede?"
-2. (40 sn) Yarışmacı R3'ü yükler → analiz kuyruğu canlı ilerler
-3. (2 dk) **Hakem ekranı** — AI panosu açılır, başlık uyumsuzluğu kanıtla gösterilir, kriter bazlı yapılandırılmış geri bildirim alıntılarla gelir, hakem "AI ile Konuş" ile bir metni yumuşatır, "Onayla ve Gönder" ile mühürler
-3.5. (30 sn) **Benzerlik Detayı** — R5'in hem R6 hem R9 ile ayrı ayrı eşleştiği, split-view karşılaştırma, her eşleşmenin bağımsız işaretlendiği gösterilir
-4. (45 sn) Değ. Yöneticisi kalibrasyon panosu → AI-hakem sapması
-5. (45 sn) Geri bildirim yayımlanır → yarışmacı ekranında görünür
-6. (30 sn) Kapanış: kanıt doğrulama rozetleri + audit log → "AI karar vermiyor, hızlandırıyor"
+`npm run demo:seed` PDF'leri üretip yükler, `npm run demo:analyze` kuyruğu
+gerçek modelle boşaltır. **Sonuçlar DB'de hazır; fixture değil.** Doğrulama:
+54 sonucun 47'si `gemini-3.5-flash-lite` damgalı, 7'si `skipped:no-candidates`
+(aday çıkmadığı için model hiç çağrılmadı), **0 tanesi `mock:` damgalı.**
 
-Demoyu **canlı API'ye bağımlı bırakma.** Seed raporların analiz sonuçları DB'de hazır dursun; canlı çalıştırma sadece R3 için yapılsın. API yavaşlarsa demo çökmez.
+| Rapor | Takım | Planlanan kusur | Ölçülen sonuç |
+|---|---|---|---|
+| R1 | ATMACA | Temiz referans rapor | hepsi `pass` |
+| R2 | RÜZGÂR | "Sonuç" ve "Kaynakça" eksik | `language_template` **warn** |
+| R3 | GARO | Başlık sualtı aracı, içerik hava aracı | `title_content` **fail** |
+| R4 | PUSAT | Sabit Kanat beyan edilmiş, içerik tıbbi tanı cihazı | `category_fit` **fail** |
+| R5 · R6 | SİMURG · KIVILCIM | Birebir paylaşılan mimari paragrafı | `similarity` **fail**, %65–75 |
+| R7 | BOZKURT | Yöntem çok zayıf, sonuç güçlü | `criteria_scoring` **fail** |
+| R8 | ŞAHİN | Ağır imla/anlatım bozuklukları | `language_template` **warn** |
+| R9 | ALTAY | Literatür ve bütçe zayıf, test güçlü | `criteria_scoring` **fail** |
+
+**Kanıt doğrulama sonucu: 57 alıntının 57'si rapor metninde birebir bulundu,
+0 uydurma.** §1'in "model kanıt gösteremediğinde uydurmaz" iddiasının ölçülmüş
+karşılığı bu — demoda söylenecek en güçlü tek cümle.
+
+> **Planın ilk halinden iki sapma:** (1) R5'in R9 ile tablo benzerliği
+> senaryodan çıktı, çünkü tablo/görsel benzerliği kapsam kesintisiyle iptal
+> edildi (§4.4). Artık tek çift var: R5↔R6, metin. (2) Ortak bölümler ilk seed
+> denemesinde sabit metin olarak paylaşılmıştı ve dokuz rapor birbirine %99
+> benzer çıkmıştı; bölümler rapora özgü üretilecek şekilde yeniden yazıldı.
+
+### 5 dakikalık demo akışı
+
+1. **(30 sn) Problem.** "X rapor, Y hakem, Z gün. Darboğaz nerede?"
+2. **(40 sn) Değerlendirme panosu.** Dokuz rapor, analiz durumları, hakem
+   atamaları. Sistemin işleyen bir süreç olduğunu gösterir.
+3. **(2 dk 15 sn) ⭐ Hakem ekranı — R3 (GARO).** Ekranın tamamı burada:
+   - Başlık-içerik uyumsuzluğu, rapordan birebir alıntıyla
+   - Kriter kriter yapılandırılmış geri bildirim, her biri kanıt alıntılı
+   - **Kanıt doğrulama rozetleri** — "n/m DOĞRULANDI" sayacı ve güven değeri
+   - Renk kodu: teal = onaylanmamış AI taslağı, gold = hakem onaylı
+   - "Doğrudan düzenle" ile bir metni değiştir, "Onayla ve mühürle"
+4. **(45 sn) Benzerlik detayı — R5 ↔ R6.** Yan yana karşılaştırma, paylaşılan
+   paragraf vurgulu; hakem eşleşmeyi "Gerçek Benzerlik" olarak işaretler.
+   Diğer yedi raporun `pass` olduğunu göster: sistem gürültü üretmiyor.
+5. **(45 sn) Yayımlama → yarışmacı.** Değ. Yöneticisi geri bildirimi yayımlar,
+   yarışmacı ekranına geçilir. **Yayımlanmadan önce o ekranın boş olduğunu
+   göster** — ham AI analizi yarışmacıya hiçbir koşulda gitmiyor (§3.1).
+6. **(30 sn) Kapanış.** "AI karar vermiyor, hızlandırıyor": kanıt doğrulama,
+   hakem override'ı, audit log, model/prompt sürümü kaydı.
+
+### Demo günü kuralları
+
+- **Canlı yükleme YAPILMAYACAK.** Production'da `MOCK_AI=true` kalıyor; canlı
+  yüklenen rapor fixture çıktısı üretir ve jüri önünde yer tutucu metin
+  görünür. Dokuz rapor zaten gerçek analizden geçmiş, gösterilecek şey hazır.
+- **Kalibrasyon panosu senaryodan çıkarıldı** (§8 kesme listesi 5. madde).
+  Ayrılan 45 saniye hakem ekranına eklendi.
+- **Ücretsiz katman kotası: model başına günde 20 istek.** Demo gününde
+  deneme amaçlı analiz çalıştırma; kota tükenirse yeniden analiz yapılamaz.
+- Ekran görüntüsü / demo için en güçlü iki rota:
+  `/review/<R3>` ve `/review/<R5>/similarity`.
+- Rol geçişi `/demo` üzerinden (ana navigasyonda linklenmiyor).
 
 ---
 

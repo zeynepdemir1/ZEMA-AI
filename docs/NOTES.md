@@ -90,6 +90,10 @@ protokolü üzerinden `publishFeedback` çağrıldı → üç action da
 
 ## ✂️ Eklenmeyecek — karar verildi
 
+- **Demo sırasında canlı rapor yükleme.** Production'da `MOCK_AI=true`
+  kalıyor; canlı yükleme fixture çıktısı üretir. Dokuz rapor gerçek Gemini
+  analizinden geçmiş, DB'de hazır. PLAN.md §9 buna göre güncellendi.
+
 - **§9 adım 4, AI vs Hakem kalibrasyon tablosu.** §8 kesme listesinde 5.
   sıradaydı. İki gün kaldığı ve demo senaryosu bu adım olmadan da güçlü
   olduğu için ATLANDI. Demo anlatısından da çıkarılmalı.
