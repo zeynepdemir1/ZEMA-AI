@@ -1,6 +1,20 @@
 # ZEMA — Yapılacaklar / Bilinen Eksikler
 
-## 🔴 Teslime kalan sıra (23 Ağustos → 26 Ağustos 10:00)
+## 🔴 KRİTİK YOL — 24 Ağustos, teslime ~2 gün
+
+Kod tarafı teslim edilebilir durumda. **Kalan iki zorunlu çıktı kod değil:**
+
+- [ ] **İş Modeli Canvası** — 9 kutu. §7'de "paralel yürüyen, kod dışı
+      teslimat" olarak işaretli, henüz hiç başlanmadı.
+- [ ] **Girişim Sunumu (pptx)** — Problem → Çözüm → Nasıl Çalışır →
+      Farklılaşma → Etki → Ekip → Sonraki Adımlar. Henüz başlanmadı.
+
+26 Ağustos 10:00'da **üç çıktı birlikte** isteniyor (§7): canlıda çalışan
+uygulama ✅, İş Modeli Canvası ❌, Girişim Sunumu ❌. Uygulama tamam;
+kritik yol artık bu ikisi. Ölçülmüş sayılar sunuma malzeme:
+57/57 kanıt doğrulama, 54 kontrol, 9 rapor, 0 uydurma.
+
+## 📋 Eski sıra (tamamlandı)
 
 Sıralama gerekçesi: §9'daki demo zinciri şu an **iki yerde kopuk**. Auth bir
 güvenlik açığı ama demoyu bozmuyor; kopuk halkalar bozuyor.
@@ -66,15 +80,6 @@ protokolü üzerinden `publishFeedback` çağrıldı → üç action da
 - [x] ~~`/evaluation/assignments`~~ — yapıldı. Manuel atama + "dengeli dağıt".
       Seed hâlâ ilk atamayı yapıyor (boş DB'de hakem ekranı boş kalmasın).
 
-- [ ] **`supabase/migrations/0005_not_null_fks.sql` ÇALIŞTIRILMALI.**
-      Alt tabloların yabancı anahtarları nullable; bir action argümanını
-      doğrulamayı atlarsa anlamsız satır yazılabiliyor. Testte assignments'a
-      `(null, null)` satırı girdi ve `unique` kısıt uyarmadı (Postgres
-      unique indekslerinde NULL'lar farklı sayılır). Uygulama katmanına
-      UUID süzgeci eklendi ama tek savunma orası olmamalı.
-      Mevcut veride NULL satır yok — güvenle çalıştırılabilir.
-
----
 
 ## ✅ Kozmetik cila — TAMAMLANDI (24 Ağustos)
 
@@ -102,12 +107,6 @@ protokolü üzerinden `publishFeedback` çağrıldı → üç action da
 
 ## 🔧 Gün 3 — AI hattı
 
-- [ ] **Fixture'ların içi hâlâ boş.** `lib/ai/fixtures/` — 6 dosyanın 5'i
-      `_TODO` yer tutucusu. PLAN.md §9'daki planlı kusurlara (R2 eksik bölüm,
-      R3 başlık uyumsuzluğu, R4 kategori hatası, R7 kriterler arası ayrışma,
-      R8 imla) göre doldurulmalı; yoksa mock modda ekranlar boş görünür.
-      `feedback_synthesis.json` şema min kısıtları yüzünden zaten dolduruldu.
-
 - [ ] **Örtük önbellek gerçekten çalışıyor mu?** İlk çağrıda
       `cached_input_tokens: 0` çıktı (girdi 415 token, eşiğin çok altında).
       Gerçek 20 sayfalık raporlarda (12–15k token) bu alanı izle. Tutmuyorsa
@@ -121,32 +120,13 @@ protokolü üzerinden `publishFeedback` çağrıldı → üç action da
 
 ## 🗄️ Gün 2–6 — veri katmanı
 
-- [ ] **`lib/design/mock-data.ts` Supabase sorgularıyla değiştirilmeli.**
-      Sekiz ekranın hepsi şu an bu sabitlerden besleniyor. Şekiller PLAN.md
-      §3'teki kolonlara yakın tutuldu, geçiş mekanik olmalı.
 
-- [ ] **Rota kimlikleri rapor kodu (`R-0184`), UUID değil.** Gerçek `reports.id`
-      UUID'lerine geçilince `/review/[id]` ve `/submissions/[id]` güncellenmeli.
+## 🚀 Demo günü kuralları
 
-- [ ] **Auth bağlanmadı.** `/auth` giriş butonu şu an doğrudan
-      `/review/R-0184`'e yönlendiriyor. Gerçek akışta role göre yönlendirme
-      olacak (PLAN.md §6).
-
----
-
-## 🚀 Deploy / demo günü
-
-- [ ] **`NEXT_PUBLIC_DEMO_MODE=false` yap** — auth bağlandıktan sonra.
-      PLAN.md §6 üretimde kapalı olmasını istiyor; şu an açık çünkü `/demo`
-      rol ekranlarına ulaşmanın tek yolu.
-      ⚠️ `/demo` **statik** üretiliyor, yani kapı build anında kararlaşıyor —
-      env'i değiştirmek yetmez, **redeploy** gerekir. (Ölçülerek doğrulandı.)
-
-- [ ] **`MOCK_AI=false` yap** — yalnızca demo öncesi son doğrulamada, sonra
-      hemen `true`'ya dön. Ücretsiz katman kotası sınırlı.
-
-- [ ] **Supabase Auth redirect URL'ine Vercel domain'ini ekle.**
-      Authentication → URL Configuration → `https://<proje>.vercel.app/**`.
+- **Canlı yükleme yok** (PLAN §9). `MOCK_AI=true` kalıyor.
+- **Kota: model başına günde 20 istek.** Demo günü deneme analizi çalıştırma.
+- `NEXT_PUBLIC_DEMO_MODE=true` kalıyor — `/demo` rol geçişinin tek yolu.
+  Auth bağlandı ama rol başına ayrı giriş yapmak demoyu yavaşlatır.
 
 - [ ] **Canlıda Türkçe glifleri gözle kontrol et** (ş ğ ı İ ç ö ü).
       `latin-ext` alt kümesi eklendi ama üretimde doğrulanmadı.
