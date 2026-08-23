@@ -101,7 +101,9 @@ export default async function CompetitionSetupPage() {
             </div>
 
             <div className="text-ink/60 mb-[7px] font-mono text-[10.5px] tracking-[.12em]">
-              ŞABLON — ZORUNLU BÖLÜMLER
+              {(competition.template_spec.report_type ?? 'RAPOR').toLocaleUpperCase('tr-TR')} ŞABLONU
+              {' — '}
+              {(competition.template_spec.required_sections ?? []).length} ZORUNLU BÖLÜM
             </div>
             <div className="border-ink/[.28] bg-ink/[.02] mb-5 border border-dashed px-4 py-3">
               {sections.length ? (
@@ -118,11 +120,32 @@ export default async function CompetitionSetupPage() {
               ) : (
                 <div className="text-ink/50 text-[12.5px]">Şablon tanımlanmamış.</div>
               )}
-              <div className="text-ink/[.45] mt-2.5 font-mono text-[10.5px]">
-                MAKS. {competition.template_spec.max_pages ?? '—'} SAYFA · ATIF{' '}
-                {competition.template_spec.citation_format ?? '—'}
+              <div className="text-ink/[.45] mt-3 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[10.5px]">
+                <span>{competition.template_spec.format?.font ?? '—'}</span>
+                <span>{competition.template_spec.format?.page ?? '—'}</span>
+                <span>{competition.template_spec.format?.alignment ?? '—'}</span>
+                <span>MAKS. {competition.template_spec.format?.max_pages ?? '—'} SAYFA</span>
+                <span>ATIF {competition.template_spec.citation_format ?? '—'}</span>
               </div>
+              {competition.template_spec.format?.footer && (
+                <div className="text-ink/[.45] mt-1 font-mono text-[10.5px]">
+                  ALTBİLGİ: {competition.template_spec.format.footer}
+                </div>
+              )}
             </div>
+
+            {(competition.template_spec.content_rules ?? []).length > 0 && (
+              <div className="border-ink/[.12] mb-5 border-l-2 pl-3">
+                <div className="text-ink/60 mb-1.5 font-mono text-[10px] tracking-[.12em]">
+                  İÇERİK KURALLARI
+                </div>
+                <ul className="text-ink/[.72] m-0 list-disc pl-4 text-[12.5px] leading-[1.6]">
+                  {(competition.template_spec.content_rules ?? []).map((r) => (
+                    <li key={r}>{r}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             <div className="mb-2.5 flex items-center justify-between">
               <span className="text-ink/60 font-mono text-[10.5px] tracking-[.12em]">

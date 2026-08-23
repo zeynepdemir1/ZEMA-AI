@@ -1,4 +1,4 @@
-import type { CheckType } from './config';
+import { verdictFromScore, type CheckType } from './config';
 import type { PayloadFor } from './schemas';
 import type { Verdict } from './schemas';
 
@@ -136,9 +136,15 @@ export function deriveVerdict(
 ): Verdict {
   switch (checkType) {
     case 'language_template':
-    case 'title_content':
-      // Şemada verdict alanı zaten var, doğrudan kullan.
-      return (payload as PayloadFor<'language_template'>).verdict;
+    case 'title_content': {
+      // Modelin kendi verdict'i BİLGİ olarak kullanılıyor ama kararı o
+      // vermiyor: 'insufficient_evidence' ise saygı gösterilir, aksi hâlde
+      // karar sayısal skordan ve eşikten türetilir (tek kaynak).
+      const p = payload as { verdict?: Verdict; compliance_score?: number; alignment_score?: number };
+      if (p.verdict === 'insufficient_evidence') return 'insufficient_evidence';
+      const score = p.compliance_score ?? p.alignment_score;
+      return typeof score === 'number' ? verdictFromScore(score) : 'insufficient_evidence';
+    }
 
     case 'category_fit': {
       const p = payload as PayloadFor<'category_fit'>;
@@ -165,9 +171,12 @@ export function deriveVerdict(
       if (evidence && evidence.totalQuotes > 0 && evidence.exactQuotes === 0) {
         return 'insufficient_evidence';
       }
-      if (p.criteria.some((c) => c.status === 'not_done')) return 'fail';
-      if (p.criteria.some((c) => c.status === 'partial')) return 'warn';
-      return 'pass';
+      // Kriter puanlaması da sayısal: kriterlerin max_score'a oranı eşiğe
+      // vurulur. Böylece "bir kriter partial" gibi ikili kurallar yerine
+      // diğer sayısal kontrollerle aynı mantık uygulanır.
+      const avg =
+        p.criteria.reduce((a, c) => a + (Number(c.score) || 0), 0) / p.criteria.length;
+      return verdictFromScore(Math.round(avg * 10));
     }
 
     case 'feedback_synthesis':

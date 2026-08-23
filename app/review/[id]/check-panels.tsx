@@ -2,28 +2,79 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { THRESHOLD_NOTE } from '@/lib/ai/config';
 import type { CheckResultView } from '@/lib/reports/queries';
 
 /**
- * Altı AI kontrolünün hakem ekranındaki gösterimi (PLAN.md §6:
- * "6 kontrolün sekmeleri").
+ * Altı AI kontrolünün hakem ekranındaki gösterimi (PLAN.md §6).
  *
- * Şartnamenin altı gereksinimi burada görünür hale geliyor. Bu bileşen
- * eklenene kadar dört kontrol çalışıp sonucu hiç gösterilmiyordu.
+ * Tasarım ilkeleri:
+ * - Karar rozeti asla açıklamasız durmaz. Sayısal kontrollerde eşik,
+ *   yargı kontrollerinde "AI yargısı" notu rozetin yanında.
+ * - Kanıt (rapordan alıntı) ile AI gerekçesi görsel olarak AYRI: alıntılar
+ *   beyaz zemin + sol teal kenar, gerekçe düz metin.
+ * - Tekrarlayan yapılar (bölüm listesi, kategori sıralaması) tek tip
+ *   kompakt satır; uzun cümle yerine kısa madde.
  */
 
-const VERDICT: Record<string, { label: string; tone: string; dot: string }> = {
-  pass: { label: 'UYGUN', tone: 'text-success border-success', dot: 'bg-success' },
-  warn: { label: 'DİKKAT', tone: 'text-gold border-gold', dot: 'bg-gold' },
-  fail: { label: 'UYGUN DEĞİL', tone: 'text-danger border-danger', dot: 'bg-danger' },
+const VERDICT: Record<string, { label: string; text: string; border: string; dot: string }> = {
+  pass: { label: 'UYGUN', text: 'text-success', border: 'border-success', dot: 'bg-success' },
+  warn: { label: 'DİKKAT', text: 'text-gold', border: 'border-gold', dot: 'bg-gold' },
+  fail: { label: 'UYGUN DEĞİL', text: 'text-danger', border: 'border-danger', dot: 'bg-danger' },
   insufficient_evidence: {
     label: 'KANIT YETERSİZ',
-    tone: 'text-ink/[.55] border-ink/[.35]',
+    text: 'text-ink/[.55]',
+    border: 'border-ink/[.35]',
     dot: 'bg-ink/40',
   },
 };
 
-const MONO_LABEL = 'text-ink/[.45] font-mono text-[10px] tracking-[.12em]';
+/** feedback_synthesis bir kapı değil — "uygun" demek yanlış olur. */
+const VERDICT_OVERRIDE: Record<string, string> = { feedback_synthesis: 'HAZIR' };
+
+const LABEL = 'font-mono text-[9.5px] tracking-[.14em] text-ink/[.42]';
+const BODY = 'text-[12.5px] leading-[1.7] text-ink/[.78]';
+
+/** Rapordan birebir alıntı — AI gerekçesinden görsel olarak ayrı. */
+function Quote({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="border-l-teal border-ink/[.08] border border-l-2 bg-white px-3 py-2">
+      <span className="text-ink text-[12.5px] leading-[1.65] italic">“{children}”</span>
+    </div>
+  );
+}
+
+/** Tek tip kompakt satır: durum rozeti + ad + kısa not. */
+function Row({
+  state,
+  name,
+  note,
+}: {
+  state: { text: string; border: string; label: string };
+  name: string;
+  note?: string;
+}) {
+  return (
+    <div className="border-ink/[.06] flex items-baseline gap-3 border-b py-2 last:border-b-0">
+      <span
+        className={`w-[52px] shrink-0 border py-0.5 text-center font-mono text-[9px] tracking-[.08em] ${state.text} ${state.border}`}
+      >
+        {state.label}
+      </span>
+      <span className="text-ink flex-1 text-[12.5px] font-medium">{name}</span>
+      {note && <span className="text-ink/[.5] max-w-[46%] text-right text-[11.5px]">{note}</span>}
+    </div>
+  );
+}
+
+function Block({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="flex flex-col gap-2.5">
+      <div className={LABEL}>{title}</div>
+      {children}
+    </section>
+  );
+}
 
 export function CheckPanels({
   checks,
@@ -32,11 +83,6 @@ export function CheckPanels({
   checks: CheckResultView[];
   reportId: string;
 }) {
-  /**
-   * Varsayılan olarak ilk SORUNLU kontrol açık gelir (önce fail, sonra warn,
-   * sonra kanıt yetersiz). Hakemin dikkatini doğrudan bulguya çekiyor ve
-   * ekran görüntüsünde de anlamlı bir içerik görünüyor.
-   */
   const firstProblem =
     checks.find((c) => c.verdict === 'fail')?.type ??
     checks.find((c) => c.verdict === 'warn')?.type ??
@@ -46,52 +92,60 @@ export function CheckPanels({
 
   if (checks.length === 0) {
     return (
-      <div className="border-ink/[.22] border border-dashed bg-white px-6 py-5 text-center">
-        <div className="text-ink/60 text-[13.5px]">
-          Analiz kuyruğu henüz sonuç üretmedi.
-        </div>
+      <div className="border-ink/[.22] text-ink/60 border border-dashed bg-white px-6 py-6 text-center text-[13px]">
+        Analiz kuyruğu henüz sonuç üretmedi.
       </div>
     );
   }
 
   return (
     <div className="border-ink/10 border bg-white">
-      <div className="border-ink/10 flex flex-wrap items-center justify-between gap-3 border-b px-6 py-3">
-        <span className={MONO_LABEL}>AI KONTROLLERİ · {checks.length}/6</span>
-        <span className="text-ink/[.45] font-mono text-[10px]">
-          Her satır bir gereksinim — detay için tıklayın
-        </span>
+      <div className="border-ink/10 flex flex-wrap items-center justify-between gap-3 border-b px-7 py-3.5">
+        <span className={LABEL}>AI KONTROLLERİ · {checks.length}/6</span>
+        <span className="text-ink/[.42] font-mono text-[9.5px]">{THRESHOLD_NOTE}</span>
       </div>
 
       {checks.map((c) => {
         const v = VERDICT[c.verdict] ?? VERDICT.insufficient_evidence;
+        const badge = VERDICT_OVERRIDE[c.type] ?? v.label;
         const isOpen = open === c.type;
+        const why =
+          c.scoring === 'numeric'
+            ? `Uyum skoru %${Math.round(c.score ?? 0)} · eşik: ${THRESHOLD_NOTE}`
+            : 'Modelin kendi yargısı — sayısal uyum skoru üretilmez';
+
         return (
           <div key={c.type} className="border-ink/[.07] border-b last:border-b-0">
             <button
               onClick={() => setOpen(isOpen ? null : c.type)}
-              className="flex w-full cursor-pointer items-center gap-3 border-none bg-transparent px-6 py-3 text-left"
+              className="flex w-full cursor-pointer items-center gap-3.5 border-none bg-transparent px-7 py-3.5 text-left"
             >
-              <span className="text-ink/[.35] w-2.5 font-mono text-[10px]">
-                {isOpen ? '▾' : '▸'}
-              </span>
-              <span className={`inline-block h-1.5 w-1.5 rounded-full ${v.dot}`} />
+              <span className="text-ink/[.3] w-2 font-mono text-[10px]">{isOpen ? '▾' : '▸'}</span>
+              <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${v.dot}`} />
               <span className="text-ink flex-1 text-[13.5px] font-medium">{c.label}</span>
-              {c.score !== null && (
-                <span className="text-ink/[.45] font-mono text-[11px]">{Math.round(c.score)}</span>
+
+              {c.scoring === 'numeric' && c.score !== null && (
+                <span className="text-ink/[.55] font-mono text-[12px]">
+                  %{Math.round(c.score)}
+                </span>
               )}
+
               <span
-                className={`border px-1.5 py-0.5 font-mono text-[9px] tracking-[.1em] ${v.tone}`}
+                title={why}
+                className={`shrink-0 border px-2 py-0.5 font-mono text-[9px] tracking-[.1em] ${v.text} ${v.border}`}
               >
-                {v.label}
+                {badge}
               </span>
             </button>
 
             {isOpen && (
-              <div className="bg-canvas border-ink/[.07] border-t px-6 py-4">
-                <CheckDetail check={c} reportId={reportId} />
-                <div className="text-ink/[.35] mt-3 font-mono text-[9.5px]">
-                  model: {c.model}
+              <div className="bg-canvas border-ink/[.07] border-t px-7 pt-5 pb-6">
+                <div className="flex flex-col gap-6">
+                  <CheckDetail check={c} reportId={reportId} />
+                </div>
+                <div className="border-ink/[.07] text-ink/[.35] mt-6 flex flex-wrap gap-x-5 gap-y-1 border-t pt-3 font-mono text-[9.5px]">
+                  <span>karar gerekçesi: {why}</span>
+                  <span>model: {c.model}</span>
                 </div>
               </div>
             )}
@@ -105,6 +159,7 @@ export function CheckPanels({
 function CheckDetail({ check, reportId }: { check: CheckResultView; reportId: string }) {
   const p = check.payload;
 
+  // ── Dil ve şablon ──
   if (check.type === 'language_template') {
     const sections = (p.sections ?? []) as Array<{
       name: string;
@@ -118,123 +173,128 @@ function CheckDetail({ check, reportId }: { check: CheckResultView; reportId: st
       severity: string;
       suggestion: string;
     }>;
-    return (
-      <div className="flex flex-col gap-4">
-        <div className="text-ink/70 text-[13px]">
-          Tespit edilen dil: <span className="font-mono">{String(p.language_detected ?? '—')}</span>
-          {' · '}
-          {p.is_expected_language ? 'beklenen dille uyumlu' : 'beklenen dilden farklı'}
-        </div>
+    const spelling = issues.filter((i) => i.issue_type === 'imla');
+    const other = issues.filter((i) => i.issue_type !== 'imla');
+    const state = (s: (typeof sections)[number]) =>
+      s.present && s.substantive
+        ? { label: 'TAM', text: 'text-success', border: 'border-success' }
+        : s.present
+          ? { label: 'BOŞ', text: 'text-gold', border: 'border-gold' }
+          : { label: 'YOK', text: 'text-danger', border: 'border-danger' };
 
-        <div>
-          <div className={`${MONO_LABEL} mb-2`}>ZORUNLU BÖLÜMLER</div>
-          <div className="flex flex-col gap-1">
+    return (
+      <>
+        <Block title={`ZORUNLU BÖLÜMLER · ${sections.length}`}>
+          <div>
             {sections.map((s) => (
-              <div key={s.name} className="flex items-start gap-2 text-[12.5px]">
-                <span
-                  className={`shrink-0 border px-1.5 py-0.5 font-mono text-[9px] tracking-[.08em] ${
-                    s.present && s.substantive
-                      ? 'text-success border-success'
-                      : s.present
-                        ? 'text-gold border-gold'
-                        : 'text-danger border-danger'
-                  }`}
-                >
-                  {s.present && s.substantive ? 'TAM' : s.present ? 'BOŞ' : 'YOK'}
-                </span>
-                <span className="text-ink font-medium">{s.name}</span>
-                {s.note && <span className="text-ink/[.55]">— {s.note}</span>}
-              </div>
+              <Row
+                key={s.name}
+                state={state(s)}
+                name={s.name}
+                // Uzun cümle yerine kısa not.
+                note={s.note ? s.note.split(/[.;]/)[0].trim().slice(0, 64) : undefined}
+              />
             ))}
           </div>
-        </div>
+        </Block>
 
-        {issues.length > 0 && (
-          <div>
-            <div className={`${MONO_LABEL} mb-2`}>DİL SORUNLARI · {issues.length}</div>
-            <div className="flex flex-col gap-2">
-              {issues.map((i, k) => (
-                <div key={k} className="border-ink/[.12] border-l-2 pl-3">
-                  <div className="mb-1 flex flex-wrap items-center gap-2">
-                    <span className="text-ink/[.45] font-mono text-[9.5px] tracking-[.08em]">
-                      {i.issue_type.toLocaleUpperCase('tr-TR')} · {i.severity}
-                    </span>
-                  </div>
-                  <div className="text-ink/70 mb-1 text-[12.5px] italic">“{i.quote}”</div>
-                  <div className="text-ink text-[12.5px]">→ {i.suggestion}</div>
+        {spelling.length > 0 && (
+          <Block title={`YAZIM HATALARI · ${spelling.length}`}>
+            <div className="flex flex-col gap-2.5">
+              {spelling.map((i, k) => (
+                <div key={k} className="flex flex-col gap-1.5">
+                  <Quote>{i.quote}</Quote>
+                  <div className="text-teal-ink pl-3 text-[12px]">→ {i.suggestion}</div>
                 </div>
               ))}
             </div>
-          </div>
+          </Block>
         )}
-      </div>
+
+        {other.length > 0 && (
+          <Block title={`ANLATIM VE TERMİNOLOJİ · ${other.length}`}>
+            <div className="flex flex-col gap-2.5">
+              {other.map((i, k) => (
+                <div key={k} className="flex flex-col gap-1.5">
+                  <div className={LABEL}>
+                    {i.issue_type.toLocaleUpperCase('tr-TR')} · {i.severity}
+                  </div>
+                  <Quote>{i.quote}</Quote>
+                  <div className="text-teal-ink pl-3 text-[12px]">→ {i.suggestion}</div>
+                </div>
+              ))}
+            </div>
+          </Block>
+        )}
+
+        {issues.length === 0 && (
+          <div className={BODY}>Dil kalitesinde raporlanacak bir sorun bulunmadı.</div>
+        )}
+      </>
     );
   }
 
+  // ── Başlık-içerik (5. madde: detayda yüzde YOK) ──
   if (check.type === 'title_content') {
     const promises = (p.title_promises ?? []) as string[];
     const unmet = (p.unmet_promises ?? []) as Array<{ promise: string; why: string }>;
     const extra = (p.content_not_in_title ?? []) as string[];
     const suggested = (p.suggested_titles ?? []) as string[];
     return (
-      <div className="flex flex-col gap-4">
-        <div className="text-ink/70 text-[13px]">
-          Uyum skoru: <span className="text-ink font-mono">{String(p.alignment_score ?? '—')}</span>
-          /100
-        </div>
-
+      <>
         {promises.length > 0 && (
-          <div>
-            <div className={`${MONO_LABEL} mb-1.5`}>BAŞLIĞIN VAAT ETTİKLERİ</div>
-            <ul className="text-ink/[.78] m-0 list-disc pl-5 text-[12.5px] leading-[1.7]">
+          <Block title="BAŞLIĞIN VAAT ETTİKLERİ">
+            <div>
               {promises.map((t, k) => (
-                <li key={k}>{t}</li>
+                <Row
+                  key={k}
+                  state={
+                    unmet.some((u) => u.promise === t)
+                      ? { label: 'YOK', text: 'text-danger', border: 'border-danger' }
+                      : { label: 'VAR', text: 'text-success', border: 'border-success' }
+                  }
+                  name={t}
+                />
               ))}
-            </ul>
-          </div>
+            </div>
+          </Block>
         )}
 
         {unmet.length > 0 && (
-          <div>
-            <div className={`${MONO_LABEL} mb-1.5`}>KARŞILANMAYAN VAATLER</div>
-            <div className="flex flex-col gap-2">
+          <Block title={`KARŞILANMAYAN VAATLER · ${unmet.length}`}>
+            <div className="flex flex-col gap-3">
               {unmet.map((u, k) => (
-                <div key={k} className="border-danger border-l-2 pl-3">
+                <div key={k} className="flex flex-col gap-1">
                   <div className="text-ink text-[12.5px] font-medium">{u.promise}</div>
-                  <div className="text-ink/70 text-[12.5px]">{u.why}</div>
+                  <div className={BODY}>{u.why}</div>
                 </div>
               ))}
             </div>
-          </div>
+          </Block>
         )}
 
         {extra.length > 0 && (
-          <div>
-            <div className={`${MONO_LABEL} mb-1.5`}>İÇERİKTE VAR, BAŞLIKTA YOK</div>
-            <ul className="text-ink/[.78] m-0 list-disc pl-5 text-[12.5px] leading-[1.7]">
-              {extra.map((t, k) => (
-                <li key={k}>{t}</li>
-              ))}
-            </ul>
-          </div>
+          <Block title="İÇERİKTE VAR, BAŞLIKTA YOK">
+            <div className={BODY}>{extra.join(' · ')}</div>
+          </Block>
         )}
 
         {suggested.length > 0 && (
-          <div>
-            <div className={`${MONO_LABEL} mb-1.5`}>ÖNERİLEN BAŞLIKLAR</div>
-            <div className="flex flex-col gap-1">
+          <Block title="ÖNERİLEN BAŞLIKLAR">
+            <div className="flex flex-col gap-1.5">
               {suggested.map((t, k) => (
                 <div key={k} className="text-teal-ink text-[12.5px]">
-                  · {t}
+                  {t}
                 </div>
               ))}
             </div>
-          </div>
+          </Block>
         )}
-      </div>
+      </>
     );
   }
 
+  // ── Kategori uygunluğu ──
   if (check.type === 'category_fit') {
     const ranked = (p.ranked_categories ?? []) as Array<{
       category_id: string;
@@ -243,108 +303,129 @@ function CheckDetail({ check, reportId }: { check: CheckResultView; reportId: st
       rationale: string;
     }>;
     return (
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-center gap-3 text-[13px]">
-          <span className="text-ink/70">
-            Beyan edilen kategoriye güven:{' '}
-            <span className="text-ink font-mono">
-              {String(p.declared_category_confidence ?? '—')}
-            </span>
-          </span>
-          {p.is_mismatch === true && (
-            <span className="text-danger border-danger border px-2 py-0.5 font-mono text-[9.5px] tracking-[.1em]">
-              KATEGORİ UYUŞMUYOR
-            </span>
-          )}
-        </div>
-
-        {ranked.length > 0 && (
+      <>
+        <Block title="AI SINIFLANDIRMASI">
           <div>
-            <div className={`${MONO_LABEL} mb-2`}>AI SINIFLANDIRMASI · en olası kategoriler</div>
-            <div className="flex flex-col gap-2">
-              {ranked.map((r, k) => (
-                <div key={k} className="border-ink/[.12] border-l-2 pl-3">
-                  <div className="mb-0.5 flex items-baseline gap-2">
-                    <span className="text-ink font-mono text-[12px]">
-                      {(r.confidence * 100).toFixed(0)}%
-                    </span>
-                    <span className="text-ink text-[12.5px] font-medium">
-                      {r.category_name ?? r.category_id.slice(0, 8)}
-                    </span>
-                  </div>
-                  <div className="text-ink/70 text-[12.5px] leading-[1.55]">{r.rationale}</div>
-                </div>
-              ))}
-            </div>
+            {ranked.map((r, k) => (
+              <Row
+                key={k}
+                state={
+                  k === 0
+                    ? { label: 'EN OLASI', text: 'text-teal', border: 'border-teal' }
+                    : { label: `%${(r.confidence * 100).toFixed(0)}`, text: 'text-ink/[.5]', border: 'border-ink/[.2]' }
+                }
+                name={r.category_name ?? r.category_id.slice(0, 8)}
+                note={r.rationale.split(/[.;]/)[0].trim().slice(0, 70)}
+              />
+            ))}
           </div>
-        )}
+          <div className="text-ink/[.5] text-[11.5px]">
+            Beyan edilen kategoriye güven: {String(p.declared_category_confidence ?? '—')}
+            {p.is_mismatch === true && ' · beyan ile içerik uyuşmuyor'}
+          </div>
+        </Block>
 
         {p.recommendation ? (
-          <div className="border-teal bg-[rgba(76,133,119,.07)] border-l-2 px-3 py-2">
-            <div className="text-teal-ink mb-1 font-mono text-[9.5px] tracking-[.1em]">
-              HAKEME ÖNERİ
-            </div>
-            <div className="text-ink text-[12.5px] leading-[1.6]">{String(p.recommendation)}</div>
-          </div>
+          <Block title="HAKEME ÖNERİ">
+            <div className={BODY}>{String(p.recommendation)}</div>
+          </Block>
         ) : null}
-      </div>
+      </>
     );
   }
 
+  // ── Benzerlik ──
   if (check.type === 'similarity') {
     const passages = (p.matched_passages ?? []) as unknown[];
+    const score = Number(p.semantic_score ?? 0);
     return (
-      <div className="flex flex-col gap-3">
-        <div className="text-ink/70 text-[13px]">
-          Örtüşme türü:{' '}
-          <span className="text-ink font-mono">{String(p.overlap_type ?? '—')}</span> · benzerlik{' '}
-          <span className="text-ink font-mono">{String(p.semantic_score ?? 0)}%</span> ·{' '}
-          {passages.length} eşleşen pasaj
-        </div>
-        {p.assessment ? (
-          <div className="text-ink/[.78] text-[12.5px] leading-[1.65]">
-            {String(p.assessment)}
+      <>
+        <Block title="ÖLÇÜM">
+          <div>
+            <Row
+              state={{ label: `%${score}`, text: 'text-ink', border: 'border-ink/[.25]' }}
+              name="Metin benzerliği"
+              note={`${passages.length} eşleşen pasaj`}
+            />
+            <Row
+              state={{ label: 'TÜR', text: 'text-ink/[.5]', border: 'border-ink/[.2]' }}
+              name={String(p.overlap_type ?? '—').replace(/_/g, ' ')}
+            />
           </div>
+          <div className="text-ink/[.5] text-[11.5px]">
+            Bu yüzde gerçek bir ölçüm; uyum skoru değil, o yüzden eşiğe vurulmaz.
+          </div>
+        </Block>
+
+        {p.assessment ? (
+          <Block title="AI DEĞERLENDİRMESİ">
+            <div className={BODY}>{String(p.assessment)}</div>
+          </Block>
         ) : null}
-        <Link
-          href={`/review/${reportId}/similarity`}
-          className="text-teal text-[12.5px] no-underline"
-        >
-          Yan yana karşılaştırmayı aç →
-        </Link>
-      </div>
+
+        {passages.length > 0 && (
+          <Link
+            href={`/review/${reportId}/similarity`}
+            className="text-teal text-[12.5px] no-underline"
+          >
+            Yan yana karşılaştırmayı aç →
+          </Link>
+        )}
+      </>
     );
   }
 
+  // ── Kriter puanlaması ──
   if (check.type === 'criteria_scoring') {
-    const criteria = (p.criteria ?? []) as unknown[];
+    const criteria = (p.criteria ?? []) as Array<{ status: string }>;
     const stats = (p.evidence_stats ?? {}) as {
       totalQuotes?: number;
       exactQuotes?: number;
       diacriticsQuotes?: number;
     };
+    const counts = criteria.reduce<Record<string, number>>((a, c) => {
+      a[c.status] = (a[c.status] ?? 0) + 1;
+      return a;
+    }, {});
     return (
-      <div className="flex flex-col gap-2 text-[12.5px]">
-        <div className="text-ink/70">
-          {criteria.length} kriter değerlendirildi. Kanıt doğrulaması:{' '}
-          <span className="text-ink font-mono">
-            {stats.exactQuotes ?? 0}/{stats.totalQuotes ?? 0}
-          </span>{' '}
-          alıntı birebir bulundu
-          {stats.diacriticsQuotes ? ` · ${stats.diacriticsQuotes} yazım farkı` : ''}.
-        </div>
-        <div className="text-ink/[.55]">
-          Kriter kriter değerlendirme aşağıdaki kartlarda — düzenleme ve onay orada yapılır.
-        </div>
-        {p.overall_note ? (
-          <div className="border-ink/[.12] mt-1 border-l-2 pl-3 leading-[1.6]">
-            {String(p.overall_note)}
+      <>
+        <Block title={`KRİTER DAĞILIMI · ${criteria.length}`}>
+          <div>
+            <Row
+              state={{ label: String(counts.done ?? 0), text: 'text-success', border: 'border-success' }}
+              name="Yapıldı"
+            />
+            <Row
+              state={{ label: String(counts.partial ?? 0), text: 'text-gold', border: 'border-gold' }}
+              name="Kısmen"
+            />
+            <Row
+              state={{ label: String(counts.not_done ?? 0), text: 'text-danger', border: 'border-danger' }}
+              name="Yapılmadı"
+            />
           </div>
+        </Block>
+
+        <Block title="KANIT DOĞRULAMA">
+          <div className={BODY}>
+            {stats.exactQuotes ?? 0}/{stats.totalQuotes ?? 0} alıntı rapor metninde birebir bulundu
+            {stats.diacriticsQuotes ? ` · ${stats.diacriticsQuotes} yazım farkı` : ''}.
+          </div>
+          <div className="text-ink/[.5] text-[11.5px]">
+            Kriter kriter düzenleme ve onay aşağıdaki kartlarda.
+          </div>
+        </Block>
+
+        {p.overall_note ? (
+          <Block title="GENEL NOT">
+            <div className={BODY}>{String(p.overall_note)}</div>
+          </Block>
         ) : null}
-      </div>
+      </>
     );
   }
 
+  // ── Yarışmacı geri bildirimi ──
   if (check.type === 'feedback_synthesis') {
     const strengths = (p.strengths ?? []) as string[];
     const improvements = (p.improvements ?? []) as Array<{
@@ -355,64 +436,65 @@ function CheckDetail({ check, reportId }: { check: CheckResultView; reportId: st
     }>;
     const steps = (p.next_steps ?? []) as string[];
     return (
-      <div className="flex flex-col gap-4">
-        <div className="border-gold bg-[rgba(201,138,62,.07)] border-l-2 px-3 py-2 text-[12.5px] leading-[1.6]">
-          Bu metin <strong>yarışmacıya gidecek taslak</strong>tır. Yayımlama yetkisi
-          Değerlendirme Yöneticisindedir; onaylanmadan yarışmacıya görünmez.
+      <>
+        <div className="border-l-gold border-ink/[.08] border border-l-2 bg-white px-3 py-2 text-[12px] leading-[1.6]">
+          Yarışmacıya gidecek <strong>taslak</strong>. Yayımlama yetkisi Değerlendirme
+          Yöneticisindedir; onaylanmadan görünmez.
         </div>
-        {p.summary ? (
-          <div className="text-ink/[.82] text-[12.5px] leading-[1.65]">{String(p.summary)}</div>
-        ) : null}
+
+        {p.summary ? <div className={BODY}>{String(p.summary)}</div> : null}
+
         {strengths.length > 0 && (
-          <div>
-            <div className={`${MONO_LABEL} mb-1.5`}>GÜÇLÜ YÖNLER · {strengths.length}</div>
-            <ul className="text-ink/[.78] m-0 list-disc pl-5 text-[12.5px] leading-[1.7]">
+          <Block title={`GÜÇLÜ YÖNLER · ${strengths.length}`}>
+            <div>
               {strengths.map((t, k) => (
-                <li key={k}>{t}</li>
+                <Row
+                  key={k}
+                  state={{ label: '+', text: 'text-success', border: 'border-success' }}
+                  name={t}
+                />
               ))}
-            </ul>
-          </div>
-        )}
-        {improvements.length > 0 && (
-          <div>
-            <div className={`${MONO_LABEL} mb-1.5`}>
-              GELİŞTİRİLECEK ALANLAR · {improvements.length}
             </div>
-            <div className="flex flex-col gap-2">
+          </Block>
+        )}
+
+        {improvements.length > 0 && (
+          <Block title={`GELİŞTİRİLECEK ALANLAR · ${improvements.length}`}>
+            <div className="flex flex-col gap-3">
               {improvements.map((i, k) => (
-                <div key={k} className="border-gold border-l-2 pl-3">
-                  <div className="text-ink text-[12.5px] font-medium">
-                    {i.area}
+                <div key={k} className="flex flex-col gap-1">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-ink text-[12.5px] font-medium">{i.area}</span>
                     {i.priority === 'high' && (
-                      <span className="text-danger ml-2 font-mono text-[9px] tracking-[.1em]">
+                      <span className="text-danger font-mono text-[9px] tracking-[.1em]">
                         ÖNCELİKLİ
                       </span>
                     )}
                   </div>
-                  <div className="text-ink/70 text-[12.5px]">{i.what}</div>
-                  <div className="text-ink/[.82] text-[12.5px]">→ {i.how}</div>
+                  <div className={BODY}>{i.what}</div>
+                  <div className="text-teal-ink text-[12px]">→ {i.how}</div>
                 </div>
               ))}
             </div>
-          </div>
+          </Block>
         )}
+
         {steps.length > 0 && (
-          <div>
-            <div className={`${MONO_LABEL} mb-1.5`}>SONRAKİ ADIMLAR</div>
-            <ol className="text-ink/[.78] m-0 list-decimal pl-5 text-[12.5px] leading-[1.7]">
+          <Block title="SONRAKİ ADIMLAR">
+            <div>
               {steps.map((t, k) => (
-                <li key={k}>{t}</li>
+                <Row
+                  key={k}
+                  state={{ label: String(k + 1), text: 'text-ink/[.5]', border: 'border-ink/[.2]' }}
+                  name={t}
+                />
               ))}
-            </ol>
-          </div>
+            </div>
+          </Block>
         )}
-      </div>
+      </>
     );
   }
 
-  return (
-    <pre className="text-ink/70 overflow-x-auto text-[11px]">
-      {JSON.stringify(p, null, 2).slice(0, 1200)}
-    </pre>
-  );
+  return <div className={BODY}>Bu kontrol için ayrıntılı gösterim tanımlanmadı.</div>;
 }

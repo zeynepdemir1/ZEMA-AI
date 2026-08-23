@@ -128,7 +128,7 @@ export const EFFORT: Record<CheckType, Effort> = {
  * → analysis_results.prompt_version
  */
 export const PROMPT_VERSIONS: Record<CheckType, string> = {
-  language_template: 'v1',
+  language_template: 'v2', // v2: gerçek yazım hatası tespiti + ÖTR şablonu
   title_content: 'v1',
   category_fit: 'v1',
   similarity: 'v1',
@@ -141,6 +141,54 @@ export const PROMPT_VERSIONS: Record<CheckType, string> = {
  * Varsayılan AÇIK: env'de açıkça 'false' yazmadıkça gerçek API çağrılmaz.
  */
 export const MOCK_AI = process.env.MOCK_AI !== 'false';
+
+// ─────────────────────────────────────────────────────────────
+// Skor eşikleri ve kontrol sınıflandırması
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Sayısal skor üreten kontrollerin karar eşiği.
+ *
+ * Önceden karar modelin kendi `verdict` alanından geliyordu ve hangi mantığa
+ * dayandığı belirsizdi — aynı skor bazen "warn" bazen "pass" alabiliyordu.
+ * Artık karar TEK bir yerden, deterministik olarak türetiliyor.
+ *
+ * Eşiği değiştirmek için burayı düzenlemek yeterli; hem yazma anında
+ * (deriveVerdict) hem okuma anında (loadReview) aynı fonksiyon kullanılıyor.
+ */
+export const SCORE_THRESHOLDS = { pass: 75, warn: 50 } as const;
+
+/** Rozetin yanında gösterilecek açıklama — "keyfi" görünmesin. */
+export const THRESHOLD_NOTE =
+  `%${SCORE_THRESHOLDS.pass}+ uygun · ` +
+  `%${SCORE_THRESHOLDS.warn}-${SCORE_THRESHOLDS.pass - 1} dikkat · ` +
+  `%${SCORE_THRESHOLDS.warn} altı uygun değil`;
+
+export type ScoreVerdict = 'pass' | 'warn' | 'fail';
+
+export function verdictFromScore(score: number): ScoreVerdict {
+  if (score >= SCORE_THRESHOLDS.pass) return 'pass';
+  if (score >= SCORE_THRESHOLDS.warn) return 'warn';
+  return 'fail';
+}
+
+/**
+ * Kontroller iki gruba ayrılır:
+ *
+ * - `numeric`  → 0-100 arası bir uyum skoru üretir; kararı SCORE_THRESHOLDS
+ *                belirler ve skor yüzde olarak gösterilir.
+ * - `judgment` → skor anlamlı değil; kararı modelin kendi yargısı verir ve
+ *                yapay bir yüzde UYDURULMAZ. (Benzerlik bir istisna: onun
+ *                yüzdesi gerçek bir ölçüm, "uyum skoru" değil.)
+ */
+export const CHECK_SCORING: Record<CheckType, 'numeric' | 'judgment'> = {
+  language_template: 'numeric',
+  title_content: 'numeric',
+  criteria_scoring: 'numeric',
+  category_fit: 'judgment',
+  similarity: 'judgment',
+  feedback_synthesis: 'judgment',
+};
 
 /**
  * §4.4 aşama 1 — trigram aday eşiği.

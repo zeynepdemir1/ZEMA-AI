@@ -1,4 +1,5 @@
 import { currentUser, supabaseServer } from '@/lib/supabase/server';
+import { CHECK_SCORING, verdictFromScore, type CheckType } from '@/lib/ai/config';
 
 /**
  * Hakem ve yarışmacı ekranlarının veri kaynağı.
@@ -45,7 +46,10 @@ export type CheckResultView = {
   type: string;
   label: string;
   verdict: string;
+  /** Yalnızca `numeric` kontrollerde dolu; judgment kontrollerde null. */
   score: number | null;
+  /** 'numeric' → yüzde + eşik kararı · 'judgment' → modelin kendi yargısı */
+  scoring: 'numeric' | 'judgment';
   model: string;
   payload: Record<string, unknown>;
 };
@@ -171,12 +175,29 @@ export async function loadReview(reportId: string): Promise<ReviewData | null> {
         ),
       };
     }
+    // Karar OKUMA anında da eşikten türetiliyor: eşik değiştiğinde ya da
+    // eski satırlar farklı mantıkla yazılmışken ekran tutarsız kalmasın.
+    const scoring = CHECK_SCORING[type as CheckType] ?? 'judgment';
+    const stored = r.verdict ?? 'insufficient_evidence';
+    let verdict = stored;
+    let score: number | null = r.score ?? null;
+
+    if (scoring === 'numeric') {
+      if (stored !== 'insufficient_evidence' && typeof score === 'number') {
+        verdict = verdictFromScore(score);
+      }
+    } else {
+      // Judgment kontrollerinde yapay yüzde GÖSTERİLMEZ.
+      score = null;
+    }
+
     return [
       {
         type,
         label: CHECK_LABELS[type],
-        verdict: r.verdict ?? 'insufficient_evidence',
-        score: r.score ?? null,
+        verdict,
+        score,
+        scoring,
         model: r.model ?? '—',
         payload,
       },
@@ -506,7 +527,19 @@ export type SetupData = {
     year: number;
     similarity_threshold: number;
     submission_deadline: string | null;
-    template_spec: { required_sections?: string[]; max_pages?: number; citation_format?: string };
+    template_spec: {
+      report_type?: string;
+      required_sections?: string[];
+      citation_format?: string;
+      format?: {
+        font?: string;
+        page?: string;
+        alignment?: string;
+        max_pages?: number;
+        footer?: string;
+      };
+      content_rules?: string[];
+    };
   };
   categories: Array<{ id: string; name: string; description: string; reportCount: number }>;
   criteria: Array<{ id: string; code: string; title: string; weightPct: number; maxScore: number }>;

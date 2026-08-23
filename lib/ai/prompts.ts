@@ -100,10 +100,29 @@ export const CHECK_INSTRUCTIONS: Record<CheckType, string> = {
    - present: başlık var mı?
    - substantive: başlığın ALTI gerçekten dolu mu? Başlık var ama içerik boş
      veya tek cümleyse present=true, substantive=false yaz. Bu ayrım kritik.
-3. Türkçe dil kalitesi sorunlarını listele: imla, anlatım bozukluğu,
-   terminoloji tutarsızlığı, akademik olmayan ton. Her biri için rapordan
-   BİREBİR alıntı ver.
-4. compliance_score: şablon uyumunun 0-100 arası ölçüsü.
+3. Türkçe dil kalitesi sorunlarını listele. Her biri için rapordan BİREBİR
+   alıntı ver ve issue_type alanını şu şekilde kullan:
+
+   - 'imla' → GERÇEK YAZIM HATALARI. Bunları özellikle ara, en sık atlanan
+     kategori bu. Şunların hepsi imla hatasıdır:
+       · harf EKSİKLİĞİ            "uçak" yerine "uak", "kalem" yerine "kalm"
+       · harf FAZLALIĞI            "uçak" yerine "uççak"
+       · harf YANLIŞ DİZİLİŞİ      "kalem" yerine "klaem", "rapor" yerine "raopr"
+       · diyakritik kaybı          "ilaçlama" yerine "ilaclama", "tasarım" yerine "tasarim"
+       · ek/bağlaç hatası          "yapılabilinecektir" gibi çift edilgen,
+                                   "bir çok" yerine "birçok"
+     Raporu kelime kelime tara. Bir kelime Türkçe sözlükte yoksa ve yakın bir
+     doğru yazımı varsa bu bir imla hatasıdır — ATLAMA.
+   - 'anlatim'      → anlatım bozukluğu, devrik/eksik cümle, özne-yüklem uyumsuzluğu
+   - 'terminoloji'  → terim tutarsızlığı (aynı şeye iki farklı ad)
+   - 'ton'          → akademik olmayan, öznel veya iddialı dil
+   - 'tutarlilik'   → rapor içinde çelişen ifadeler
+
+   suggestion alanına düzeltilmiş hâli yaz ("ilaclama → ilaçlama" gibi).
+4. compliance_score: şablon uyumunun 0-100 arası ölçüsü. Eksik veya içi boş
+   zorunlu bölümler ile dil sorunlarının sayısı ve ağırlığı bu skoru düşürür.
+   İçerik kurallarına (özgün yenilik vurgusu, tekrarlayan cümle) uyulmaması
+   da skora yansır.
 5. verdict: kanıtla desteklenen genel sonuç. Şablonu değerlendirecek kadar
    metin çıkarılamamışsa 'insufficient_evidence'.`,
 

@@ -1,5 +1,57 @@
 # ZEMA — Yapılacaklar / Bilinen Eksikler
 
+## 📄 Rapor şablonu — kaynak ve kapsam
+
+Rapor türü TEKNOFEST'in genelinde kullanılan gerçek terim olan **"Ön Tasarım
+Raporu" (ÖTR)** ile tutarlı tutuldu. Format kuralları ve bölüm listesi,
+TEKNOFEST'in farklı yarışmalarındaki (Roket, Sürü İHA) yayımlanmış ÖTR
+şablonlarından çapraz doğrulanarak alındı. Tek gerçek eksik olan **"Risk
+Değerlendirmesi"** bölümü eklendi.
+
+Demo odağı: İnsansız Hava Araçları / Serbest Görev.
+
+`competitions.template_spec` (DB'de canlı):
+
+- **8 zorunlu bölüm:** Problem Tanımı · Literatür Taraması · Yöntem ve Sistem
+  Mimarisi · Test ve Doğrulama · Zaman Planı ve Bütçe · **Risk
+  Değerlendirmesi** · Sonuç · Kaynakça
+- **format:** Arial 11 pt · A4 dikey · iki tarafa yaslı · maks. 15 sayfa ·
+  altbilgide takım adı + sayfa numarası
+- **içerik kuralları:** genel/literatür bilgisi yerine özgün yenilik vurgusu;
+  tekrarlayan cümle tespiti
+- **atıf:** IEEE
+
+⚠️ Dokuz demo raporu bu bölüm eklenmeden ÖNCE üretildi, dolayısıyla hepsinde
+"Risk Değerlendirmesi" eksik görünüyor. Bu bilinçli bir durum: şablon
+kontrolünün sistematik bir eksiği yakaladığını gösteriyor. Referans rapor
+(ATMACA) yine de %85 ile `UYGUN` kalıyor. Raporları bu bölümle yeniden
+üretmek 54 model çağrısı demek; kota nedeniyle yapılmadı.
+
+## 📊 Karar eşikleri
+
+Sayısal skor üreten kontrollerin kararı artık `SCORE_THRESHOLDS`
+sabitinden deterministik olarak türetiliyor — modelin kendi `verdict`
+alanından değil:
+
+| skor | karar |
+|---|---|
+| %75 ve üzeri | UYGUN |
+| %50–74 | DİKKAT |
+| %50 altı | UYGUN DEĞİL |
+
+`insufficient_evidence` skordan bağımsızdır ve her zaman korunur.
+
+Kontroller iki gruba ayrıldı (`CHECK_SCORING`):
+
+- **numeric** — dil/şablon, başlık-içerik, kriter puanlaması. Yüzde gösterilir,
+  karar eşikten gelir.
+- **judgment** — kategori uygunluğu, benzerlik, geri bildirim. Yapay yüzde
+  UYDURULMAZ; karar modelin kendi yargısıdır. (Benzerlik yüzdesi gösterilir
+  ama o gerçek bir ölçüm, uyum skoru değil — eşiğe vurulmaz.)
+- Geri bildirim sentezi bir kapı olmadığı için rozeti `HAZIR`, `UYGUN` değil.
+
+Her rozetin `title` açıklaması var; kapalı panelde de HTML'de bulunuyor.
+
 ## 🔴 KRİTİK YOL — 24 Ağustos, teslime ~2 gün
 
 Kod tarafı teslim edilebilir durumda. **Kalan iki zorunlu çıktı kod değil:**

@@ -35,19 +35,37 @@ const CATEGORIES = [
   },
 ];
 
-/** PLAN.md §4.1: şablon kontrolü bu spec'e karşı yapılır. */
+/**
+ * PLAN.md §4.1: şablon kontrolü bu spec'e karşı yapılır.
+ *
+ * Rapor türü TEKNOFEST'in genelinde kullanılan gerçek terim: "Ön Tasarım
+ * Raporu" (ÖTR). Bölüm listesi ve format kuralları, TEKNOFEST'in farklı
+ * yarışmalarındaki yayımlanmış ÖTR şablonlarından çapraz doğrulanarak alındı.
+ */
 const TEMPLATE_SPEC = {
+  report_type: 'Ön Tasarım Raporu',
+  language: 'tr',
   required_sections: [
     'Problem Tanımı',
     'Literatür Taraması',
     'Yöntem ve Sistem Mimarisi',
     'Test ve Doğrulama',
     'Zaman Planı ve Bütçe',
+    'Risk Değerlendirmesi',
     'Sonuç',
     'Kaynakça',
   ],
-  max_pages: 25,
-  language: 'tr',
+  format: {
+    font: 'Arial 11 pt',
+    page: 'A4 dikey',
+    alignment: 'iki tarafa yaslı',
+    max_pages: 15,
+    footer: 'takım adı + sayfa numarası',
+  },
+  content_rules: [
+    'Genel ve literatür bilgisi aktarmak yerine projenin özgün yeniliği vurgulanmalı',
+    'Tekrarlayan cümle ve paragraflar tespit edilip raporlanmalı',
+  ],
   citation_format: 'IEEE',
 };
 
