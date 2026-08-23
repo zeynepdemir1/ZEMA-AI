@@ -1,5 +1,54 @@
 # ZEMA — Yapılacaklar / Bilinen Eksikler
 
+## 🔴 Teslime kalan sıra (23 Ağustos → 26 Ağustos 10:00)
+
+Sıralama gerekçesi: §9'daki demo zinciri şu an **iki yerde kopuk**. Auth bir
+güvenlik açığı ama demoyu bozmuyor; kopuk halkalar bozuyor.
+
+1. **`/evaluation/feedback/[id]` — yayımlama akışı.** `feedback` satırı
+   `is_published=false` olarak yazılıyor ve onu yayımlayacak hiçbir şey yok.
+   Yani yarışmacı ekranı KALICI olarak boş. §9 adım 5 imkânsız. *Küçük iş.*
+2. **`/submissions` + `/submissions/new` — yükleme arayüzü.** Rapor yükleme
+   yalnızca `curl` ile çalışıyor. §9 adım 2 imkânsız. *Küçük iş.*
+3. **Auth.** PLAN'da Gün 1 işi, gecikti. Detay aşağıda. *Büyük iş.*
+
+Bunlardan sonra sırada: `/evaluation/assignments` (atama), `/admin/criteria`
+ve `/admin/categories` (§8 kesme listesi 6: seed SQL ile yönetilebilir),
+`/evaluation/calibration` (§8 kesme listesi 5: basit tablo yeter).
+
+## 🔴 Auth — ertelenemez güvenlik açığı
+
+**Şu anki gerçek durum:** kimlik doğrulama yok, tüm sorgular `service_role`
+ile yapılıyor → **RLS tamamen baypas ediliyor.** Sonuçları:
+
+- Canlı URL'de `/review/<uuid>` herkese açık: ham AI analizi, kanıt
+  alıntıları, kriter puanları. §3.1'in "ham AI analizini yarışmacıya asla
+  açma" kuralı ve §8'in "asla kesme" listesi ihlal ediliyor.
+- Mutasyon yapan server action'lar (`saveCriterionText`,
+  `approveAllCriteria`, `setPairVerdict`, `saveSimilarityThreshold`) HTTP
+  endpoint'i olarak herkese açık — anonim biri kriter mühürleyebilir.
+- `/api/reports` ve `/api/jobs/tick` kimlik istemiyor → anonim biri PDF
+  yükleyip Gemini kotasını tüketebilir.
+- Şartname KVKK uyumunu açıkça istiyor; bu haliyle uyumlu değil.
+
+**Bugün alınabilen tek gerçek önlem:** Vercel'de `MOCK_AI=true` KALSIN.
+Gerçek API çağrısı yapılmadığı sürece endpoint'leri dövmek kota harcamıyor.
+Yani bu bayrak şu an bir geliştirme kolaylığı değil, **güvenlik kontrolü.**
+
+**Asgari savunulabilir hedef** (tam §3.1 uygulamasına vakit yetmezse):
+tüm uygulamayı girişin arkasına al. Rol ayrımı olmasa bile ham analizin
+herkese açık olması sona erer.
+
+**Auth işinin kapsamı:**
+- `lib/supabase/server.ts` — `@supabase/ssr` ile cookie tabanlı istemci
+- Oturum yenileme middleware'i
+- Kayıt endpoint'i + kayıt kodu ile rol atama (§3.2 — kodlar env'de hazır)
+- Giriş sonrası role göre yönlendirme
+- `lib/reports/queries.ts` içindeki `supabaseAdmin()` çağrılarını oturumlu
+  istemciye çevir → RLS gerçekten devreye girer
+- `lib/dev-session.ts` **silinecek**
+- RoleGuard layout (§6)
+
 ## ✂️ İptal edilen kapsam (23 Ağustos, token bütçesi)
 
 Bunlar **yapılmayacak**, TODO değil — kayıt için burada:
