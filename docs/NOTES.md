@@ -22,53 +22,46 @@ Bunlardan sonra sırada: `/evaluation/assignments` (atama), `/admin/criteria`
 ve `/admin/categories` (§8 kesme listesi 6: seed SQL ile yönetilebilir),
 `/evaluation/calibration` (§8 kesme listesi 5: basit tablo yeter).
 
-## 🔴 Auth — ertelenemez güvenlik açığı
+## ✅ Auth — TAMAMLANDI (23 Ağustos)
 
-**Şu anki gerçek durum:** kimlik doğrulama yok, tüm sorgular `service_role`
-ile yapılıyor → **RLS tamamen baypas ediliyor.** Sonuçları:
+Tam kapsam yapıldı, yedek plana düşülmedi:
 
-- Canlı URL'de `/review/<uuid>` herkese açık: ham AI analizi, kanıt
-  alıntıları, kriter puanları. §3.1'in "ham AI analizini yarışmacıya asla
-  açma" kuralı ve §8'in "asla kesme" listesi ihlal ediliyor.
-- Mutasyon yapan server action'lar (`saveCriterionText`,
-  `approveAllCriteria`, `setPairVerdict`, `saveSimilarityThreshold`) HTTP
-  endpoint'i olarak herkese açık — anonim biri kriter mühürleyebilir.
-- `/api/reports` ve `/api/jobs/tick` kimlik istemiyor → anonim biri PDF
-  yükleyip Gemini kotasını tüketebilir.
-- Şartname KVKK uyumunu açıkça istiyor; bu haliyle uyumlu değil.
+- `lib/supabase/server.ts` — cookie tabanlı oturumlu istemci + `currentUser()`
+- `middleware.ts` — oturum yenileme + korumalı rota yönlendirmesi.
+  `/api/jobs/tick` dahil, yani anonim kota tüketimi artık mümkün değil.
+- Kayıt kodu ile rol atama (§3.2): kodlar yalnızca sunucuda okunuyor,
+  istemciye sadece rolün ADI dönüyor. Kod yoksa `competitor`.
+- KVKK onayı olmadan kayıt tamamlanmıyor (`kvkk_consent_at`).
+- Role göre yönlendirme (`ROLE_HOME`) + sayfa seviyesinde `requireRole()`.
+- **`lib/reports/queries.ts` artık oturumlu istemci kullanıyor → RLS gerçekten
+  devrede.** Admin istemcisi yalnızca sistem işlerinde (job runner, rol atama,
+  seed, storage yazımı).
+- Dört rol de seed'lendi; şifre `zema-test-2026`.
 
-**Bugün alınabilen tek gerçek önlem:** Vercel'de `MOCK_AI=true` KALSIN.
-Gerçek API çağrısı yapılmadığı sürece endpoint'leri dövmek kota harcamıyor.
-Yani bu bayrak şu an bir geliştirme kolaylığı değil, **güvenlik kontrolü.**
+Gerçek girişlerle doğrulandı:
 
-**Kapsam pazarlığa açık DEĞİL.** "Rol ayrımı olmadan girişin arkasına almak"
-bir yedek plan olarak değerlendirilip REDDEDİLDİ: şartname 4 farklı kullanıcı
-rolü istiyor, giriş kapısı bu gereksinimi karşılamaz. Aşağıdaki maddelerin
-tamamı yapılacak.
+| | /review | /evaluation | /admin | /submissions |
+|---|---|---|---|---|
+| Yarışmacı | → /submissions | → /submissions | → /submissions | **200** |
+| Hakem | **200** | → /review | → /review | → /review |
+| Değ. Yön. | **200** | **200** | → /evaluation | → /evaluation |
+| Yarışma Yön. | **200** | **200** | **200** | → /admin |
 
-**Auth işinin kapsamı:**
-- `lib/supabase/server.ts` — `@supabase/ssr` ile cookie tabanlı istemci
-- Oturum yenileme middleware'i
-- Kayıt endpoint'i + kayıt kodu ile rol atama (§3.2 — kodlar env'de hazır)
-- Giriş sonrası role göre yönlendirme
-- `lib/reports/queries.ts` içindeki `supabaseAdmin()` çağrılarını oturumlu
-  istemciye çevir → RLS gerçekten devreye girer
-- `lib/dev-session.ts` **silinecek**
-- RoleGuard layout (§6)
+Veri düzeyinde: anonim her tabloda 0 satır · yarışmacı `ai_criterion_scores`
+0 satır (ham AI analizi gizli) · yarışmacının UPDATE denemesi 0 satır etkiledi
+ve hiçbir veriyi değiştirmedi · hakem yalnızca ATANDIĞI raporu görüyor.
 
-## ✂️ İptal edilen kapsam (23 Ağustos, token bütçesi)
+### Auth sonrası kalan açıklar
 
-Bunlar **yapılmayacak**, TODO değil — kayıt için burada:
-
-- **"AI ile Konuş" + `correction_log` + "hafif öğrenme"** (§4.5). Hakem
-  aksiyonu yalnızca "Doğrudan Düzenle". `correction_log` tablosu DB'de boş
-  duruyor; migration ile düşürmeye değmez.
-- **Tablo ve görsel benzerliği** (§4.4). Yalnızca metin. `content_type`
-  şemada `'metin'` literal'ine indirildi.
-
-Bu dosya, geliştirme sırasında tespit edilip **bilinçli olarak sonraya bırakılan**
-maddelerin tek listesi. Mimari kararlar `PLAN.md`'de; buraya yalnızca "yapılacak"
-girer. Bir madde bitince sil.
+- [ ] **Server action'lar rol kontrolü yapmıyor.** `saveCriterionText`,
+      `approveAllCriteria`, `publishFeedback`, `saveSimilarityThreshold`
+      oturum ister (middleware) ama ROL kontrolü içermiyor. RLS yazmayı
+      engelliyor (yarışmacı için 0 satır) ama `publishFeedback` ve
+      `saveSimilarityThreshold` admin istemcisi kullandığı için RLS'i
+      baypas ediyor → **giriş yapmış bir yarışmacı geri bildirim
+      yayımlayabilir.** Action'lara `requireRole` eklenmeli.
+- [ ] **`/evaluation/assignments` yok.** Atama şu an seed ile yapılıyor;
+      hakem atanmamış raporu RLS gereği göremiyor.
 
 ---
 

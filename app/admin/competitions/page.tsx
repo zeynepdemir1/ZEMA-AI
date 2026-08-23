@@ -1,6 +1,8 @@
 import { loadSetup } from '@/lib/reports/queries';
 import { ThresholdCard } from './threshold-card';
 
+import { requireRole } from '@/lib/supabase/server';
+
 export const dynamic = 'force-dynamic';
 
 const STEPS = [
@@ -10,6 +12,7 @@ const STEPS = [
 ] as const;
 
 export default async function CompetitionSetupPage() {
+  await requireRole(['competition_admin']);
   const data = await loadSetup();
 
   if (!data) {

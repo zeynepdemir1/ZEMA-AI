@@ -1,6 +1,8 @@
 import { notFound } from 'next/navigation';
 import { loadPublishedFeedback } from '@/lib/reports/queries';
 
+import { requireRole } from '@/lib/supabase/server';
+
 export const dynamic = 'force-dynamic';
 
 /**
@@ -9,6 +11,7 @@ export const dynamic = 'force-dynamic';
  * is_published=true satırı.
  */
 export default async function SubmissionPage({ params }: PageProps<'/submissions/[id]'>) {
+  await requireRole(['competitor','judge','evaluation_admin','competition_admin']);
   const { id } = await params;
   const data = await loadPublishedFeedback(id);
   if (!data) notFound();

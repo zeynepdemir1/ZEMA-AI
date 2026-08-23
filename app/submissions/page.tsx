@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { loadMySubmissions } from '@/lib/reports/queries';
 
+import { requireRole } from '@/lib/supabase/server';
+
 export const dynamic = 'force-dynamic';
 
 const STATUS_LABEL: Record<string, { text: string; tone: string }> = {
@@ -13,6 +15,7 @@ const STATUS_LABEL: Record<string, { text: string; tone: string }> = {
 };
 
 export default async function SubmissionsPage() {
+  await requireRole(['competitor']);
   const data = await loadMySubmissions();
 
   if (!data) {

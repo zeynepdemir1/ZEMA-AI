@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { loadDashboard } from '@/lib/reports/queries';
 
+import { requireRole } from '@/lib/supabase/server';
+
 export const dynamic = 'force-dynamic';
 
 const BADGE: Record<string, string> = {
@@ -17,6 +19,7 @@ const BAR: Record<string, string> = {
 };
 
 export default async function EvaluationDashboard() {
+  await requireRole(['evaluation_admin','competition_admin']);
   const data = await loadDashboard();
 
   if (!data) {

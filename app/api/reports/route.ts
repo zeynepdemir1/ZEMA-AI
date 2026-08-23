@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { extractText, getDocumentProxy } from 'unpdf';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { DEV_USERS } from '@/lib/dev-session';
+import { currentUser } from '@/lib/supabase/server';
 
 /**
  * POST /api/reports — rapor yükleme (PLAN.md §2)
@@ -9,8 +9,10 @@ import { DEV_USERS } from '@/lib/dev-session';
  *   PDF → Supabase Storage → unpdf ile metin çıkarımı → reports satırı
  *       → analysis_jobs'a 6 pending iş
  *
- * ⚠️ GEÇİCİ: Kullanıcı kimliği auth oturumundan değil lib/dev-session.ts'teki
- * sabit test hesabından geliyor. Auth bağlanınca burası değişecek.
+ * Kullanıcı kimliği oturumdan geliyor; takım üyeliği DB'den doğrulanıyor.
+ * Storage yazımı ve rapor kaydı service_role ile yapılıyor çünkü metin
+ * çıkarımı + kuyruk açma sistem işi — ama HANGİ takım adına yazılacağı
+ * oturumdan belirleniyor, istemciden gelen veriye güvenilmiyor.
  */
 
 const MAX_BYTES = 20 * 1024 * 1024; // 20 MB
@@ -45,23 +47,23 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Dosya 20 MB sınırını aşıyor' }, { status: 413 });
   }
 
-  // ── Kullanıcı → takım (geçici: sabit test hesabı) ──
-  const { data: profileRow, error: pe } = await db
-    .from('profiles')
-    .select('id')
-    .eq('full_name', DEV_USERS.competitor.fullName)
-    .maybeSingle();
-  if (pe || !profileRow) {
+  // ── Oturumdaki kullanıcı → takım ──
+  const user = await currentUser();
+  if (!user) {
+    return NextResponse.json({ error: 'Giriş yapmalısınız.' }, { status: 401 });
+  }
+  if (user.role !== 'competitor') {
     return NextResponse.json(
-      { error: 'Test kullanıcısı bulunamadı — `npm run seed` çalıştırıldı mı?' },
-      { status: 500 },
+      { error: 'Yalnızca yarışmacılar rapor yükleyebilir.' },
+      { status: 403 },
     );
   }
+  const profileRow = { id: user.id };
 
   const { data: membership, error: me } = await db
     .from('team_members')
     .select('team_id, teams(id, competition_id)')
-    .eq('user_id', profileRow.id)
+    .eq('user_id', user.id)
     .maybeSingle();
   if (me || !membership) {
     return NextResponse.json({ error: 'Kullanıcı bir takıma bağlı değil' }, { status: 409 });

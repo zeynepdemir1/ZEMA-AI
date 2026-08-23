@@ -9,7 +9,7 @@
  */
 import { supabaseAdmin } from '../lib/supabase/admin';
 import { CARDS, CRITERIA_LIST, DEFAULT_SIMILARITY_THRESHOLD } from '../lib/design/mock-data';
-import { DEV_COMPETITION_NAME, DEV_TEAM_NAME, DEV_USERS } from '../lib/dev-session';
+import { DEV_COMPETITION_NAME, DEV_PASSWORD, DEV_TEAM_NAME, DEV_USERS } from '../lib/dev-session';
 
 const db = supabaseAdmin();
 
@@ -51,7 +51,9 @@ const TEMPLATE_SPEC = {
   citation_format: 'IEEE',
 };
 
-async function upsertUser(email: string, fullName: string, role: 'competitor' | 'judge') {
+type Role = 'competitor' | 'judge' | 'evaluation_admin' | 'competition_admin';
+
+async function upsertUser(email: string, fullName: string, role: Role) {
   // Zaten var mı? (createUser aynı e-postayla ikinci kez hata verir)
   const { data: list, error: le } = await db.auth.admin.listUsers({ perPage: 200 });
   if (le) throw new Error(`listUsers: ${le.message}`);
@@ -60,7 +62,7 @@ async function upsertUser(email: string, fullName: string, role: 'competitor' | 
   if (!user) {
     const { data, error } = await db.auth.admin.createUser({
       email,
-      password: crypto.randomUUID(), // auth bağlanınca sıfırlanacak
+      password: DEV_PASSWORD,
       email_confirm: true,
       user_metadata: { full_name: fullName },
     });
@@ -68,7 +70,9 @@ async function upsertUser(email: string, fullName: string, role: 'competitor' | 
     user = data.user;
     console.log(`  auth kullanıcısı oluşturuldu: ${email}`);
   } else {
-    console.log(`  auth kullanıcısı zaten var: ${email}`);
+    // Şifreyi bilinen değere sabitle — manuel test için.
+    await db.auth.admin.updateUserById(user.id, { password: DEV_PASSWORD });
+    console.log(`  auth kullanıcısı zaten var: ${email} (şifre yenilendi)`);
   }
 
   // profiles satırı — rol ataması service_role ile yapılır (§3.2)
@@ -88,6 +92,16 @@ async function main() {
     'competitor',
   );
   const judgeId = await upsertUser(DEV_USERS.judge.email, DEV_USERS.judge.fullName, 'judge');
+  await upsertUser(
+    DEV_USERS.evaluationAdmin.email,
+    DEV_USERS.evaluationAdmin.fullName,
+    'evaluation_admin',
+  );
+  await upsertUser(
+    DEV_USERS.competitionAdmin.email,
+    DEV_USERS.competitionAdmin.fullName,
+    'competition_admin',
+  );
 
   console.log('\n=== 2) Yarışma ===');
   const { data: existing } = await db
@@ -197,6 +211,32 @@ async function main() {
     .upsert({ team_id: teamId, user_id: competitorId }, { onConflict: 'team_id,user_id' });
   if (tme) throw new Error(`team_members: ${tme.message}`);
   console.log(`  ${DEV_USERS.competitor.fullName} takıma eklendi`);
+
+  // ── 6) Mevcut raporları hakeme ata ──────────────────────────
+  // RLS devreye girdiğinde hakem YALNIZCA atandığı raporları görebiliyor
+  // (reports_select_judge). Atama olmadan hakem ekranı boş kalır.
+  // Atama ekranı (/evaluation/assignments) henüz yok, o yüzden seed yapıyor.
+  console.log('\n=== 6) Hakem atamaları ===');
+  const { data: existingReports } = await db
+    .from('reports')
+    .select('id')
+    .eq('competition_id', competitionId);
+
+  if (!existingReports?.length) {
+    console.log('  rapor yok, atama yapılmadı');
+  } else {
+    const rows = existingReports.map((r) => ({
+      report_id: r.id,
+      judge_id: judgeId,
+      assigned_by: judgeId,
+      status: 'pending',
+    }));
+    const { error } = await db
+      .from('assignments')
+      .upsert(rows, { onConflict: 'report_id,judge_id' });
+    if (error) throw new Error(`assignments: ${error.message}`);
+    console.log(`  ${rows.length} rapor ${DEV_USERS.judge.fullName}'e atandı`);
+  }
 
   console.log('\n=== ÖZET ===');
   console.log('  competition_id:', competitionId);

@@ -3,9 +3,12 @@ import { notFound } from 'next/navigation';
 import { loadFeedbackDraft } from '@/lib/reports/queries';
 import { FeedbackEditor } from './editor';
 
+import { requireRole } from '@/lib/supabase/server';
+
 export const dynamic = 'force-dynamic';
 
 export default async function FeedbackPage({ params }: PageProps<'/evaluation/feedback/[id]'>) {
+  await requireRole(['evaluation_admin','competition_admin']);
   const { id } = await params;
   const draft = await loadFeedbackDraft(id);
   if (!draft) notFound();

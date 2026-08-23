@@ -1,12 +1,19 @@
+import { Suspense } from 'react';
 import { ZemaMark, ZemaWordmark, GridTexture } from '@/components/zema/brand';
 import { AuthPanel } from './auth-panel';
+
+// AuthPanel `next` parametresini okuyor (useSearchParams) → statik üretim
+// Suspense sınırı istiyor. Sayfa zaten etkileşimli, dinamik olması sorun değil.
+export const dynamic = 'force-dynamic';
 
 export default function AuthPage() {
   return (
     <div className="grid min-h-[calc(100vh-0px)] grid-cols-1 lg:h-screen lg:grid-cols-[1.05fr_.95fr] lg:overflow-hidden">
       {/* ─── Sol: form ─── */}
       <div className="flex min-h-0 min-w-0 flex-col items-center justify-start gap-[34px] overflow-auto px-8 py-12 lg:px-16">
-        <AuthPanel />
+        <Suspense fallback={<div className="text-ink/40 text-[13px]">Yükleniyor…</div>}>
+          <AuthPanel />
+        </Suspense>
       </div>
 
       {/* ─── Sağ: "rolünüzü seçmenize gerek yok" anlatısı ─── */}

@@ -2,9 +2,12 @@ import Link from 'next/link';
 import { loadMySubmissions } from '@/lib/reports/queries';
 import { UploadForm } from './upload-form';
 
+import { requireRole } from '@/lib/supabase/server';
+
 export const dynamic = 'force-dynamic';
 
 export default async function NewSubmissionPage() {
+  await requireRole(['competitor']);
   const data = await loadMySubmissions();
 
   if (!data) {

@@ -3,9 +3,12 @@ import { notFound } from 'next/navigation';
 import { loadSimilarity } from '@/lib/reports/queries';
 import { SimilarityList } from './similarity-list';
 
+import { requireRole } from '@/lib/supabase/server';
+
 export const dynamic = 'force-dynamic';
 
 export default async function SimilarityPage({ params }: PageProps<'/review/[id]/similarity'>) {
+  await requireRole(['judge','evaluation_admin','competition_admin']);
   const { id } = await params;
   const data = await loadSimilarity(id);
   if (!data) notFound();

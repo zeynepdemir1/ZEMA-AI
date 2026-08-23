@@ -1,11 +1,15 @@
-import { supabaseAdmin } from '@/lib/supabase/admin';
+import { currentUser, supabaseServer } from '@/lib/supabase/server';
 
 /**
  * Hakem ve yarışmacı ekranlarının veri kaynağı.
  *
- * ⚠️ GEÇİCİ: service_role istemcisi kullanılıyor, yani RLS BAYPAS EDİLİYOR.
- * Auth bağlandığında bu sorgular kullanıcı oturumlu istemciye taşınmalı ki
- * §3.1'deki erişim matrisi gerçekten uygulansın. docs/NOTES.md'de takipte.
+ * Bu dosyadaki TÜM sorgular oturumlu istemciyle yapılır, yani §3.1'deki
+ * erişim matrisi Postgres tarafında RLS ile uygulanır. Bir kullanıcının
+ * görmemesi gereken satır sorgudan hiç dönmez — uygulama katmanında ayrıca
+ * filtrelemeye gerek yok, ve unutulsa bile veri sızmaz.
+ *
+ * ⚠️ Buraya supabaseAdmin() EKLEMEYİN. Admin istemcisi RLS'i baypas eder ve
+ * yalnızca sistem işleri için (job runner, rol atama, seed).
  */
 
 /** UUID'den okunabilir kayıt no. reports tablosunda `code` kolonu yok. */
@@ -51,7 +55,7 @@ const STATUS_MAP: Record<string, 'done' | 'partial' | 'missing'> = {
 };
 
 export async function loadReview(reportId: string): Promise<ReviewData | null> {
-  const db = supabaseAdmin();
+  const db = await supabaseServer();
 
   const { data: report } = await db
     .from('reports')
@@ -164,7 +168,7 @@ export type SidebarReport = {
  * assignments üzerinden filtrelenmeli.
  */
 export async function loadSidebarReports(competitionId: string): Promise<SidebarReport[]> {
-  const db = supabaseAdmin();
+  const db = await supabaseServer();
   const { data: reports } = await db
     .from('reports')
     .select('id, team_id, category_id, status')
@@ -205,7 +209,7 @@ export async function loadSidebarReports(competitionId: string): Promise<Sidebar
 
 /** Yarışmacı ekranı — YALNIZCA yayımlanmış geri bildirim (§3.1 kritik kuralı). */
 export async function loadPublishedFeedback(reportId: string) {
-  const db = supabaseAdmin();
+  const db = await supabaseServer();
   const { data: report } = await db
     .from('reports')
     .select('id, title, status, team_id, category_id')
@@ -262,7 +266,7 @@ export type SimilarityMatch = {
 
 /** §4.4 — benzerlik detayı. Kapsam kesintisi sonrası yalnızca metin. */
 export async function loadSimilarity(reportId: string) {
-  const db = supabaseAdmin();
+  const db = await supabaseServer();
   const { data: report } = await db
     .from('reports')
     .select('id, title, team_id, competition_id')
@@ -335,7 +339,7 @@ export type DashData = {
 };
 
 export async function loadDashboard(): Promise<DashData | null> {
-  const db = supabaseAdmin();
+  const db = await supabaseServer();
 
   const { data: competition } = await db
     .from('competitions')
@@ -447,7 +451,7 @@ export type SetupData = {
 };
 
 export async function loadSetup(): Promise<SetupData | null> {
-  const db = supabaseAdmin();
+  const db = await supabaseServer();
   const { data: competition } = await db
     .from('competitions')
     .select('id, name, year, similarity_threshold, submission_deadline, template_spec')
@@ -522,7 +526,7 @@ export type FeedbackDraft = {
 };
 
 export async function loadFeedbackDraft(reportId: string): Promise<FeedbackDraft | null> {
-  const db = supabaseAdmin();
+  const db = await supabaseServer();
   const { data: report } = await db
     .from('reports')
     .select('id, title, team_id, category_id')
@@ -566,7 +570,7 @@ export async function loadFeedbackDraft(reportId: string): Promise<FeedbackDraft
 
 /** Yayımlanmayı bekleyen raporlar — /evaluation'dan buraya giriş için. */
 export async function loadFeedbackQueue() {
-  const db = supabaseAdmin();
+  const db = await supabaseServer();
   const { data: rows } = await db
     .from('feedback')
     .select('report_id, is_published, published_at');
@@ -609,16 +613,11 @@ export type MyReport = {
 
 /** Yarışmacının takımına ait raporlar + yükleme formu için kategoriler. */
 export async function loadMySubmissions() {
-  const db = supabaseAdmin();
+  const db = await supabaseServer();
 
-  // GEÇİCİ: kullanıcı auth'tan değil sabit test hesabından bulunuyor.
-  const { data: profile } = await db
-    .from('profiles')
-    .select('id, full_name')
-    .eq('role', 'competitor')
-    .limit(1)
-    .maybeSingle();
-  if (!profile) return null;
+  const user = await currentUser();
+  if (!user) return null;
+  const profile = { id: user.id, full_name: user.fullName };
 
   const { data: membership } = await db
     .from('team_members')
@@ -680,4 +679,50 @@ export async function loadMySubmissions() {
     categories: categories ?? [],
     reports: list,
   };
+}
+
+/**
+ * Hakemin ATANDIĞI raporlar. RLS zaten filtreliyor (reports_select_judge),
+ * yani bu fonksiyon yalnızca sunum için gruplama yapıyor.
+ */
+export async function loadAssignedReports(): Promise<SidebarReport[]> {
+  const db = await supabaseServer();
+  const user = await currentUser();
+  if (!user) return [];
+
+  const { data: reports } = await db
+    .from('reports')
+    .select('id, team_id, category_id, competition_id')
+    .order('created_at');
+  if (!reports?.length) return [];
+
+  const [{ data: teams }, { data: cats }, { data: scores }] = await Promise.all([
+    db.from('teams').select('id, name'),
+    db.from('categories').select('id, name'),
+    db.from('ai_criterion_scores').select('report_id, edit_status'),
+  ]);
+  const teamName = new Map((teams ?? []).map((t) => [t.id, t.name]));
+  const catName = new Map((cats ?? []).map((c) => [c.id, c.name]));
+
+  return reports.map((r) => {
+    const mine = (scores ?? []).filter((s) => s.report_id === r.id);
+    const approved = mine.filter((s) => s.edit_status !== 'ai_generated').length;
+    const status: SidebarReport['status'] =
+      mine.length === 0
+        ? 'bekliyor'
+        : approved === mine.length
+          ? 'onaylandı'
+          : approved > 0
+            ? 'inceleniyor'
+            : 'dikkat';
+    return {
+      id: r.id,
+      code: reportCode(r.id),
+      team: teamName.get(r.team_id) ?? '—',
+      category: catName.get(r.category_id ?? '') ?? 'Diğer',
+      status,
+      approved,
+      total: mine.length,
+    };
+  });
 }

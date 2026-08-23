@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { CURRENT_JUDGE } from '@/lib/design/mock-data';
 import type { SidebarReport } from '@/lib/reports/queries';
+import { SignOutButton } from './sign-out-button';
 
 const TONE: Record<SidebarReport['status'], string> = {
   onaylandı: 'text-gold border-gold',
@@ -21,9 +21,11 @@ const DOT: Record<SidebarReport['status'], string> = {
 export function ReviewSidebar({
   activeId,
   reports,
+  user,
 }: {
   activeId: string;
   reports: SidebarReport[];
+  user: { name: string; roleLabel: string };
 }) {
   const categories = [...new Set(reports.map((r) => r.category))];
   const [open, setOpen] = useState<Record<string, boolean>>(
@@ -92,13 +94,19 @@ export function ReviewSidebar({
       </div>
 
       <div className="border-ink/10 flex items-center gap-2.5 border-t px-5 py-[14px]">
-        <div className="bg-ink flex h-7 w-7 items-center justify-center text-[11.5px] font-semibold text-white">
-          {CURRENT_JUDGE.initials}
+        <div className="bg-ink flex h-7 w-7 shrink-0 items-center justify-center text-[11.5px] font-semibold text-white">
+          {user.name
+            .split(' ')
+            .map((w) => w[0])
+            .slice(0, 2)
+            .join('')
+            .toLocaleUpperCase('tr-TR')}
         </div>
-        <div>
-          <div className="text-[12.5px] font-semibold">{CURRENT_JUDGE.name}</div>
-          <div className="text-ink/50 font-mono text-[10px]">{CURRENT_JUDGE.role}</div>
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-[12.5px] font-semibold">{user.name}</div>
+          <div className="text-ink/50 font-mono text-[10px]">{user.roleLabel}</div>
         </div>
+        <SignOutButton />
       </div>
     </div>
   );
