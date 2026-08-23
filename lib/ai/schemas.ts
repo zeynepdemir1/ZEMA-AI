@@ -2,6 +2,21 @@ import { z } from 'zod';
 import type { CheckType } from './config';
 
 /**
+ * PLAN.md §1: "Model kanıt gösteremediğinde `insufficient_evidence` döner,
+ * uydurmaz." Bu, ürünün halüsinasyona karşı verdiği sözün şema karşılığı.
+ *
+ * `analysis_results.verdict` kolonu (text) bu dört değeri kabul ediyor —
+ * migration gerekmiyor, eksik olan yalnızca Zod tarafıydı.
+ *
+ * ⚠️ Kriter seviyesinde bu değer YOK: `ai_criterion_scores.status` bir Postgres
+ * enum'u ('done','partial','not_done') ve tasarımda tam üç rozet var. Bir kriter
+ * için kanıt gösterilemediği, boş `evidence_quotes` + düşürülmüş `confidence`
+ * ile ifade edilir (§4.5). `insufficient_evidence` kontrol seviyesine aittir.
+ */
+export const VerdictSchema = z.enum(['pass', 'warn', 'fail', 'insufficient_evidence']);
+export type Verdict = z.infer<typeof VerdictSchema>;
+
+/**
  * Altı kontrolün yapılandırılmış çıktı şemaları.
  * Kaynak: docs/PLAN.md §4.1–4.6 — birebir aktarıldı.
  *
@@ -32,7 +47,7 @@ export const LanguageTemplateSchema = z.object({
     }),
   ),
   compliance_score: z.number().min(0).max(100),
-  verdict: z.enum(['pass', 'warn', 'fail']),
+  verdict: VerdictSchema,
 });
 
 // §4.2 — Başlık-içerik tutarlılığı
@@ -42,7 +57,7 @@ export const TitleContentSchema = z.object({
   unmet_promises: z.array(z.object({ promise: z.string(), why: z.string() })),
   content_not_in_title: z.array(z.string()),
   suggested_titles: z.array(z.string()).max(3),
-  verdict: z.enum(['pass', 'warn', 'fail']),
+  verdict: VerdictSchema,
 });
 
 // §4.3 — Kategori uygunluğu
@@ -63,7 +78,9 @@ export const CategoryFitSchema = z.object({
 
 // §4.4 — Benzerlik / özgünlük (ikili karşılaştırma başına bir sonuç)
 export const SimilarityPairSchema = z.object({
-  content_type: z.enum(['metin', 'tablo', 'gorsel']),
+  // KAPSAM KESİNTİSİ: tablo/görsel benzerliği iptal (PDF'ten tablo/görsel
+  // ayrıştırma ayrı bir çıkarım hattı gerektiriyordu — §4.4'ün açık sorusu).
+  content_type: z.literal('metin'),
   semantic_score: z.number().min(0).max(100),
   /** Ortak fikir mi ortak metin mi — planın ısrarla ayırdığı ayrım. */
   overlap_type: z.enum([
@@ -141,4 +158,7 @@ export const SCHEMAS = {
 } satisfies Record<CheckType, z.ZodType>;
 
 export type SchemaFor<K extends CheckType> = (typeof SCHEMAS)[K];
+
+/** run-check.ts'in kanıt doğrulamasına geçirdiği yük tipi. */
+export type CriteriaScoringPayload = z.output<typeof CriteriaScoringSchema>;
 export type PayloadFor<K extends CheckType> = z.output<SchemaFor<K>>;

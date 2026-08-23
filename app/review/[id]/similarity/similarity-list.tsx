@@ -1,13 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import {
-  MATCH_META,
-  type Match,
-  type MatchVerdict,
-  type Report,
-  type TableRow,
-} from '@/lib/design/mock-data';
+import { MATCH_META, type Match, type MatchVerdict, type Report } from '@/lib/design/mock-data';
 
 /** Ortak pasajı vurgulamak için metni üçe böler. */
 function segment(text: string, overlap?: string) {
@@ -22,95 +16,9 @@ function segment(text: string, overlap?: string) {
 
 const HIT = 'bg-[rgba(76,133,119,.24)] shadow-[0_1px_0_#4C8577]';
 
-function TableView({ head, rows }: { head: string[]; rows: TableRow[] }) {
-  return (
-    <div>
-      <div
-        className="border-ink/[.14] grid gap-2 border-b px-[9px] pb-[7px]"
-        style={{ gridTemplateColumns: '1.7fr .5fr .8fr' }}
-      >
-        {head.map((h, k) => (
-          <span
-            key={h}
-            className={`text-ink/50 font-mono text-[9.5px] tracking-[.08em] ${k === 2 ? 'text-right' : ''}`}
-          >
-            {h}
-          </span>
-        ))}
-      </div>
-      {rows.map((r, k) => (
-        <div
-          key={k}
-          className={`grid gap-2 px-[9px] py-[7px] text-[12px] ${
-            r[3] ? 'text-ink bg-[rgba(76,133,119,.16)]' : 'text-ink/[.62]'
-          }`}
-          style={{ gridTemplateColumns: '1.7fr .5fr .8fr' }}
-        >
-          <span className="font-sans">{r[0]}</span>
-          <span className="font-mono">{r[1]}</span>
-          <span className="text-right font-mono">{r[2]}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
 
-/** Gövde yerleşim çizimi — iki rapor için hafifçe farklı ölçüler. */
-function FigureView({ variant, caption }: { variant: 'this' | 'other'; caption?: string }) {
-  const a = variant === 'this';
-  return (
-    <div>
-      <svg
-        viewBox="0 0 240 140"
-        width="100%"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        className="border-ink/[.12] border bg-white"
-        role="img"
-        aria-label={caption ?? 'Gövde yerleşim çizimi'}
-      >
-        <rect
-          x={a ? 70 : 72}
-          y={a ? 46 : 44}
-          width={a ? 100 : 98}
-          height={a ? 48 : 50}
-          stroke="#1B2A4A"
-          strokeWidth="1.5"
-        />
-        <path
-          d={a ? 'M70 70 H30 M170 70 H210' : 'M72 70 H32 M170 70 H208'}
-          stroke="#1B2A4A"
-          strokeWidth="1.5"
-        />
-        <circle cx={a ? 30 : 32} cy="70" r={a ? 14 : 13} stroke="#1B2A4A" strokeWidth="1.5" />
-        <circle cx={a ? 210 : 208} cy="70" r={a ? 14 : 13} stroke="#1B2A4A" strokeWidth="1.5" />
-        <path
-          d={a ? 'M120 46 V20 M120 94 V120' : 'M121 44 V22 M121 94 V118'}
-          stroke="rgba(27,42,74,.35)"
-          strokeWidth="1"
-        />
-        <rect
-          x="16"
-          y="32"
-          width="208"
-          height="76"
-          stroke="#4C8577"
-          strokeWidth="1.5"
-          strokeDasharray="5 4"
-        />
-      </svg>
-      {caption && (
-        <div className="text-ink/50 mt-2 font-mono text-[9.5px]">{caption}</div>
-      )}
-    </div>
-  );
-}
 
-const KIND_LABEL = {
-  metin: 'METİN BENZERLİĞİ',
-  tablo: 'TABLO BENZERLİĞİ',
-  gorsel: 'GÖRSEL BENZERLİĞİ',
-} as const;
+const KIND_LABEL = { metin: 'METİN BENZERLİĞİ' } as const;
 
 export function SimilarityList({ report, matches }: { report: Report; matches: Match[] }) {
   // Hakem HER eşleşmeyi bağımsız değerlendirir (PLAN.md §4.4).
@@ -175,18 +83,12 @@ export function SimilarityList({ report, matches }: { report: Report; matches: M
                     team: report.team,
                     ref: m.thisRef,
                     excerpt: m.thisExcerpt,
-                    rows: meta.rowsThis,
-                    fig: meta.figThis,
-                    variant: 'this' as const,
                   },
                   {
                     label: 'KARŞILAŞTIRILAN RAPOR',
                     team: m.team,
                     ref: m.otherRef,
                     excerpt: m.otherExcerpt,
-                    rows: meta.rowsOther,
-                    fig: meta.figOther,
-                    variant: 'other' as const,
                   },
                 ]
               ).map((side) => (
@@ -202,7 +104,7 @@ export function SimilarityList({ report, matches }: { report: Report; matches: M
                     <div className="text-ink/50 mt-[3px] font-mono text-[9.5px]">{side.ref}</div>
                   </div>
                   <div className="flex-1 px-[14px] py-[13px]">
-                    {meta.kind === 'metin' && (
+                    {(
                       <div className="text-ink text-[13px] leading-[1.8]">
                         {segment(side.excerpt, meta.overlap).map((seg, k) => (
                           <span key={k} className={seg.hit ? HIT : undefined}>
@@ -210,12 +112,6 @@ export function SimilarityList({ report, matches }: { report: Report; matches: M
                           </span>
                         ))}
                       </div>
-                    )}
-                    {meta.kind === 'tablo' && meta.head && side.rows && (
-                      <TableView head={meta.head} rows={side.rows} />
-                    )}
-                    {meta.kind === 'gorsel' && (
-                      <FigureView variant={side.variant} caption={side.fig} />
                     )}
                   </div>
                 </div>

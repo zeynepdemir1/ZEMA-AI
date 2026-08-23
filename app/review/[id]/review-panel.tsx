@@ -5,7 +5,6 @@ import Link from 'next/link';
 import {
   CARDS,
   CURRENT_JUDGE,
-  HIZLI_TALIMATLAR,
   type CardOrigin,
   type CriterionCard,
   type CriterionStatus,
@@ -18,19 +17,20 @@ const STATUS_META: Record<CriterionStatus, { label: string; tone: string }> = {
   missing: { label: 'YAPILMADI', tone: 'text-danger border-danger' },
 };
 
-type ChatTurn = { from: 'hakem' | 'ai'; text: string };
-
+/**
+ * KAPSAM KESİNTİSİ (26 Ağustos teslimi): "AI ile Konuş" + correction_log
+ * özelliği token bütçesi nedeniyle iptal edildi. Yalnızca "Doğrudan Düzenle"
+ * kaldı. Bkz. docs/NOTES.md.
+ */
 type CardState = {
   origin: CardOrigin;
   text: string;
-  mode: 'edit' | 'chat' | null;
+  mode: 'edit' | null;
   draft: string;
-  msg: string;
-  chat: ChatTurn[];
 };
 
 function initialState(c: CriterionCard): CardState {
-  return { origin: c.origin, text: c.text, mode: null, draft: '', msg: '', chat: [] };
+  return { origin: c.origin, text: c.text, mode: null, draft: '' };
 }
 
 export function ReviewPanel({
@@ -51,31 +51,6 @@ export function ReviewPanel({
     setState((s) => s.map((c, j) => (j === i ? { ...c, ...p } : c)));
   }
 
-  /**
-   * "AI ile Konuş" — prototipte talimata göre hazır iki varyanttan biri döner.
-   * Gerçek akışta bu, callClaudeForCheck() ile bir Claude çağrısı olacak ve
-   * düzeltme correction_log'a yazılacak (PLAN.md §4.5 "hafif öğrenme").
-   */
-  function rewrite(i: number, instruction: string) {
-    const card = CARDS[i];
-    const next = /kısalt|kısa/i.test(instruction) ? card.shorter : card.softer;
-    setState((s) =>
-      s.map((c, j) =>
-        j === i
-          ? {
-              ...c,
-              text: next,
-              msg: '',
-              chat: [
-                ...c.chat,
-                { from: 'hakem', text: instruction },
-                { from: 'ai', text: 'Metni güncelledim. Onaylarsanız hakem mührüyle kaydedilir.' },
-              ],
-            }
-          : c,
-      ),
-    );
-  }
 
   return (
     <div className="flex min-w-0 flex-col">
@@ -223,60 +198,6 @@ export function ReviewPanel({
                 </div>
               )}
 
-              {s.mode === 'chat' && (
-                <div className="border-teal/[.45] mt-[14px] border bg-[rgba(76,133,119,.05)] p-[14px]">
-                  <div className="text-teal-ink mb-[11px] font-mono text-[10px] tracking-[.12em]">
-                    AI İLE KONUŞ · METNİ YENİDEN YAZDIR
-                  </div>
-
-                  {s.chat.length > 0 && (
-                    <div className="mb-3 flex flex-col gap-[9px]">
-                      {s.chat.map((m, k) => (
-                        <div
-                          key={k}
-                          className={`max-w-[78%] px-3 py-[9px] text-[13px] leading-[1.6] ${
-                            m.from === 'hakem'
-                              ? 'bg-ink self-end text-white'
-                              : 'border-teal/40 text-ink self-start border bg-white'
-                          }`}
-                        >
-                          {m.text}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <div className="mb-2.5 flex flex-wrap gap-2">
-                    {HIZLI_TALIMATLAR.map((label) => (
-                      <button
-                        key={label}
-                        onClick={() => rewrite(i, label)}
-                        className="text-teal-ink border-teal/40 cursor-pointer border bg-white px-3 py-1.5 font-sans text-[12px]"
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="flex gap-2">
-                    <input
-                      value={s.msg}
-                      onChange={(e) => patch(i, { msg: e.target.value })}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && s.msg.trim()) rewrite(i, s.msg.trim());
-                      }}
-                      placeholder="Örn. bu çok sert, daha yapıcı bir dille yaz"
-                      className="border-ink/[.18] text-ink flex-1 border bg-white px-3 py-2.5 font-sans text-[13.5px]"
-                    />
-                    <button
-                      onClick={() => s.msg.trim() && rewrite(i, s.msg.trim())}
-                      className="bg-teal cursor-pointer border-none px-[18px] py-2.5 font-sans text-[13px] font-semibold text-white"
-                    >
-                      Gönder
-                    </button>
-                  </div>
-                </div>
-              )}
 
               <div className="border-ink/[.08] mt-4 flex flex-wrap items-center gap-2.5 border-t pt-[14px]">
                 <button
@@ -284,12 +205,6 @@ export function ReviewPanel({
                   className="text-ink border-ink/[.22] cursor-pointer border bg-transparent px-4 py-[9px] font-sans text-[13px]"
                 >
                   Doğrudan düzenle
-                </button>
-                <button
-                  onClick={() => patch(i, { mode: s.mode === 'chat' ? null : 'chat' })}
-                  className="text-teal-ink border-teal/[.45] cursor-pointer border bg-transparent px-4 py-[9px] font-sans text-[13px]"
-                >
-                  AI ile konuş
                 </button>
                 <div className="ml-auto flex flex-wrap items-center gap-3">
                   <span className="text-ink/[.45] font-mono text-[10.5px]">

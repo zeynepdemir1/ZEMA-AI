@@ -13,7 +13,7 @@ export type ReportStatusKey = 'onaylandı' | 'inceleniyor' | 'bekliyor' | 'dikka
 export type CriterionStatus = 'done' | 'partial' | 'missing';
 export type CardOrigin = 'ai' | 'hakem';
 export type MatchVerdict = 'real' | 'false' | null;
-export type MatchKind = 'metin' | 'tablo' | 'gorsel';
+export type MatchKind = 'metin';
 
 export type Report = {
   code: string;
@@ -156,58 +156,21 @@ export const MATCHES: Record<string, Match[]> = {
   ],
 };
 
-/** Tablo satırı: [kalem, adet, değer, örtüşüyor mu] */
-export type TableRow = [string, string, string, boolean];
 
 export type MatchMeta = {
   kind: MatchKind;
-  /** metin: vurgulanacak ortak pasaj */
+  /** Vurgulanacak ortak pasaj */
   overlap?: string;
-  head?: string[];
-  rowsThis?: TableRow[];
-  rowsOther?: TableRow[];
   caption?: string;
-  figThis?: string;
-  figOther?: string;
 };
 
-const budgetA: TableRow[] = [
-  ['Fırçasız motor T-Motor U8', '4', '12.400', true],
-  ['LiPo batarya 6S 22000mAh', '2', '5.800', true],
-  ['Karbon gövde kiti', '1', '9.250', false],
-  ['Telemetri modülü 900MHz', '1', '2.100', true],
-];
-const budgetB: TableRow[] = [
-  ['Fırçasız motor T-Motor U8', '4', '12.400', true],
-  ['LiPo batarya 6S 22000mAh', '2', '5.800', true],
-  ['Alüminyum şasi', '1', '6.700', false],
-  ['Telemetri modülü 900MHz', '1', '2.100', true],
-];
-const planA: TableRow[] = [
-  ['Tasarım', 'H1-H4', 'Tamam', true],
-  ['Prototipleme', 'H5-H10', 'Devam', true],
-  ['Entegrasyon', 'H11-H16', 'Planlı', false],
-  ['Saha Testi', 'H17-H20', 'Planlı', true],
-];
-const planB: TableRow[] = [
-  ['Tasarım', 'H1-H4', 'Tamam', true],
-  ['Prototipleme', 'H5-H10', 'Devam', true],
-  ['Entegrasyon', 'H11-H14', 'Planlı', false],
-  ['Saha Testi', 'H17-H20', 'Planlı', true],
-];
 
 /** Anahtar: `<buRapor>#<karşılaştırılan>` */
 export const MATCH_META: Record<string, MatchMeta> = {
   'R-0184#R-0196': { kind: 'metin', overlap: 'telemetriyi 50 ms periyotla toplayarak karar motoruna iletir' },
-  'R-0184#R-0191': { kind: 'tablo', head: ['Kalem', 'Adet', 'Birim ₺'], rowsThis: budgetA, rowsOther: budgetB, caption: 'Bütçe tablosu · 4 satırın 3\'ü birebir aynı' },
-  'R-0184#R-0203': { kind: 'gorsel', figThis: 'ŞEK. 5.2 · GÖVDE YERLEŞİM ÇİZİMİ', figOther: 'ŞEK. 4.1 · GÖVDE YERLEŞİM ÇİZİMİ', caption: 'Motor yerleşimi ve gövde oranları örtüşüyor' },
   'R-0196#R-0184': { kind: 'metin', overlap: 'telemetriyi 50 ms periyotla toplayarak karar motoruna iletir' },
   'R-0196#R-0179': { kind: 'metin', overlap: 'batarya gerilimi, GPS kilit süresi ve telemetri gecikmesi sırasıyla' },
   'R-0179#R-0196': { kind: 'metin', overlap: 'batarya gerilimi, GPS kilit süresi ve telemetri gecikmesi sırasıyla' },
-  'R-0191#R-0184': { kind: 'tablo', head: ['Kalem', 'Adet', 'Birim ₺'], rowsThis: budgetB, rowsOther: budgetA, caption: 'Bütçe tablosu · 4 satırın 3\'ü birebir aynı' },
-  'R-0191#R-0188': { kind: 'tablo', head: ['Faz', 'Hafta', 'Durum'], rowsThis: planA, rowsOther: planB, caption: 'Zaman planı tablosu · 3 satır birebir aynı' },
-  'R-0188#R-0191': { kind: 'tablo', head: ['Faz', 'Hafta', 'Durum'], rowsThis: planB, rowsOther: planA, caption: 'Zaman planı tablosu · 3 satır birebir aynı' },
-  'R-0203#R-0184': { kind: 'gorsel', figThis: 'ŞEK. 4.1 · GÖVDE YERLEŞİM ÇİZİMİ', figOther: 'ŞEK. 5.2 · GÖVDE YERLEŞİM ÇİZİMİ', caption: 'Şablon kaynaklı yerleşim şeması benzerliği' },
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -225,9 +188,6 @@ export type CriterionCard = {
   /** 'ai' = ai_text gösteriliyor, 'hakem' = final_text onaylı */
   origin: CardOrigin;
   text: string;
-  /** "AI ile Konuş" prototip yanıtları — gerçekte Claude çağrısı olacak */
-  softer: string;
-  shorter: string;
 };
 
 export const CARDS: CriterionCard[] = [
@@ -235,47 +195,34 @@ export const CARDS: CriterionCard[] = [
     code: 'K-01', title: 'Problem Tanımı', status: 'done', origin: 'hakem', ref: 'BÖLÜM 1.2',
     beklenti: 'Çözülmek istenen problem, hedef kullanıcı ve mevcut durumun eksikliği sayısal veriyle birlikte tanımlanmalıdır.',
     text: 'Problem tanımınız net ve ölçülebilir: mevcut sistemin 4,2 sn olan tepki süresini gerekçe olarak sunmanız kriteri tam karşılıyor.',
-    softer: 'Problem tanımı bu haliyle kriteri karşılıyor. Hedef kullanıcı profilini bir cümleyle daha somutlaştırırsanız bölüm iyice güçlenir.',
-    shorter: 'Problem tanımı ölçülebilir ve yeterli. Ek düzeltme gerekmiyor.',
   },
   {
     code: 'K-02', title: 'Literatür ve Özgünlük', status: 'partial', origin: 'ai', ref: 'BÖLÜM 2.1 · BENZERLİK %62',
     beklenti: 'En az beş güncel kaynak taranmalı, önerilen çözümün mevcut çalışmalardan farkı açıkça belirtilmelidir.',
     text: 'Literatür taraması yapılmış ancak kaynakların dördü 2019 öncesi. Ayrıca Bölüm 2.1\'de özgünlük iddiası var, hangi çalışmadan hangi yönüyle ayrıştığı belirtilmemiş. Son iki yıla ait iki kaynak ekleyip farkı bir tablo ile göstermeniz önerilir.',
-    softer: 'Literatür taramanız kapsamlı bir başlangıç sunuyor. Son iki yıla ait iki güncel kaynak ekler ve özgünlüğünüzü kısa bir karşılaştırma tablosuyla gösterirseniz bu kriter tam olarak karşılanacak.',
-    shorter: 'Kaynakların dördü 2019 öncesi. Son iki yıldan iki kaynak ekleyin ve özgünlük farkını tabloyla gösterin.',
   },
   {
     code: 'K-03', title: 'Yöntem ve Sistem Mimarisi', status: 'done', origin: 'ai', ref: 'BÖLÜM 3',
     beklenti: 'Sistem bileşenleri, veri akışı ve donanım-yazılım ayrımı şema ile açıklanmalıdır.',
     text: 'Mimari şema Bölüm 3\'te verilmiş ve bileşenler arası veri akışı okunabilir. Görev yönetim katmanının hangi donanımda koştuğu şemada işaretlenirse bölüm eksiksiz olur.',
-    softer: 'Sistem mimariniz açık ve takip edilebilir. Görev yönetim katmanının hangi donanım üzerinde çalıştığını şemada işaretlemeniz, bölümü eksiksiz hale getirecek küçük bir dokunuş olur.',
-    shorter: 'Mimari şema yeterli. Görev yönetim katmanının donanımını şemada işaretleyin.',
   },
   {
     code: 'K-04', title: 'Test ve Doğrulama', status: 'missing', origin: 'ai', ref: 'BÖLÜM 4',
     beklenti: 'Her alt sistem için test senaryosu, başarı ölçütü ve elde edilen sonuç raporlanmalıdır.',
     text: 'Bölüm 4\'te test senaryoları listelenmiş ancak hiçbiri için sayısal başarı ölçütü tanımlanmamış ve saha testi sonucu paylaşılmamış. Bu kriter mevcut haliyle karşılanmıyor.',
-    softer: 'Test senaryolarınız kurgulanmış; bu iyi bir temel. Her senaryo için sayısal bir başarı ölçütü ve saha testi sonucu eklerseniz kriter tam olarak karşılanacak.',
-    shorter: 'Test senaryoları var, başarı ölçütü yok. Her senaryoya sayısal bir ölçüt ve saha testi sonucu ekleyin.',
   },
   {
     code: 'K-05', title: 'Zaman Planı ve Bütçe', status: 'partial', origin: 'ai', ref: 'BÖLÜM 5.3',
     beklenti: 'Gantt planı ve kalem bazlı bütçe, tedarik riskleriyle birlikte sunulmalıdır.',
     text: 'Zaman planı verilmiş; bütçede motor ve batarya kalemleri tek satırda toplanmış. Tedarik süresi uzun olan kalemlerin ayrıştırılması riskin görünür olmasını sağlar.',
-    softer: 'Zaman planınız gerçekçi görünüyor. Bütçede motor ve batarya kalemlerini ayrı satırlara açarsanız tedarik riski hem sizin hem hakem için görünür hale gelir.',
-    shorter: 'Bütçede motor ve batarya tek satırda. Uzun tedarikli kalemleri ayrı satıra açın.',
   },
   {
     code: 'K-06', title: 'Sonuç ve Kaynakça', status: 'done', origin: 'hakem', ref: 'BÖLÜM 6',
     beklenti: 'Sonuç bölümü hedeflerle karşılaştırmalı olmalı, kaynakça tek bir atıf formatında verilmelidir.',
     text: 'Sonuç bölümü hedeflerle birebir karşılaştırılmış, kaynakça IEEE formatında tutarlı. Bu kriterde ek bir düzeltme gerekmiyor.',
-    softer: 'Sonuç bölümünüz hedeflerle karşılaştırmalı yazılmış ve kaynakçanız tek formatta tutarlı. Bu kriterde bir eksik görünmüyor.',
-    shorter: 'Sonuç hedeflerle uyumlu, kaynakça tutarlı. Düzeltme gerekmiyor.',
   },
 ];
 
-export const HIZLI_TALIMATLAR = ['Daha yapıcı bir dille yaz', 'Kısalt', 'Somut örnek ekle'] as const;
 
 /** Şu an giriş yapmış hakem — auth gelene kadar sabit. */
 export const CURRENT_JUDGE = { name: 'Zeynep Demir', initials: 'ZD', role: 'HAKEM', stampedAt: '11:24' };

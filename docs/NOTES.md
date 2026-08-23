@@ -1,5 +1,15 @@
 # ZEMA — Yapılacaklar / Bilinen Eksikler
 
+## ✂️ İptal edilen kapsam (23 Ağustos, token bütçesi)
+
+Bunlar **yapılmayacak**, TODO değil — kayıt için burada:
+
+- **"AI ile Konuş" + `correction_log` + "hafif öğrenme"** (§4.5). Hakem
+  aksiyonu yalnızca "Doğrudan Düzenle". `correction_log` tablosu DB'de boş
+  duruyor; migration ile düşürmeye değmez.
+- **Tablo ve görsel benzerliği** (§4.4). Yalnızca metin. `content_type`
+  şemada `'metin'` literal'ine indirildi.
+
 Bu dosya, geliştirme sırasında tespit edilip **bilinçli olarak sonraya bırakılan**
 maddelerin tek listesi. Mimari kararlar `PLAN.md`'de; buraya yalnızca "yapılacak"
 girer. Bir madde bitince sil.
@@ -31,21 +41,11 @@ girer. Bir madde bitince sil.
 
 ## 🔧 Gün 3 — AI hattı
 
-- [ ] **Model Türkçe'yi diyakritiksiz yazıyor.**
-      İlk gerçek Gemini çağrısında "tanimi", "basarili", "yapilmistir" çıktı.
-      Dil kalitesini denetleyen bir üründe kabul edilemez. System prompt'a
-      açık talimat gerekiyor. (PLAN.md §4'te de uyarı olarak duruyor.)
-
 - [ ] **Fixture'ların içi hâlâ boş.** `lib/ai/fixtures/` — 6 dosyanın 5'i
       `_TODO` yer tutucusu. PLAN.md §9'daki planlı kusurlara (R2 eksik bölüm,
       R3 başlık uyumsuzluğu, R4 kategori hatası, R7 kriterler arası ayrışma,
       R8 imla) göre doldurulmalı; yoksa mock modda ekranlar boş görünür.
       `feedback_synthesis.json` şema min kısıtları yüzünden zaten dolduruldu.
-
-- [ ] **`insufficient_evidence` şemalarda yok.** PLAN.md §1 modelin kanıt
-      gösteremediğinde bunu döndürmesini istiyor ve `analysis_results.verdict`
-      kolonu bunu kabul ediyor, ama §4.1/§4.2'deki Zod enum'ları yalnızca
-      `pass|warn|fail`. Enum'lara eklenmeli.
 
 - [ ] **Örtük önbellek gerçekten çalışıyor mu?** İlk çağrıda
       `cached_input_tokens: 0` çıktı (girdi 415 token, eşiğin çok altında).

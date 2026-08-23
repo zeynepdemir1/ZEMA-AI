@@ -400,6 +400,12 @@ Kategori listesi tüm raporlarda aynı → **cache prefix'ine koy.**
 
 ### 4.4 `similarity` — Benzerlik / Özgünlük
 
+> **⚠️ KAPSAM KESİNTİSİ (23 Ağustos):** Yalnızca **metin** benzerliği yapılıyor.
+> Tablo ve görsel benzerliği iptal edildi — PDF'ten tablo/görsel ayrıştırma
+> ayrı bir çıkarım hattı gerektiriyordu (bu bölümün "açık teknik soru" notu).
+> Şema `content_type: 'metin'` ile sınırlandı, UI'daki tablo/görsel
+> karşılaştırma görünümleri kaldırıldı.
+
 İki aşamalı, çünkü N raporun tümünü Claude'a ikili karşılaştırmak O(N²) ve pahalı.
 
 **Aşama 1 — aday eleme (Postgres, bedava):**
@@ -433,7 +439,13 @@ const SimilarityPairSchema = z.object({
 
 > **Yükseltme (zaman kalırsa):** `pgvector` + Voyage AI (`voyage-3.5`, çok dilli) embedding'i ile aday eleme. Trigram parafrazı kaçırır, embedding yakalar. Ama bu **ikinci bir API sağlayıcısı** demek — MVP'ye zorunlu değil. Gün 6'ya bırak.
 
-### 4.5 `criteria_scoring` — Yapılandırılmış Kriter Bazlı Geri Bildirim (ana özellik, mimari değişti)
+### 4.5 `criteria_scoring` — Yapılandırılmış Kriter Bazlı Geri Bildirim (ana özellik)
+
+> **⚠️ KAPSAM KESİNTİSİ (23 Ağustos):** "AI ile Konuş" ve buna bağlı
+> `correction_log` / "hafif öğrenme" mekanizması **tamamen iptal edildi**
+> (token bütçesi). Hakem aksiyonu olarak yalnızca **Doğrudan Düzenle**
+> kaldı: `final_text` serbest metin, `edit_status = 'manually_edited'`.
+> `correction_log` tablosu DB'de duruyor ama hiçbir kod yazmıyor.
 
 **Önceki tasarım** (tek `justification` string'i, hakem sadece puanı ezerdi) **terk edildi.** Yerine gelen, VibeGrade tarzı satır-içi annotation'dan da farklı — **kriter başına yapılandırılmış bir metin bloğu**, hakem bunu ya doğrudan düzenliyor ya da AI'yla sohbet ederek revize ettiriyor. `effort: "high"`.
 
