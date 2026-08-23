@@ -3,7 +3,8 @@
 **Bağlam:** T3 Vakfı Bursiyer Yapay Zeka Creathonu, Problem 4 — TEKNOFEST rapor değerlendirmelerini destekleyen AI sistemi.
 **Ürün adı:** ZEMA.
 **Kısıt:** Tek geliştirici.
-**Stack:** Next.js (App Router) + Supabase (Postgres/Auth/Storage) + Claude API + Vercel.
+**Stack:** Next.js (App Router) + Supabase (Postgres/Auth/Storage) + Google Gemini API (ücretsiz katman) + Vercel.
+*(Sağlayıcı 23 Ağustos'ta Claude API'den Gemini'ye çevrildi — bütçe kısıtı, bkz. §4.)*
 
 **⚠️ Gerçek takvim (bu bölüm plan ilk yazıldığında yoktu, sonradan netleşti):**
 - **Görevlerin Teslimi: 26 Ağustos, saat 10:00** — üç ayrı çıktı zorunlu: (1) **canlıda çalışan uygulama** (video değil, gerçek deploy), (2) İş Modeli Canvası, (3) Girişim Sunumu (pptx). Bu üçü paralel ilerlemeli, sadece kod değil.
@@ -312,19 +313,27 @@ REGISTRATION_CODE_EVALUATION_ADMIN=...
 
 Kayıt endpoint'i: kod boşsa `role = 'competitor'`; kod bir env değişkeniyle eşleşirse ilgili role ata; eşleşmezse "Geçersiz kayıt kodu" hatası dön. README'de sadece mekanizma anlatılır ("hakem/yönetici iseniz proje sahibinden kod isteyin"), gerçek kod değeri asla yazılmaz — repo public olabileceği için.
 
-**KVKK:** Kayıt formunda zorunlu onay kutusu (`kvkk_consent_at` doldurulmadan kayıt tamamlanmaz). `/gizlilik` route'unda aydınlatma metni: hangi veri toplanıyor (ad-soyad, e-posta, rapor içeriği), Claude API'ye analiz amacıyla aktarıldığı açıkça belirtilir, saklama süresi, silme talebi hakkı. Profil ekranında basit bir "Hesabımı ve Verilerimi Sil" aksiyonu (onay diyaloğuyla) MVP için yeterli — otomatik saklama-süresi-sonu silme gibi bir cron mekanizması şimdilik gerekmiyor.
+**KVKK:** Kayıt formunda zorunlu onay kutusu (`kvkk_consent_at` doldurulmadan kayıt tamamlanmaz). `/gizlilik` route'unda aydınlatma metni: hangi veri toplanıyor (ad-soyad, e-posta, rapor içeriği), Google Gemini API'ye analiz amacıyla aktarıldığı açıkça belirtilir, saklama süresi, silme talebi hakkı. Profil ekranında basit bir "Hesabımı ve Verilerimi Sil" aksiyonu (onay diyaloğuyla) MVP için yeterli — otomatik saklama-süresi-sonu silme gibi bir cron mekanizması şimdilik gerekmiyor.
 
 ---
 
 ## 4. Altı Kontrolün Tasarımı
 
+**⚠️ Sağlayıcı değişikliği (23 Ağustos):** Bütçe kısıtı nedeniyle Claude API yerine **Google Gemini API'nin ücretsiz katmanı** kullanılıyor (kredi kartı gerekmiyor). Aşağıdaki ortak ilkeler buna göre güncellendi; §4.1–4.6'daki Zod şemaları **aynen geçerli** — yalnızca modele gönderilme biçimi değişti.
+
 Ortak ilkeler:
-- **Model:** `claude-sonnet-5` ($2/$10 per MTok) — bütçe kısıtlı, ücretsiz $5 deneme kredisiyle başlanıyor. Opus'a göre ~2.5x daha ucuz, bu iş için (kontrol/sınıflandırma/yapılandırılmış çıktı) kalite farkı MVP'de hissedilmiyor. Rapor boyutları Sonnet'in bağlamına rahat sığıyor, chunk'lamaya gerek yok. Bütçe/kalite dengesi değişirse (finalist olup gerçek API kredisi alınırsa) `criteria_scoring` gibi en kritik kontrol Opus'a yükseltilebilir, diğerleri Sonnet'te kalabilir.
-- **Yapılandırılmış çıktı:** `client.messages.parse()` + Zod (`zodOutputFormat`). Regex ile JSON ayıklama yok.
-- **Adaptive thinking:** `thinking: { type: "adaptive" }`. Kriter puanlama gibi zor işlerde `output_config.effort: "high"`, ucuz kontrollerde `"low"`.
-- **Streaming:** her çağrıda, timeout'a karşı. `stream.finalMessage()` ile topla.
-- **Prompt caching:** rapor metni 5 kontrolde tekrar tekrar gönderiliyor → cache'le (§5).
+- **Model:** `gemini-3.5-flash` (ücretsiz katman, $0). Seçim tahminle değil, 23 Ağustos'ta canlı API'ye karşı ölçülerek yapıldı:
+  - `gemini-2.5-*` → **404 NOT_FOUND**, artık mevcut değil
+  - `gemini-3.7-flash` → `MINIMAL` düşünme seviyesini desteklemiyor (400), `MEDIUM`/`HIGH`'da tekrarlanan 429/503
+  - `gemini-3.5-flash` → dört düşünme seviyesinin hepsi ilk denemede çalıştı, 1.4–7 sn
+  Alias (`gemini-flash-latest`) **kullanılmıyor**: sessizce değişirse §1'in denetlenebilirlik iddiası bozulur. Gerçekte çalışan sürüm `response.modelVersion`'dan ayrıca loglanıyor. Bütçe açılırsa `criteria_scoring` gibi en kritik kontrol daha güçlü bir modele yükseltilebilir (`MODEL_OVERRIDES`).
+- **Yapılandırılmış çıktı:** `responseJsonSchema` + `responseMimeType: 'application/json'`, Zod şemasından üretilir (`lib/ai/gemini-schema.ts`). Yanıt yine Zod ile doğrulanır. Regex ile JSON ayıklama yok.
+  - Gemini tam JSON Schema kabul etmiyor. Zod v4'ün `z.toJSONSchema()` çıktısında **üç uyumsuz anahtar** var, dönüştürücü hallediyor: `$schema` atılıyor, `const` → `enum: [değer]`, `exclusiveMinimum/Maximum` → `minimum/maximum` (sınır dahil/hariç ayrımı kaybolur; gerçek kısıtı yanıt geldiğinde Zod yakalıyor). Her nesneye ayrıca `propertyOrdering` ekleniyor.
+- **Düşünme (thinking):** Claude'un `output_config.effort`'unun karşılığı `thinkingConfig.thinkingLevel`. `gemini-3.5-flash`'ta ölçülen düşünme token'ları: `MINIMAL` 0 · `LOW` 441 · `MEDIUM` 934 · `HIGH` 1691. `criteria_scoring` → `HIGH`, ucuz kontroller → `MINIMAL`. **`MINIMAL` her modelde yok** — model değiştirilirse bu tablo yeniden doğrulanmalı.
+- **Streaming:** kaldırıldı. Gemini çağrıları tek seferde dönüyor ve zaten §2.1'deki job kuyruğu Vercel süre limitini çözüyor — streaming yalnızca ikincil bir güvenceydi.
+- **Prompt caching:** Anthropic'in `cache_control` breakpoint'leri yok (bkz. §5.1).
 - **Prompt sürümü:** her prompt bir sabitte, `PROMPT_VERSIONS.criteria_scoring = "v3"`. Sonuçla birlikte yazılır.
+- **⚠️ Bilinen prompt sorunu:** İlk gerçek çağrıda model Türkçe'yi **diyakritiksiz** yazdı ("tanimi", "basarili"). Dil kalitesini denetleyen bir üründe kabul edilemez — system prompt'a "Türkçe'yi tam diyakritiklerle yaz" talimatı eklenmeli (Gün 3).
 
 ### 4.1 `language_template` — Dil ve Şablon Kontrolü
 
@@ -493,88 +502,90 @@ Bu çıktı `feedback` tablosuna `is_published=false` yazılır → Değerlendir
 
 ---
 
-## 5. Claude API Kullanım Detayları
+## 5. Model API Kullanım Detayları (Gemini)
 
-### 5.1 Prompt Caching stratejisi
+### 5.1 Önbellek — Gemini'de aynı mekanizma yok
 
-Aynı raporun metni 5 kontrolde tekrar gönderiliyor. Cache prefix eşleşmesi sırası: `tools` → `system` → `messages`. Yani:
+**Bu bölüm baştan yazıldı.** Önceki hali Anthropic'e özgü bir prompt caching stratejisiydi: `system` ve `messages` içine `cache_control: { type: "ephemeral" }` breakpoint'leri koyarak rapor metnini 5 kontrolde tekrar tekrar göndermenin maliyetini düşürmek. **Gemini'de böyle bir breakpoint API'si yok**, o yüzden strateji tamamen kaldırıldı.
 
-```ts
-const res = await client.messages.parse({
-  model: "claude-opus-5",
-  max_tokens: 16000,
-  thinking: { type: "adaptive" },
-  output_config: { effort: "high", format: zodOutputFormat(CriteriaScoringSchema) },
-  system: [
-    // 1) YARIŞMA BAZINDA SABİT — rubrik, şablon spec, kategori listesi, rol tanımı
-    { type: "text", text: competitionContext, cache_control: { type: "ephemeral" } },
-  ],
-  messages: [
-    {
-      role: "user",
-      content: [
-        // 2) RAPOR BAZINDA SABİT — 5 kontrolde aynı
-        { type: "text", text: `<rapor>\n${report.extracted_text}\n</rapor>`,
-          cache_control: { type: "ephemeral" } },
-        // 3) DEĞİŞKEN — kontrol talimatı, en sonda
-        { type: "text", text: CHECK_INSTRUCTIONS.criteria_scoring },
-      ],
-    },
-  ],
-});
-```
+Gemini'nin karşılıkları:
 
-**Cache'i sessizce bozan şeyler — kaçın:** system prompt'una tarih/saat yazmak, `JSON.stringify` ile sırasız obje serileştirmek, kontrole göre değişen tool listesi. Doğrulama: `response.usage.cache_read_input_tokens` sıfırdan büyük olmalı. Sıfırsa prefix bozuluyor demektir.
+- **Örtük (implicit) önbellek:** Desteklenen modellerde otomatik çalışır, istek gerektirmez. Ortak önek yakalanırsa girdi maliyeti/kotası düşer. Şu an buna güveniliyor.
+- **Açık (explicit) önbellek:** `ai.caches.create()` ile bir `CachedContent` nesnesi oluşturup istekte referans vermek gerekir. Minimum token eşiği var ve nesnenin yaşam döngüsü elle yönetilir. **MVP'de kullanılmıyor** — ücretsiz katmanda maliyet zaten $0, karmaşıklığa değmez.
 
-> Minimum cache'lenebilir prefix ~1024 token. Kısa raporlarda cache tutmaz, sorun değil.
+**Yapılan tek şey — istek sırasını korumak:** Sabit içerik (yarışma bağlamı `systemInstruction`'da, rapor metni ilk `part`'ta) önce, kontrole özel değişken talimat en sonda. Örtük önbelleğin ortak öneki yakalayabilmesi bunu gerektiriyor.
 
-### 5.2 Maliyet tahmini
+**Ölçüm:** `usage.cached_input_tokens` (`cachedContentTokenCount`) döndürülüyor. İlk gerçek çağrıda bu değer **0** çıktı — girdi yalnızca 415 token olduğu için örtük önbellek eşiğinin çok altında kaldı. Gerçek 20 sayfalık raporlarda (12–15k token) devreye girip girmediği bu alandan izlenmeli.
 
-20 sayfalık rapor ≈ 12–15k token.
+> **Not:** Önbellek artık bir maliyet kalemi değil, bir **kota** kalemi. Ücretsiz katmanın dakika/gün başına istek ve token limitleri var; önbellek tutarsa aynı limitle daha çok rapor işlenir.
 
-| Kalem | Hesap |
+### 5.2 Maliyet — ücretsiz katman, $0
+
+**Ücretsiz katman kullanıldığı için para maliyeti yok.** Önceki tahmin (rapor başına $0.35–0.60, 100 raporluk set için $40–60) Claude API fiyatlandırmasına dayanıyordu ve artık geçersiz.
+
+Yeni kısıt **para değil kota.** Ölçülen tek gerçek çağrı (`criteria_scoring`, 3 kriter, kısa rapor):
+
+| Kalem | Ölçüm |
 |---|---|
-| Girdi (ilk çağrı, cache yazımı) | ~15k tok |
-| Girdi (5 tekrar çağrı) | cache okuması — ham fiyatın çok altında |
-| Çıktı (6 kontrol × ~2k) | ~12k tok × $25/MTok ≈ **$0.30** |
-| Benzerlik ikili karşılaştırmalar | 5 çift × ~25k tok girdi |
+| Girdi | 415 token |
+| Çıktı | 474 token |
+| Düşünme (`thoughts`) | 2.232 token |
+| **Toplam** | **3.121 token** |
+| Süre | 9,8 sn (`thinkingLevel: HIGH`) |
 
-**Rapor başına kaba tahmin: $0.35 – $0.60.** 100 raporluk demo veri seti ≈ **$40–60**. Creathon bütçesi için sorun değil, ama:
-- Geliştirme sırasında **`analysis_results` cache'ini kullan** — aynı raporu 40 kez yeniden analiz etme. `tick` endpoint'inde `unique (report_id, check_type)` zaten koruyor; "yeniden çalıştır" butonunu bilinçli tut.
-- Prompt iterasyonu için 3–4 raporluk küçük bir sabit set kullan.
+Dikkat çeken şey **düşünme token'larının çıktının ~4,7 katı** olması. Kota planlarken hesaba katılmalı: `HIGH` düşünme pahalı, o yüzden yalnızca `criteria_scoring`'de açık, diğer kontroller `MINIMAL`/`MEDIUM`'da.
 
-### 5.4 Geliştirme Modu — Mock API (kredi tasarrufu için ZORUNLU)
+Gerçek 20 sayfalık raporlarda girdi 12–15k token olacağı için rapor başına kaba tahmin **~20–30k token × 6 kontrol**. Ücretsiz katmanın dakika ve gün başına limitleri bunu sınırlayacak — bu yüzden:
 
-Gerçek Claude API çağrısı SADECE şu durumlarda yapılır: (a) bir kontrolü ilk kez 
+- **§5.4'teki `MOCK_AI` bayrağı artık daha da kritik.** Kota bitince geliştirme durur.
+- Job runner 429'u **yeniden denenebilir** olarak işaretliyor ve backoff uyguluyor (§5.3). Ücretsiz katmanda 429 istisna değil, normal işleyişin parçası.
+- Demo günü seed raporların sonuçları DB'de hazır dursun (§9); canlı çağrı yalnızca tek bir rapor için yapılsın. Kota tükenirse demo çökmez.
+
+### 5.4 Geliştirme Modu — Mock API (kota tasarrufu için ZORUNLU)
+
+Gerçek model API çağrısı SADECE şu durumlarda yapılır: (a) bir kontrolü ilk kez 
 uçtan uca test ederken, (b) demo/deploy öncesi son doğrulama. Bunun dışındaki 
 tüm geliştirme (UI, layout, state yönetimi, hata senaryoları) **mock modda** 
 yapılır.
 
-Uygulama: `.env`'de `MOCK_AI=true/false` bayrağı. Her Claude API çağrısını 
-saran bir fonksiyon (`callClaudeForCheck()` gibi) yaz: `MOCK_AI=true` iken 
+Uygulama: `.env`'de `MOCK_AI=true/false` bayrağı. Her model çağrısını saran tek 
+bir fonksiyon (`callModelForCheck()`, `lib/ai/call-claude-for-check.ts`) yaz: `MOCK_AI=true` iken 
 gerçek API'yi hiç çağırma, her check_type için önceden yazılmış, ilgili Zod 
 şemasına uyan sabit bir JSON fixture döndür (`/fixtures/language_template.json` 
 gibi, her 6 kontrol için birer tane). `MOCK_AI=false` iken normal şekilde 
 gerçek API'yi çağır.
 
 Bu bayrak olmadan geliştirme ilerlemeyecek — her component değişikliğinde 
-gerçek API'ye para gitmemesi için bu en baştan, Gün 1'de kurulmalı.
+ücretsiz katman kotasının tükenmemesi için bu en baştan, Gün 1'de kurulmalı. 
+Bayrak **varsayılan olarak AÇIK** (`MOCK_AI !== 'false'`): env unutulursa 
+gerçek API çağrılmaz.
 
 ### 5.3 Hata yönetimi
 
-En spesifikten genele zincir kur — hepsini tek `catch` ile yutma:
+Hepsini tek `catch` ile yutma. Sarmalayıcı hataları `CheckCallError` olarak 
+yeniden fırlatıyor ve üzerine **`retryable`** bayrağı koyuyor; job runner 
+(§2.1) yeniden deneme kararını buna bakarak veriyor.
 
 ```ts
-try { ... }
 catch (e) {
-  if (e instanceof Anthropic.RateLimitError)      → job'u pending'e geri koy, backoff
-  else if (e instanceof Anthropic.APIConnectionError) → retry
-  else if (e instanceof Anthropic.APIStatusError && e.status >= 500) → retry
-  else → job.status = 'failed', error kaydet, retry etme
+  if (e instanceof ApiError) {
+    retryable = e.status === 429 || e.status >= 500   // kota / geçici
+    // diğer 4xx → kalıcı, retry etme
+  } else {
+    retryable = true                                  // ağ kopması
+  }
 }
 ```
 
-Ayrıca `response.stop_reason === "refusal"` kontrolü ekle (HTTP 200 döner, exception fırlatmaz).
+**Exception fırlatmayan iki durum ayrıca kontrol edilmeli** (HTTP 200 döner):
+
+- `response.promptFeedback.blockReason` → güvenlik filtresi istemi engelledi (kalıcı)
+- `response.candidates[0].finishReason !== 'STOP'` → `MAX_TOKENS` (çıktı yarıda kesilir, JSON bozuk gelir — yeniden denenebilir), `SAFETY` / `RECITATION` (kalıcı)
+
+**Sahadan gözlem (23 Ağustos):** Ücretsiz katmanda **503 UNAVAILABLE ve 429 
+istisna değil, normal işleyişin parçası.** İlk gerçek çağrı denemesi 503 aldı; 
+`gemini-3.7-flash` üzerinde 6 deneme üst üste düştü. Backoff'lu yeniden deneme 
+olmadan bu sistem çalışmaz. Model seçimi de buna göre yapıldı (§4).
 
 ---
 
@@ -713,14 +724,16 @@ Demoyu **canlı API'ye bağımlı bırakma.** Seed raporların analiz sonuçlar�
 
 ```bash
 npx create-next-app@latest . --typescript --tailwind --app --eslint
-npm i @supabase/supabase-js @supabase/ssr @anthropic-ai/sdk zod unpdf
+npm i @supabase/supabase-js @supabase/ssr @google/genai zod unpdf
 npx shadcn@latest init
 npx shadcn@latest add button card table tabs badge dialog form input select textarea sonner
 ```
 
 1. Supabase projesi aç → `supabase/migrations/0001_init.sql` içine §3'teki şemayı koy
 2. RLS politikalarını `0002_rls.sql`'e yaz (§3.1 matrisi)
-3. `.env.local`: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY`
-   → **`SUPABASE_SERVICE_ROLE_KEY` ve `ANTHROPIC_API_KEY` yalnızca server tarafında.** `NEXT_PUBLIC_` öneki verme.
+3. `.env.local`: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `GOOGLE_API_KEY`, `GEMINI_MODEL`, `MOCK_AI`
+   → **`SUPABASE_SERVICE_ROLE_KEY` ve `GOOGLE_API_KEY` yalnızca server tarafında.** `NEXT_PUBLIC_` öneki verme.
+   → Anahtar: [aistudio.google.com/apikey](https://aistudio.google.com/apikey) (ücretsiz, kredi kartsız).
+   → `ANTHROPIC_API_KEY` `.env.example`'da duruyor ama **kodda hiçbir yerde okunmuyor** — sağlayıcı geri alınabilsin diye korundu.
 4. Vercel'e boş projeyi deploy et, env değişkenlerini gir, çalıştığını gör
 5. `git push` — repo boş, ilk commit'i bugün at

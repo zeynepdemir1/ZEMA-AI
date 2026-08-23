@@ -1,6 +1,13 @@
+import { ThinkingLevel } from '@google/genai';
+
 /**
- * ZEMA — Claude API yapılandırması
- * Kaynak: PLAN.md §4 (ortak ilkeler), §5.1 (caching), §5.4 (mock mod)
+ * ZEMA — model sağlayıcı yapılandırması
+ * Kaynak: docs/PLAN.md §4 (ortak ilkeler), §5.4 (mock mod)
+ *
+ * ⚠️ SAĞLAYICI DEĞİŞİKLİĞİ: Bütçe kısıtı nedeniyle Claude API yerine
+ * Google Gemini API (ücretsiz katman) kullanılıyor. PLAN.md §4/§5 hâlâ
+ * Claude'u anlatıyor — plan güncellenmeli. Anthropic anahtarı ve model
+ * sabiti ileride geri dönmek üzere korundu ama HİÇBİR YERDE KULLANILMIYOR.
  */
 
 /** PLAN.md §3: check_type enum'u ile birebir aynı sırada ve isimde. */
@@ -15,27 +22,63 @@ export const CHECK_TYPES = [
 
 export type CheckType = (typeof CHECK_TYPES)[number];
 
-/**
- * PLAN.md §4: bütçe kararı claude-sonnet-5.
- * §4 notu: "Bütçe/kalite dengesi değişirse criteria_scoring gibi en kritik
- * kontrol Opus'a yükseltilebilir, diğerleri Sonnet'te kalabilir."
- * Bunun için MODEL_OVERRIDES var — şimdilik boş.
- */
-export const DEFAULT_MODEL = process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-5';
+// ─────────────────────────────────────────────────────────────
+// Model seçimi
+// ─────────────────────────────────────────────────────────────
 
+/**
+ * 2026-08-23'te canlı API'ye karşı ölçülerek seçildi:
+ *
+ *   gemini-2.5-*      → 404 NOT_FOUND (artık yok)
+ *   gemini-3.7-flash  → MINIMAL düşünme seviyesi desteklenmiyor (400),
+ *                       MEDIUM/HIGH'da tekrarlanan 429/503
+ *   gemini-3.5-flash  → dört düşünme seviyesinin hepsi ilk denemede çalıştı
+ *
+ * Alias (`gemini-flash-latest`) KULLANILMIYOR: sessizce değişince PLAN.md §1'in
+ * denetlenebilirlik iddiası ("her AI çıktısı için model id loglanır") bozulur.
+ * Gerçekte çalışan sürüm ayrıca response.modelVersion'dan kaydedilir.
+ */
+export const DEFAULT_MODEL = process.env.GEMINI_MODEL ?? 'gemini-3.5-flash';
+
+/**
+ * PLAN.md §4 notunun Gemini karşılığı: en kritik kontrol daha güçlü bir
+ * modele yükseltilebilir, diğerleri ucuz modelde kalır. Şimdilik boş —
+ * ücretsiz katmanda tek model kullanılıyor.
+ */
 export const MODEL_OVERRIDES: Partial<Record<CheckType, string>> = {
-  // criteria_scoring: 'claude-opus-5',
+  // criteria_scoring: 'gemini-3.5-pro',
 };
 
 export function modelFor(checkType: CheckType): string {
   return MODEL_OVERRIDES[checkType] ?? DEFAULT_MODEL;
 }
 
-/**
- * PLAN.md §4: "Adaptive thinking. Kriter puanlama gibi zor işlerde
- * output_config.effort: 'high', ucuz kontrollerde 'low'."
- */
+/** Kullanılmıyor — sağlayıcı geri alınırsa referans olsun diye bırakıldı. */
+export const ANTHROPIC_MODEL_LEGACY = 'claude-sonnet-5';
+
+// ─────────────────────────────────────────────────────────────
+// Düşünme bütçesi (Claude'daki output_config.effort'un karşılığı)
+// ─────────────────────────────────────────────────────────────
+
 export type Effort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+
+/**
+ * PLAN.md §4: "Kriter puanlama gibi zor işlerde effort: 'high', ucuz
+ * kontrollerde 'low'." Gemini 3.x'teki karşılığı thinkingLevel.
+ *
+ * gemini-3.5-flash'ta ölçülen düşünme token'ları:
+ *   MINIMAL 0 · LOW 441 · MEDIUM 934 · HIGH 1691
+ *
+ * ⚠️ MINIMAL her modelde yok — gemini-3.7-flash bunu 400 ile reddediyor.
+ * Model değiştirirsen bu tabloyu yeniden doğrula.
+ */
+export const THINKING_LEVEL: Record<Effort, ThinkingLevel> = {
+  low: ThinkingLevel.MINIMAL, // ucuz, deterministik kontroller
+  medium: ThinkingLevel.MEDIUM,
+  high: ThinkingLevel.HIGH, // criteria_scoring — ana özellik
+  xhigh: ThinkingLevel.HIGH,
+  max: ThinkingLevel.HIGH,
+};
 
 export const EFFORT: Record<CheckType, Effort> = {
   language_template: 'low',
@@ -46,10 +89,13 @@ export const EFFORT: Record<CheckType, Effort> = {
   feedback_synthesis: 'medium',
 };
 
+// ─────────────────────────────────────────────────────────────
+// Prompt sürümleri ve mock bayrağı (sağlayıcıdan bağımsız)
+// ─────────────────────────────────────────────────────────────
+
 /**
- * PLAN.md §4: "her prompt bir sabitte, PROMPT_VERSIONS.criteria_scoring = 'v3'.
- * Sonuçla birlikte yazılır." → analysis_results.prompt_version
- * Prompt metnini her değiştirdiğinde buradaki sürümü artır.
+ * PLAN.md §4: "her prompt bir sabitte. Sonuçla birlikte yazılır."
+ * → analysis_results.prompt_version
  */
 export const PROMPT_VERSIONS: Record<CheckType, string> = {
   language_template: 'v1',
@@ -63,6 +109,5 @@ export const PROMPT_VERSIONS: Record<CheckType, string> = {
 /**
  * PLAN.md §5.4 — kredi tasarrufu bayrağı.
  * Varsayılan AÇIK: env'de açıkça 'false' yazmadıkça gerçek API çağrılmaz.
- * Kazara para harcamaktan korur.
  */
 export const MOCK_AI = process.env.MOCK_AI !== 'false';

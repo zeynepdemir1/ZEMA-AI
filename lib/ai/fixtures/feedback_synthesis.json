@@ -1,7 +1,32 @@
 {
-  "_TODO": "PLAN.md §4.6 FeedbackSchema. Puan/sıralama SIZDIRMA. improvements min 3 max 7, strengths min 2 max 5.",
-  "summary": "",
-  "strengths": [],
-  "improvements": [],
-  "next_steps": []
+  "_TODO": "PLAN.md §4.6 FeedbackSchema. Puan/sıralama SIZDIRMA. Aşağıdaki içerik şemanın min kısıtlarını (strengths>=2, improvements>=3) karşılayan yer tutucudur — demo metniyle değiştir.",
+  "summary": "Raporunuz güçlü bir problem tanımı ve okunabilir bir sistem mimarisi sunuyor; test bölümünde ölçülebilirlik eksik.",
+  "strengths": [
+    "Problem tanımı sayısal veriyle desteklenmiş ve doğrulanabilir.",
+    "Sistem mimarisi şemada net; bileşenler arası veri akışı takip edilebilir."
+  ],
+  "improvements": [
+    {
+      "area": "Test ve doğrulama",
+      "what": "Test senaryoları listelenmiş ancak sayısal başarı ölçütü tanımlanmamış.",
+      "how": "Her senaryo için bir eşik değer belirleyin ve saha testi sonucunu tabloya ekleyin.",
+      "priority": "high"
+    },
+    {
+      "area": "Literatür",
+      "what": "Taranan kaynakların çoğu güncel değil.",
+      "how": "Son iki yıla ait en az iki çalışma ekleyip özgünlük farkınızı kısa bir tabloyla gösterin.",
+      "priority": "medium"
+    },
+    {
+      "area": "Bütçe",
+      "what": "Tedarik süresi uzun kalemler tek satırda toplanmış.",
+      "how": "Motor ve batarya kalemlerini ayrı satırlara açarak tedarik riskini görünür kılın.",
+      "priority": "medium"
+    }
+  ],
+  "next_steps": [
+    "Saha testi sonuçlarını ekleyip Bölüm 4'ü güncelleyin.",
+    "Güncel kaynakları ekleyip özgünlük tablosunu oluşturun."
+  ]
 }

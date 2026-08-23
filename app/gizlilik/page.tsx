@@ -21,7 +21,7 @@ const SECTIONS = [
   },
   {
     title: 'Yurt dışına aktarım',
-    body: 'Rapor metinleri, analiz üretmek amacıyla Anthropic tarafından işletilen Claude API hizmetine aktarılır. Aktarım yalnızca analiz amacıyla yapılır; bu veriler model eğitimi için kullanılmaz.',
+    body: 'Rapor metinleri, analiz üretmek amacıyla Google tarafından işletilen Gemini API hizmetine aktarılır. Aktarım yalnızca analiz amacıyla yapılır. Google\'ın ücretsiz katmanında gönderilen verilerin hizmet iyileştirme amacıyla kullanılabildiğini not ediyoruz; ücretli katmana geçildiğinde bu durum değişir.',
   },
   {
     title: 'Saklama süresi',
