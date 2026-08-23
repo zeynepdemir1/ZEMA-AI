@@ -309,3 +309,193 @@ export async function loadSimilarity(reportId: string) {
     matches,
   };
 }
+
+// ─────────────────────────────────────────────────────────────
+// /evaluation — Değerlendirme Yöneticisi panosu
+// ─────────────────────────────────────────────────────────────
+
+export type DashData = {
+  competition: { id: string; name: string; year: number };
+  stats: { totalReports: number; analyzed: number; awaitingApproval: number; published: number };
+  queue: Array<{
+    reportId: string;
+    code: string;
+    team: string;
+    judge: string;
+    approved: number;
+    total: number;
+    checksDone: number;
+    checksTotal: number;
+    failed: number;
+    badge: string;
+    tone: 'gold' | 'teal' | 'muted' | 'danger';
+  }>;
+  workload: Array<{ name: string; assigned: number; capacity: number }>;
+  updatedAt: string | null;
+};
+
+export async function loadDashboard(): Promise<DashData | null> {
+  const db = supabaseAdmin();
+
+  const { data: competition } = await db
+    .from('competitions')
+    .select('id, name, year')
+    .order('year', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!competition) return null;
+
+  const [{ data: reports }, { data: teams }, { data: jobs }, { data: scores }, { data: fb }, { data: assignments }, { data: judges }] =
+    await Promise.all([
+      db.from('reports').select('id, team_id, created_at').eq('competition_id', competition.id),
+      db.from('teams').select('id, name'),
+      db.from('analysis_jobs').select('report_id, status'),
+      db.from('ai_criterion_scores').select('report_id, edit_status'),
+      db.from('feedback').select('report_id, is_published, published_at'),
+      db.from('assignments').select('report_id, judge_id'),
+      db.from('profiles').select('id, full_name').eq('role', 'judge'),
+    ]);
+
+  const teamName = new Map((teams ?? []).map((t) => [t.id, t.name]));
+  const judgeName = new Map((judges ?? []).map((j) => [j.id, j.full_name ?? '—']));
+  const judgeOfReport = new Map((assignments ?? []).map((a) => [a.report_id, a.judge_id]));
+
+  const list = reports ?? [];
+  const queue: DashData['queue'] = list.map((r) => {
+    const rJobs = (jobs ?? []).filter((j) => j.report_id === r.id);
+    const rScores = (scores ?? []).filter((s) => s.report_id === r.id);
+    const approved = rScores.filter((s) => s.edit_status !== 'ai_generated').length;
+    const checksDone = rJobs.filter((j) => j.status === 'done').length;
+    const failed = rJobs.filter((j) => j.status === 'failed').length;
+    const rFb = (fb ?? []).find((f) => f.report_id === r.id);
+    const assignedTo = judgeOfReport.get(r.id);
+
+    let badge = 'KUYRUKTA';
+    let tone: DashData['queue'][number]['tone'] = 'muted';
+    if (failed > 0) {
+      badge = 'HATA';
+      tone = 'danger';
+    } else if (rFb?.is_published) {
+      badge = 'YAYINLANDI';
+      tone = 'gold';
+    } else if (rScores.length > 0 && approved === rScores.length) {
+      badge = 'ONAYLANDI';
+      tone = 'gold';
+    } else if (checksDone > 0) {
+      badge = 'İNCELEMEDE';
+      tone = 'teal';
+    } else if (!assignedTo) {
+      badge = 'ATANMADI';
+      tone = 'danger';
+    }
+
+    return {
+      reportId: r.id,
+      code: reportCode(r.id),
+      team: teamName.get(r.team_id) ?? '—',
+      judge: assignedTo ? (judgeName.get(assignedTo) ?? '—') : 'Atanmadı',
+      approved,
+      total: rScores.length,
+      checksDone,
+      checksTotal: rJobs.length,
+      failed,
+      badge,
+      tone,
+    };
+  });
+
+  const workload = (judges ?? []).map((j) => ({
+    name: j.full_name ?? '—',
+    assigned: (assignments ?? []).filter((a) => a.judge_id === j.id).length,
+    capacity: 24,
+  }));
+
+  const analyzed = queue.filter((q) => q.checksTotal > 0 && q.checksDone === q.checksTotal).length;
+  const awaitingApproval = queue.filter((q) => q.total > 0 && q.approved < q.total).length;
+  const published = (fb ?? []).filter((f) => f.is_published).length;
+  const lastPublish = (fb ?? [])
+    .map((f) => f.published_at)
+    .filter(Boolean)
+    .sort()
+    .pop();
+
+  return {
+    competition,
+    stats: { totalReports: list.length, analyzed, awaitingApproval, published },
+    queue,
+    workload,
+    updatedAt: (lastPublish as string | null) ?? (list.at(-1)?.created_at ?? null),
+  };
+}
+
+// ─────────────────────────────────────────────────────────────
+// /admin/competitions — Yarışma Yöneticisi kurulumu
+// ─────────────────────────────────────────────────────────────
+
+export type SetupData = {
+  competition: {
+    id: string;
+    name: string;
+    year: number;
+    similarity_threshold: number;
+    submission_deadline: string | null;
+    template_spec: { required_sections?: string[]; max_pages?: number; citation_format?: string };
+  };
+  categories: Array<{ id: string; name: string; description: string; reportCount: number }>;
+  criteria: Array<{ id: string; code: string; title: string; weightPct: number; maxScore: number }>;
+  overThresholdPct: number;
+};
+
+export async function loadSetup(): Promise<SetupData | null> {
+  const db = supabaseAdmin();
+  const { data: competition } = await db
+    .from('competitions')
+    .select('id, name, year, similarity_threshold, submission_deadline, template_spec')
+    .order('year', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!competition) return null;
+
+  const [{ data: categories }, { data: criteria }, { data: reports }, { data: pairs }] =
+    await Promise.all([
+      db
+        .from('categories')
+        .select('id, name, description')
+        .eq('competition_id', competition.id)
+        .order('name'),
+      db
+        .from('criteria')
+        .select('id, name, max_score, weight, sort_order')
+        .eq('competition_id', competition.id)
+        .order('sort_order'),
+      db.from('reports').select('id, category_id').eq('competition_id', competition.id),
+      db.from('similarity_pairs').select('report_id, semantic_score'),
+    ]);
+
+  const total = (reports ?? []).length;
+  const over = (pairs ?? []).filter(
+    (p) => (p.semantic_score ?? 0) >= competition.similarity_threshold,
+  ).length;
+
+  return {
+    competition: {
+      ...competition,
+      template_spec: (competition.template_spec ?? {}) as SetupData['competition']['template_spec'],
+    },
+    categories: (categories ?? []).map((c) => ({
+      ...c,
+      reportCount: (reports ?? []).filter((r) => r.category_id === c.id).length,
+    })),
+    criteria: (criteria ?? []).map((c) => {
+      const [code, ...rest] = c.name.split(' · ');
+      return {
+        id: c.id,
+        code: code ?? c.name,
+        title: rest.join(' · ') || c.name,
+        weightPct: Math.round(Number(c.weight) * 100),
+        maxScore: Number(c.max_score),
+      };
+    }),
+    overThresholdPct: total ? Math.round((over / total) * 100) : 0,
+  };
+}

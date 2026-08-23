@@ -1,14 +1,43 @@
-import { CRITERIA_LIST, SETUP_STEPS } from '@/lib/design/mock-data';
+import { loadSetup } from '@/lib/reports/queries';
 import { ThresholdCard } from './threshold-card';
 
-export default function CompetitionSetupPage() {
+export const dynamic = 'force-dynamic';
+
+const STEPS = [
+  ['1', 'Yarışma bilgileri'],
+  ['2', 'Şablon ve kriterler'],
+  ['3', 'Hakem ataması'],
+] as const;
+
+export default async function CompetitionSetupPage() {
+  const data = await loadSetup();
+
+  if (!data) {
+    return (
+      <div className="flex-1 px-6 pt-[38px] pb-[72px] lg:px-10">
+        <div className="border-ink/[.22] mx-auto max-w-[680px] border border-dashed bg-white p-10 text-center">
+          <div className="font-heading mb-2 text-[18px] font-semibold">Tanımlı yarışma yok</div>
+          <div className="text-ink/60 text-[13.5px]">
+            <span className="font-mono">npm run seed</span> ile örnek yarışma, kategoriler ve rubrik
+            oluşturulabilir.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const { competition, categories, criteria, overThresholdPct } = data;
+  const reportCount = categories.reduce((a, c) => a + c.reportCount, 0);
+  const sections = competition.template_spec.required_sections ?? [];
+  // Adım 3 (hakem ataması) henüz yok — tamamlanan adımları veriden türet.
+  const completed = criteria.length > 0 ? 2 : 1;
+
   return (
     <div className="flex-1 px-6 pt-[38px] pb-[72px] lg:px-10">
       <div className="mx-auto max-w-[980px]">
-        {/* Adım göstergesi */}
         <div className="mb-[30px] flex flex-wrap items-center">
-          {SETUP_STEPS.map(([num, label], i) => {
-            const active = i < 2;
+          {STEPS.map(([num, label], i) => {
+            const active = i < completed;
             return (
               <div
                 key={num}
@@ -18,9 +47,7 @@ export default function CompetitionSetupPage() {
               >
                 <span
                   className={`flex h-[22px] w-[22px] items-center justify-center border font-mono text-[11px] ${
-                    active
-                      ? 'border-ink bg-ink text-white'
-                      : 'border-ink/[.25] text-ink/50 bg-transparent'
+                    active ? 'border-ink bg-ink text-white' : 'border-ink/[.25] text-ink/50 bg-transparent'
                   }`}
                 >
                   {num}
@@ -31,47 +58,67 @@ export default function CompetitionSetupPage() {
           })}
         </div>
 
-        <h2 className="font-heading m-0 mb-1.5 text-[28px] font-semibold">Yeni yarışma tanımla</h2>
+        <h2 className="font-heading m-0 mb-1.5 text-[28px] font-semibold">{competition.name}</h2>
         <p className="text-ink/[.62] m-0 mb-7 text-[14.5px]">
-          Şablon ve kriterler, AI&apos;nin analiz sırasında kullanacağı referanstır.
+          Şablon ve kriterler, AI&apos;nin analiz sırasında kullandığı referanstır — bu sayfadaki
+          değerler doğrudan prompt&apos;a giriyor.
         </p>
 
         <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[1.1fr_.9fr]">
-          {/* Sol: yarışma bilgileri + rubrik */}
           <div className="border-ink/10 border bg-white p-[26px]">
-            <label
-              htmlFor="comp-name"
-              className="text-ink/60 mb-[7px] block font-mono text-[10.5px] tracking-[.12em]"
-            >
-              YARIŞMA ADI
-            </label>
-            <input
-              id="comp-name"
-              defaultValue="TEKNOFEST 2026 — İnsansız Hava Araçları"
-              className="border-ink/[.18] text-ink mb-[18px] w-full border bg-white px-[14px] py-3 font-sans text-[14.5px]"
-            />
+            <div className="text-ink/60 mb-[7px] font-mono text-[10.5px] tracking-[.12em]">
+              YARIŞMA
+            </div>
+            <div className="border-ink/[.14] mb-[18px] border px-[14px] py-3 text-[14.5px]">
+              {competition.name}
+              <span className="text-ink/50 ml-2 font-mono text-[11px]">{competition.year}</span>
+            </div>
 
-            <label
-              htmlFor="comp-category"
-              className="text-ink/60 mb-[7px] block font-mono text-[10.5px] tracking-[.12em]"
-            >
-              KATEGORİ
-            </label>
-            <select
-              id="comp-category"
-              className="border-ink/[.18] text-ink mb-[18px] w-full border bg-white px-[14px] py-3 font-sans text-[14.5px]"
-            >
-              <option>Havacılık ve Uzay</option>
-              <option>Savunma Teknolojileri</option>
-              <option>Yapay Zeka</option>
-            </select>
+            <div className="mb-2.5 flex items-center justify-between">
+              <span className="text-ink/60 font-mono text-[10.5px] tracking-[.12em]">
+                KATEGORİLER
+              </span>
+              <span className="text-ink/[.45] font-mono text-[11px]">{categories.length} ADET</span>
+            </div>
+            <div className="mb-[18px] flex flex-col gap-1.5">
+              {categories.map((c) => (
+                <div key={c.id} className="border-ink/[.12] border px-3 py-2.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[13.5px] font-medium">{c.name}</span>
+                    <span className="text-ink/[.45] font-mono text-[10.5px]">
+                      {c.reportCount} RAPOR
+                    </span>
+                  </div>
+                  <div className="text-ink/[.55] mt-1 text-[12px] leading-[1.5]">
+                    {c.description.slice(0, 120)}
+                    {c.description.length > 120 ? '…' : ''}
+                  </div>
+                </div>
+              ))}
+            </div>
 
-            <span className="text-ink/60 mb-[7px] block font-mono text-[10.5px] tracking-[.12em]">
-              RAPOR ŞABLONU
-            </span>
-            <div className="border-ink/[.28] bg-ink/[.02] mb-5 border border-dashed p-[22px] text-center">
-              <div className="mb-1 text-[14px] font-medium">Şablon dosyasını sürükleyin</div>
-              <div className="text-ink/50 font-mono text-[11px]">PDF, DOCX · MAKS. 20 MB</div>
+            <div className="text-ink/60 mb-[7px] font-mono text-[10.5px] tracking-[.12em]">
+              ŞABLON — ZORUNLU BÖLÜMLER
+            </div>
+            <div className="border-ink/[.28] bg-ink/[.02] mb-5 border border-dashed px-4 py-3">
+              {sections.length ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {sections.map((s) => (
+                    <span
+                      key={s}
+                      className="border-ink/[.18] text-ink/70 border bg-white px-2 py-1 font-mono text-[10.5px]"
+                    >
+                      {s}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-ink/50 text-[12.5px]">Şablon tanımlanmamış.</div>
+              )}
+              <div className="text-ink/[.45] mt-2.5 font-mono text-[10.5px]">
+                MAKS. {competition.template_spec.max_pages ?? '—'} SAYFA · ATIF{' '}
+                {competition.template_spec.citation_format ?? '—'}
+              </div>
             </div>
 
             <div className="mb-2.5 flex items-center justify-between">
@@ -79,29 +126,29 @@ export default function CompetitionSetupPage() {
                 DEĞERLENDİRME KRİTERLERİ
               </span>
               <span className="text-ink/[.45] font-mono text-[11px]">
-                {CRITERIA_LIST.length} KRİTER
+                {`${criteria.length} KRİTER · TOPLAM %${criteria.reduce((a, c) => a + c.weightPct, 0)}`}
               </span>
             </div>
-            <div className="mb-3 flex flex-col gap-1.5">
-              {CRITERIA_LIST.map((k) => (
-                <div
-                  key={k.code}
-                  className="border-ink/[.12] flex items-center gap-3 border px-3 py-2.5"
-                >
+            <div className="flex flex-col gap-1.5">
+              {criteria.map((k) => (
+                <div key={k.id} className="border-ink/[.12] flex items-center gap-3 border px-3 py-2.5">
                   <span className="text-ink/[.45] font-mono text-[10.5px]">{k.code}</span>
                   <span className="text-[13.5px]">{k.title}</span>
-                  <span className="text-ink/[.45] ml-auto font-mono text-[11px]">{k.weight}</span>
+                  <span className="text-ink/[.45] ml-auto font-mono text-[11px]">
+                    %{k.weightPct} · maks {k.maxScore}
+                  </span>
                 </div>
               ))}
             </div>
-            <button className="text-ink border-ink/[.22] cursor-pointer border bg-transparent px-4 py-[9px] font-sans text-[13px]">
-              ＋ Kriter ekle
-            </button>
           </div>
 
-          {/* Sağ: eşik + AI kapsamı */}
           <div className="flex flex-col gap-5">
-            <ThresholdCard />
+            <ThresholdCard
+              competitionId={competition.id}
+              initial={competition.similarity_threshold}
+              overThresholdPct={overThresholdPct}
+              reportCount={reportCount}
+            />
 
             <div className="border-ink/10 border-l-teal border border-l-[3px] bg-white px-[22px] py-5">
               <div className="text-teal-ink mb-2 font-mono text-[10px] tracking-[.12em]">
@@ -109,13 +156,24 @@ export default function CompetitionSetupPage() {
               </div>
               <div className="text-ink/[.72] text-[13.5px] leading-[1.75]">
                 Dil ve şablon uyumu · Başlık-içerik tutarlılığı · Kategori uygunluğu · Benzerlik
-                analizi · Kriter bazlı taslak geri bildirim
+                analizi (yalnızca metin) · Kriter bazlı taslak geri bildirim · Yarışmacı geri
+                bildirimi
               </div>
             </div>
 
-            <button className="bg-ink cursor-pointer border-none p-[14px] font-sans text-[15px] font-semibold text-white">
-              Yarışmayı Oluştur
-            </button>
+            <div className="border-ink/[.12] bg-ink/[.03] border px-[22px] py-4">
+              <div className="text-ink/50 mb-1.5 font-mono text-[10px] tracking-[.12em]">
+                SON BAŞVURU
+              </div>
+              <div className="font-mono text-[13px]">
+                {competition.submission_deadline
+                  ? new Date(competition.submission_deadline).toLocaleString('tr-TR', {
+                      dateStyle: 'long',
+                      timeStyle: 'short',
+                    })
+                  : 'Belirlenmedi'}
+              </div>
+            </div>
           </div>
         </div>
       </div>
