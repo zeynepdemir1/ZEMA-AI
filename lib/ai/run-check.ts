@@ -54,6 +54,7 @@ export async function runCheck(reportId: string, checkType: CheckType): Promise<
 
   // ── Kontrole özel ek girdi ──
   let instruction = CHECK_INSTRUCTIONS[checkType];
+  let pairContext: { candidateId: string; lexical: number } | null = null;
 
   if (checkType === 'category_fit') {
     const declared = (categories ?? []).find((c) => c.id === report.category_id);
@@ -99,6 +100,10 @@ export async function runCheck(reportId: string, checkType: CheckType): Promise<
     instruction +=
       `\n\nKARŞILAŞTIRILACAK RAPOR (başlık: ${other?.title ?? '-'}):\n` +
       `<karsilastirilan_rapor>\n${other?.extracted_text ?? ''}\n</karsilastirilan_rapor>`;
+
+    // Sonucu yazdıktan sonra similarity_pairs satırını da aç — §4.4'e göre
+    // hakem HER eşleşmeyi bağımsız değerlendiriyor ve kararını oraya yazıyor.
+    pairContext = { candidateId: list[0].candidate_id, lexical: list[0].lexical_score };
   }
 
   if (checkType === 'feedback_synthesis') {
@@ -136,7 +141,28 @@ export async function runCheck(reportId: string, checkType: CheckType): Promise<
     schema: SCHEMAS[checkType],
   });
 
-  return writeResult(reportId, checkType, result);
+  const outcome = await writeResult(reportId, checkType, result);
+
+  if (checkType === 'similarity' && pairContext) {
+    const p = result.payload as {
+      semantic_score: number;
+      matched_passages: unknown[];
+      content_type: string;
+    };
+    await db.from('similarity_pairs').upsert(
+      {
+        report_id: reportId,
+        other_report_id: pairContext.candidateId,
+        content_type: 'metin',
+        lexical_score: pairContext.lexical,
+        semantic_score: p.semantic_score,
+        evidence: { matched_passages: p.matched_passages, assessment: (result.payload as { assessment?: string }).assessment ?? '' },
+      },
+      { onConflict: 'report_id,other_report_id,content_type' },
+    );
+  }
+
+  return outcome;
 }
 
 type ModelResult = {
@@ -204,6 +230,23 @@ async function writeResult(
     if (typeof p.compliance_score === 'number') score = p.compliance_score;
     else if (typeof p.alignment_score === 'number') score = p.alignment_score;
     else if (typeof p.semantic_score === 'number') score = p.semantic_score;
+  }
+
+  // §4.6: geri bildirim sentezi ayrıca `feedback` tablosuna is_published=false
+  // olarak yazılır — Değerlendirme Yöneticisi okur, düzenler, yayımlar.
+  // Yarışmacı ekranının TEK kaynağı bu tablo (§3.1).
+  if (checkType === 'feedback_synthesis') {
+    const { data: existing } = await db
+      .from('feedback')
+      .select('id, is_published')
+      .eq('report_id', reportId)
+      .maybeSingle();
+    // Yayımlanmış bir geri bildirimi yeniden analiz EZMEMELİ.
+    if (!existing?.is_published) {
+      const row = { report_id: reportId, content: payload as object, is_published: false };
+      if (existing) await db.from('feedback').update(row).eq('id', existing.id);
+      else await db.from('feedback').insert(row);
+    }
   }
 
   const { error } = await db.from('analysis_results').upsert(

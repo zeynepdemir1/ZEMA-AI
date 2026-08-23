@@ -1,31 +1,30 @@
 import { notFound } from 'next/navigation';
 import { ReviewSidebar } from '@/components/zema/review-sidebar';
-import {
-  DEFAULT_SIMILARITY_THRESHOLD,
-  MATCHES,
-  findReport,
-} from '@/lib/design/mock-data';
+import { loadReview, loadSidebarReports } from '@/lib/reports/queries';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 import { ReviewPanel } from './review-panel';
+
+// Hakem düzenlemeleri anında görünmeli — önbelleğe alma.
+export const dynamic = 'force-dynamic';
 
 export default async function ReviewPage({ params }: PageProps<'/review/[id]'>) {
   const { id } = await params;
-  const report = findReport(id);
-  if (!report) notFound();
+  const data = await loadReview(id);
+  if (!data) notFound();
 
-  const matches = MATCHES[report.code] ?? [];
-  const maxPct = matches.reduce((a, m) => Math.max(a, m.pct), 0);
+  const { data: report } = await supabaseAdmin()
+    .from('reports')
+    .select('competition_id')
+    .eq('id', id)
+    .single();
+  const sidebar = await loadSidebarReports(report!.competition_id);
 
   return (
     <div className="grid min-h-screen flex-1 grid-cols-1 lg:grid-cols-[288px_1fr]">
       <div className="hidden lg:flex lg:flex-col">
-        <ReviewSidebar activeCode={report.code} />
+        <ReviewSidebar activeId={id} reports={sidebar} />
       </div>
-      <ReviewPanel
-        report={report}
-        matchCount={matches.length}
-        maxPct={maxPct}
-        threshold={DEFAULT_SIMILARITY_THRESHOLD}
-      />
+      <ReviewPanel data={data} />
     </div>
   );
 }

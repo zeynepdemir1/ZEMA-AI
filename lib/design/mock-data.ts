@@ -305,13 +305,3 @@ export const DASH_WORKLOAD = [
   { name: 'Baran Öztürk', count: '4 / 24', pct: 17 },
 ];
 
-// ─────────────────────────────────────────────────────────────
-// Demo modu hesapları (PLAN.md §6 — /demo, navigasyonda linklenmez)
-// ─────────────────────────────────────────────────────────────
-
-export const DEMO_ACCOUNTS = [
-  { initials: 'AK', label: 'Ayşe (Hakem) olarak gir', email: 'ayse.kilic@demo.zema.tr', href: `/review/${DEFAULT_REPORT_CODE}`, tone: 'teal' as const },
-  { initials: 'MŞ', label: 'Mehmet (Yarışmacı) olarak gir', email: 'mehmet.sahin@demo.zema.tr', href: `/submissions/${DEFAULT_REPORT_CODE}`, tone: 'ink' as const },
-  { initials: 'YY', label: 'Yarışma Yöneticisi olarak gir', email: 'yarisma@demo.zema.tr', href: '/admin/competitions', tone: 'gold' as const },
-  { initials: 'DY', label: 'Değerlendirme Yöneticisi olarak gir', email: 'degerlendirme@demo.zema.tr', href: '/evaluation', tone: 'success' as const },
-];
