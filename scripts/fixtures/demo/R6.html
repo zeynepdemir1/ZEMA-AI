@@ -1,0 +1,21 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+body{font-family:'DejaVu Sans',sans-serif;font-size:11pt;line-height:1.55}
+h1{font-size:15pt;margin-bottom:4pt} h2{font-size:12pt;margin-top:16pt}
+.meta{font-size:10pt;color:#333}</style></head><body>
+<h1>Çoklu Araç Koordinasyon Platformu — Ön Tasarım Raporu</h1>
+<p class="meta"><b>Takım:</b> KIVILCIM &nbsp;|&nbsp; <b>Kategori:</b> Serbest Görev &nbsp;|&nbsp; <b>Yıl:</b> 2026</p>
+<h2>1.2 Problem Tanımı</h2>
+<p>Çoklu araç koordinasyonu alanında çok araçlı görevde koordinasyon kaynaklı gecikme ortalama 23 yüzde seviyesindedir. Sahada yapılan ölçümlerde bu değerin yoğun dönemlerde daha da yükseldiği görülmüştür. Hedef kullanıcı tarım kooperatifleri ve orman işletme müdürlükleridir. Projemizin amacı bu değeri 6 yüzde seviyesine indirmektir.</p>
+<h2>2.1 Literatür ve Özgünlük</h2>
+<p>Lindqvist (2024) görev paylaşımını açık artırma yöntemiyle modelledi; ayrıca filo yönetim arayüzleri konusunda 2025 tarihli bir çalışma incelenmiştir. Toplam yedi güncel kaynak taranmıştır. Çalışmamızın bunlardan farkı görev dağıtımını araç bataryası kalan kapasitesine göre yeniden planlaması olmasıdır; karşılaştırma Tablo 2.1'de verilmiştir.</p>
+<h2>3. Yöntem ve Sistem Mimarisi</h2>
+<p>Görev yönetim katmanı, uçuş kontrol kartından gelen telemetriyi 50 ms periyotla toplayarak karar motoruna iletir; karar motoru hedef önceliklendirmesini bu veriye göre günceller. Sürü içi haberleşme 900 MHz bandında mesh topolojisiyle sağlanır. Her ajan, komşularından gelen konum bilgisini 200 ms periyotla yayınlar ve çakışma önleme katmanı bu bilgiyi kullanarak minimum 4 metre ayrım mesafesini korur.</p>
+<h2>4. Test ve Doğrulama</h2>
+<p>Her alt sistem için sayısal başarı ölçütü tanımlanmıştır. Eşzamanlı araç hedefi 4, test edilen 5. Görev yeniden dağıtım süresi hedefi 3 sn, ölçülen 1,8 sn. Batarya kaynaklı görev iptali hedefi %5 altı, ölçülen %2. Ölçümler saha koşullarında tekrarlanmış ve kayıt altına alınmıştır.</p>
+<h2>5. Zaman Planı ve Bütçe</h2>
+<p>Tasarım, prototipleme, entegrasyon ve saha testi fazları sırasıyla planlanmıştır. Bütçe kalem bazlı verilmiştir: koordinasyon sunucusu 11.500 TL, araç haberleşme modülü 5 adet 4.250 TL, operatör arayüz lisansı 3.000 TL. Tedarik süresi uzun olan kalem için alternatif tedarikçi belirlenmiştir.</p>
+<h2>6. Sonuç</h2>
+<p>Üç hedefin tamamı karşılanmıştır; özellikle görev yeniden dağıtım süresi hedefin yarısında kalmıştır.</p>
+<h2>Kaynakça</h2>
+<p>[1] Lindqvist, "görev paylaşımını açık artırma yöntemiyle modelledi", IEEE Trans., 2024. [2] filo yönetim arayüzleri üzerine TEKNOFEST Bildiriler Kitabı, 2025. [3] Çoklu araç koordinasyonu için ölçüm standartları, TSE, 2023.</p>
+</body></html>

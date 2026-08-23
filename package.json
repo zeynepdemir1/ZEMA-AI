@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "seed": "dotenv -e .env.local -- tsx scripts/seed.ts"
+    "seed": "dotenv -e .env.local -- tsx scripts/seed.ts",
+    "demo:seed": "dotenv -e .env.local -- tsx scripts/seed-demo.ts",
+    "demo:analyze": "dotenv -e .env.local -- tsx scripts/analyze-demo.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.120.0",

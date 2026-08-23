@@ -60,6 +60,10 @@ export async function POST() {
             attempts: Math.max(0, job.attempts - 1),
             started_at: null,
             error: null,
+            // HATA DÜZELTMESİ: created_at'i ilerlet, yoksa iş aynı FIFO
+            // sırasına geri dönüp hemen tekrar kapılıyor → sonsuz döngü.
+            // Testte tek turda 376 kez ertelendi ve kotayı boşa harcadı.
+            created_at: new Date().toISOString(),
           })
           .eq('id', job.id);
         results.push({ check: job.check_type, status: 'deferred', reason: outcome.reason });
