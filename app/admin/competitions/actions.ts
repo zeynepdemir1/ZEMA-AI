@@ -1,5 +1,12 @@
 'use server';
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Server action argümanları istemciden gelir; kimlikleri süzmeden kullanma. */
+function badId(...ids: Array<string | undefined | null>): string | null {
+  return ids.some((id) => !id || !UUID.test(id)) ? 'Geçersiz kimlik.' : null;
+}
+
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { authorize } from '@/lib/supabase/server';
@@ -14,6 +21,8 @@ export async function saveSimilarityThreshold(
   value: number,
 ): Promise<{ ok: boolean; error?: string }> {
   // Yarışma yapılandırması yalnızca Yarışma Yöneticisinde (§3.1).
+  const invalid = badId(competitionId);
+  if (invalid) return { ok: false, error: invalid };
   const auth = await authorize(['competition_admin']);
   if ('error' in auth) return { ok: false, error: auth.error };
 

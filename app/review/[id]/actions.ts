@@ -1,5 +1,12 @@
 'use server';
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Server action argümanları istemciden gelir; kimlikleri süzmeden kullanma. */
+function badId(...ids: Array<string | undefined | null>): string | null {
+  return ids.some((id) => !id || !UUID.test(id)) ? 'Geçersiz kimlik.' : null;
+}
+
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { assertReportAccess, authorize } from '@/lib/supabase/server';
@@ -14,6 +21,8 @@ import { assertReportAccess, authorize } from '@/lib/supabase/server';
 
 /** Rol + atama kontrolünü tek yerde yap. */
 async function guard(reportId: string) {
+  const invalid = badId(reportId);
+  if (invalid) return { error: invalid };
   const auth = await authorize(['judge']);
   if ('error' in auth) return auth;
   const denied = await assertReportAccess(auth.user, reportId);
@@ -28,6 +37,8 @@ export async function saveCriterionText(
 ): Promise<{ ok: boolean; error?: string }> {
   const auth = await guard(reportId);
   if ('error' in auth) return { ok: false, error: auth.error };
+  const badCriterion = badId(criterionId);
+  if (badCriterion) return { ok: false, error: badCriterion };
 
   const db = supabaseAdmin();
   const trimmed = text.trim();
@@ -59,6 +70,8 @@ export async function setCriterionApproval(
 ): Promise<{ ok: boolean; error?: string }> {
   const auth = await guard(reportId);
   if ('error' in auth) return { ok: false, error: auth.error };
+  const badCriterion = badId(criterionId);
+  if (badCriterion) return { ok: false, error: badCriterion };
 
   const db = supabaseAdmin();
   const { data: row } = await db

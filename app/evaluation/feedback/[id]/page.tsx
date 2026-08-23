@@ -8,7 +8,7 @@ import { requireRole } from '@/lib/supabase/server';
 export const dynamic = 'force-dynamic';
 
 export default async function FeedbackPage({ params }: PageProps<'/evaluation/feedback/[id]'>) {
-  await requireRole(['evaluation_admin','competition_admin']);
+  const user = await requireRole(['evaluation_admin', 'competition_admin']);
   const { id } = await params;
   const draft = await loadFeedbackDraft(id);
   if (!draft) notFound();
@@ -40,7 +40,7 @@ export default async function FeedbackPage({ params }: PageProps<'/evaluation/fe
             </div>
           </div>
         ) : (
-          <FeedbackEditor draft={draft} />
+          <FeedbackEditor draft={draft} canPublish={user.role === 'evaluation_admin'} />
         )}
       </div>
     </div>

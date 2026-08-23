@@ -9,11 +9,19 @@ const LABEL = 'text-ink/60 mb-2 block font-mono text-[10.5px] tracking-[.12em]';
 const AREA =
   'border-ink/[.18] text-ink w-full resize-y border bg-white px-3 py-2.5 font-sans text-[13.5px] leading-[1.6]';
 
-export function FeedbackEditor({ draft }: { draft: FeedbackDraft }) {
+export function FeedbackEditor({
+  draft,
+  canPublish,
+}: {
+  draft: FeedbackDraft;
+  /** §3.1: yalnızca Değerlendirme Yöneticisi yayımlar. Yarışma Yöneticisi okur. */
+  canPublish: boolean;
+}) {
   const [content, setContent] = useState<FeedbackContent>(draft.content ?? {});
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const published = draft.isPublished;
+  const readOnly = published || !canPublish;
 
   function run(fn: () => Promise<{ ok: boolean; error?: string }>, okText: string) {
     setMsg(null);
@@ -48,7 +56,7 @@ export function FeedbackEditor({ draft }: { draft: FeedbackDraft }) {
         <textarea
           id="summary"
           rows={3}
-          disabled={published}
+          disabled={readOnly}
           value={content.summary ?? ''}
           onChange={(e) => setContent((c) => ({ ...c, summary: e.target.value }))}
           className={`${AREA} mb-5 disabled:opacity-60`}
@@ -60,7 +68,7 @@ export function FeedbackEditor({ draft }: { draft: FeedbackDraft }) {
         <textarea
           id="strengths"
           rows={4}
-          disabled={published}
+          disabled={readOnly}
           value={(content.strengths ?? []).join('\n')}
           onChange={(e) => setList('strengths', e.target.value)}
           className={`${AREA} mb-5 disabled:opacity-60`}
@@ -74,13 +82,13 @@ export function FeedbackEditor({ draft }: { draft: FeedbackDraft }) {
             <div key={i} className="border-ink/[.14] border p-3">
               <div className="mb-2 flex items-center gap-2">
                 <input
-                  disabled={published}
+                  disabled={readOnly}
                   value={imp.area}
                   onChange={(e) => setImprovement(i, 'area', e.target.value)}
                   className="border-ink/[.18] flex-1 border px-2.5 py-1.5 text-[13px] font-semibold disabled:opacity-60"
                 />
                 <select
-                  disabled={published}
+                  disabled={readOnly}
                   value={imp.priority}
                   onChange={(e) => setImprovement(i, 'priority', e.target.value)}
                   className="border-ink/[.18] border px-2 py-1.5 font-mono text-[11px] disabled:opacity-60"
@@ -91,7 +99,7 @@ export function FeedbackEditor({ draft }: { draft: FeedbackDraft }) {
                 </select>
               </div>
               <textarea
-                disabled={published}
+                disabled={readOnly}
                 rows={2}
                 value={imp.what}
                 onChange={(e) => setImprovement(i, 'what', e.target.value)}
@@ -99,7 +107,7 @@ export function FeedbackEditor({ draft }: { draft: FeedbackDraft }) {
                 placeholder="Ne eksik?"
               />
               <textarea
-                disabled={published}
+                disabled={readOnly}
                 rows={2}
                 value={imp.how}
                 onChange={(e) => setImprovement(i, 'how', e.target.value)}
@@ -119,7 +127,7 @@ export function FeedbackEditor({ draft }: { draft: FeedbackDraft }) {
         <textarea
           id="steps"
           rows={3}
-          disabled={published}
+          disabled={readOnly}
           value={(content.next_steps ?? []).join('\n')}
           onChange={(e) => setList('next_steps', e.target.value)}
           className={`${AREA} disabled:opacity-60`}
@@ -136,8 +144,15 @@ export function FeedbackEditor({ draft }: { draft: FeedbackDraft }) {
         </div>
       )}
 
+      {!canPublish && (
+        <div className="border-ink/[.22] text-ink/70 border bg-[rgba(27,42,74,.03)] px-4 py-3 text-[13px] leading-[1.55]">
+          Bu ekranı görüntüleyebilirsiniz ancak geri bildirim yayımlama yetkisi
+          <strong> Değerlendirme Yöneticisi</strong>&apos;ne aittir.
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center gap-3">
-        {published ? (
+        {!canPublish ? null : published ? (
           <>
             <span className="text-gold border-gold border px-3 py-2 font-mono text-[10.5px] tracking-[.12em]">
               ✓ YAYIMLANDI

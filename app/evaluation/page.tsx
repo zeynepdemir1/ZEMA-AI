@@ -55,10 +55,18 @@ export default async function EvaluationDashboard() {
               {competition.name} · {competition.year}
             </h2>
           </div>
-          <div className="text-ink/50 font-mono text-[11px]">
+          <div className="flex flex-wrap items-center gap-4">
+            <Link
+              href="/evaluation/assignments"
+              className="border-ink/[.22] text-ink cursor-pointer border px-4 py-2 font-sans text-[13px] no-underline"
+            >
+              Hakem ataması →
+            </Link>
+            <div className="text-ink/50 font-mono text-[11px]">
             {updatedAt
               ? `SON HAREKET ${new Date(updatedAt).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}`
               : 'HAREKET YOK'}
+            </div>
           </div>
         </div>
 

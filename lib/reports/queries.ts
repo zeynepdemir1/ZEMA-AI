@@ -726,3 +726,77 @@ export async function loadAssignedReports(): Promise<SidebarReport[]> {
     };
   });
 }
+
+// ─────────────────────────────────────────────────────────────
+// /evaluation/assignments — hakem ataması (§6)
+// ─────────────────────────────────────────────────────────────
+
+export type AssignmentRow = {
+  reportId: string;
+  code: string;
+  title: string;
+  team: string;
+  category: string;
+  judgeId: string | null;
+  judgeName: string | null;
+  status: string | null;
+  checksDone: number;
+  checksTotal: number;
+};
+
+export type JudgeLoad = { id: string; name: string; assigned: number };
+
+export async function loadAssignments() {
+  const db = await supabaseServer();
+
+  const { data: competition } = await db
+    .from('competitions')
+    .select('id, name')
+    .order('year', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!competition) return null;
+
+  const [{ data: reports }, { data: teams }, { data: cats }, { data: judges }, { data: assigns }, { data: jobs }] =
+    await Promise.all([
+      db
+        .from('reports')
+        .select('id, title, team_id, category_id')
+        .eq('competition_id', competition.id)
+        .order('created_at'),
+      db.from('teams').select('id, name'),
+      db.from('categories').select('id, name'),
+      db.from('profiles').select('id, full_name').eq('role', 'judge').order('full_name'),
+      db.from('assignments').select('report_id, judge_id, status'),
+      db.from('analysis_jobs').select('report_id, status'),
+    ]);
+
+  const teamName = new Map((teams ?? []).map((t) => [t.id, t.name]));
+  const catName = new Map((cats ?? []).map((c) => [c.id, c.name]));
+  const judgeName = new Map((judges ?? []).map((j) => [j.id, j.full_name ?? '—']));
+
+  const rows: AssignmentRow[] = (reports ?? []).map((r) => {
+    const a = (assigns ?? []).find((x) => x.report_id === r.id);
+    const rJobs = (jobs ?? []).filter((j) => j.report_id === r.id);
+    return {
+      reportId: r.id,
+      code: reportCode(r.id),
+      title: r.title,
+      team: teamName.get(r.team_id) ?? '—',
+      category: catName.get(r.category_id ?? '') ?? 'Beyan edilmemiş',
+      judgeId: a?.judge_id ?? null,
+      judgeName: a?.judge_id ? (judgeName.get(a.judge_id) ?? '—') : null,
+      status: a?.status ?? null,
+      checksDone: rJobs.filter((j) => j.status === 'done').length,
+      checksTotal: rJobs.length,
+    };
+  });
+
+  const loads: JudgeLoad[] = (judges ?? []).map((j) => ({
+    id: j.id,
+    name: j.full_name ?? '—',
+    assigned: (assigns ?? []).filter((a) => a.judge_id === j.id).length,
+  }));
+
+  return { competition, rows, judges: loads };
+}

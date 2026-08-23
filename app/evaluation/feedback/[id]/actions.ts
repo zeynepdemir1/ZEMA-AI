@@ -1,5 +1,12 @@
 'use server';
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Server action argümanları istemciden gelir; kimlikleri süzmeden kullanma. */
+function badId(...ids: Array<string | undefined | null>): string | null {
+  return ids.some((id) => !id || !UUID.test(id)) ? 'Geçersiz kimlik.' : null;
+}
+
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { authorize } from '@/lib/supabase/server';
@@ -12,18 +19,24 @@ import type { FeedbackContent } from '@/lib/reports/queries';
  */
 
 /**
- * Yayımlama YALNIZCA Değerlendirme Yöneticisinde (§3.1: feedback CRUD +
- * publish). Hakem onaylar ama yayımlamaz; yarışmacı hiçbir şey yapamaz.
+ * Yayımlama YALNIZCA Değerlendirme Yöneticisinde.
+ *
+ * §3.1 matrisi net: feedback → "Değ. Yöneticisi CRUD + publish",
+ * "Yarışma Yön. read". Yarışma Yöneticisi sayfayı OKUYABİLİR ama
+ * yayımlayamaz. Rol ayrımı şartnamenin açık gereksinimi; tek hesapla
+ * demo kolaylığı için bulanıklaştırılmıyor.
  *
  * Bu dosya supabaseAdmin() kullandığı için RLS burada koruma sağlamıyor —
  * kontrol authorize() ile yapılıyor.
  */
-const PUBLISHERS = ['evaluation_admin', 'competition_admin'] as const;
+const PUBLISHERS = ['evaluation_admin'] as const;
 
 export async function saveFeedbackDraft(
   reportId: string,
   content: FeedbackContent,
 ): Promise<{ ok: boolean; error?: string }> {
+  const invalid = badId(reportId);
+  if (invalid) return { ok: false, error: invalid };
   const auth = await authorize([...PUBLISHERS]);
   if ('error' in auth) return { ok: false, error: auth.error };
   void auth;
@@ -52,6 +65,8 @@ export async function publishFeedback(
   reportId: string,
   content: FeedbackContent,
 ): Promise<{ ok: boolean; error?: string }> {
+  const invalid = badId(reportId);
+  if (invalid) return { ok: false, error: invalid };
   const auth = await authorize([...PUBLISHERS]);
   if ('error' in auth) return { ok: false, error: auth.error };
 
@@ -96,6 +111,8 @@ export async function publishFeedback(
 export async function unpublishFeedback(
   reportId: string,
 ): Promise<{ ok: boolean; error?: string }> {
+  const invalid = badId(reportId);
+  if (invalid) return { ok: false, error: invalid };
   const auth = await authorize([...PUBLISHERS]);
   if ('error' in auth) return { ok: false, error: auth.error };
 

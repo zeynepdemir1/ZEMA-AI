@@ -63,8 +63,16 @@ protokolü üzerinden `publishFeedback` çağrıldı → üç action da
 
 ### Auth sonrası kalan açıklar
 
-- [ ] **`/evaluation/assignments` yok.** Atama şu an seed ile yapılıyor;
-      hakem atanmamış raporu RLS gereği göremiyor.
+- [x] ~~`/evaluation/assignments`~~ — yapıldı. Manuel atama + "dengeli dağıt".
+      Seed hâlâ ilk atamayı yapıyor (boş DB'de hakem ekranı boş kalmasın).
+
+- [ ] **`supabase/migrations/0005_not_null_fks.sql` ÇALIŞTIRILMALI.**
+      Alt tabloların yabancı anahtarları nullable; bir action argümanını
+      doğrulamayı atlarsa anlamsız satır yazılabiliyor. Testte assignments'a
+      `(null, null)` satırı girdi ve `unique` kısıt uyarmadı (Postgres
+      unique indekslerinde NULL'lar farklı sayılır). Uygulama katmanına
+      UUID süzgeci eklendi ama tek savunma orası olmamalı.
+      Mevcut veride NULL satır yok — güvenle çalıştırılabilir.
 
 ---
 
