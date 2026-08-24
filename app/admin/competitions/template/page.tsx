@@ -17,9 +17,8 @@ const SECTION = 'font-mono text-[11px] tracking-[.1em] text-ink/75';
  *
  * İki dikey sütun (sayfa dar tek sütunda boşa alan harcıyordu):
  *   SOL  — 1. Şablon yükleme  2. Zorunlu bölüm başlıkları (düzenlenebilir)
- *          3. Şablon PDF'inden çıkarıldı  4. İçerik kuralları  5. Benzerlik eşiği
- *   SAĞ  — yalnızca Değerlendirme Kriterleri (uzun bir liste olabilir,
- *          kendi sütununda büyümesi diğerlerini aşağı itmesin diye ayrıldı)
+ *          3. Değerlendirme kriterleri
+ *   SAĞ  — Şablon PDF'inden çıkarıldı · İçerik kuralları · Benzerlik eşiği
  *
  * Önceki sürümde zorunlu bölümler hem TemplateCard'ın yükleme sonucunda
  * hem bu sayfanın kalıcı özetinde İKİ KERE gösteriliyordu. TemplateCard
@@ -87,7 +86,45 @@ export default async function TemplateSetupPage({
             citationFormat={spec.citation_format ?? ''}
           />
 
-          {/* 3. Şablon PDF'inden çıkarıldı */}
+          {/* 3. Değerlendirme kriterleri */}
+          <div className="border-ink/10 border bg-white p-[26px]">
+            <div className="mb-2.5 flex items-center justify-between">
+              <span className={SECTION}>DEĞERLENDİRME KRİTERLERİ</span>
+              {criteria.length > 0 && (
+                <span className="text-ink/[.45] font-mono text-[11px]">
+                  {`${criteria.length} KRİTER · TOPLAM %${criteria.reduce((a, c) => a + c.weightPct, 0)}`}
+                </span>
+              )}
+            </div>
+            <div className="flex flex-col gap-1.5">
+              {criteria.length === 0 ? (
+                <div className="text-ink/75 text-[13px]">
+                  {wasProcessed
+                    ? 'Bu şablonda bir değerlendirme rubriği bulunamadı — şablon PDF\'inde puanlama kriterleri yer almıyor.'
+                    : 'Henüz şablon işlenmedi — yukarıdan bir şablon PDF\'i yükleyip çözümleyin.'}
+                </div>
+              ) : (
+                criteria.map((k) => (
+                  <div key={k.id} className="border-ink/[.12] border px-3 py-2.5">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-ink/[.45] font-mono text-[10.5px]">{k.code}</span>
+                      <span className="text-[13.5px]">{k.title}</span>
+                      <span className="text-ink/[.45] ml-auto font-mono text-[11px]">
+                        %{k.weightPct} · maks {k.maxScore}
+                      </span>
+                    </div>
+                    {k.description && (
+                      <div className="text-ink/75 mt-1 text-[12.5px] leading-[1.5]">{k.description}</div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* SAĞ SÜTUN — şablon PDF'inden çıkarıldı · içerik kuralları · benzerlik eşiği */}
+        <div className="flex flex-col gap-5">
           {wasProcessed && (
             <div className="border-ink/10 border bg-white p-[26px]">
               <div className={`${SECTION} mb-2.5`}>ŞABLON PDF&apos;İNDEN ÇIKARILDI</div>
@@ -131,7 +168,6 @@ export default async function TemplateSetupPage({
             </div>
           )}
 
-          {/* 4. İçerik kuralları */}
           {(spec.content_rules ?? []).length > 0 && (
             <div className="border-ink/10 border bg-white p-[26px]">
               <div className={`${SECTION} mb-2.5`}>İÇERİK KURALLARI</div>
@@ -143,49 +179,12 @@ export default async function TemplateSetupPage({
             </div>
           )}
 
-          {/* 5. Benzerlik eşiği — değişmedi */}
           <ThresholdCard
             competitionId={competition.id}
             initial={competition.similarity_threshold}
             overThresholdPct={overThresholdPct}
             reportCount={reportCount}
           />
-        </div>
-
-        {/* SAĞ SÜTUN — yalnızca değerlendirme kriterleri */}
-        <div className="border-ink/10 border bg-white p-[26px]">
-          <div className="mb-2.5 flex items-center justify-between">
-            <span className={SECTION}>DEĞERLENDİRME KRİTERLERİ</span>
-            {criteria.length > 0 && (
-              <span className="text-ink/[.45] font-mono text-[11px]">
-                {`${criteria.length} KRİTER · TOPLAM %${criteria.reduce((a, c) => a + c.weightPct, 0)}`}
-              </span>
-            )}
-          </div>
-          <div className="flex flex-col gap-1.5">
-            {criteria.length === 0 ? (
-              <div className="text-ink/75 text-[13px]">
-                {wasProcessed
-                  ? 'Bu şablonda bir değerlendirme rubriği bulunamadı — şablon PDF\'inde puanlama kriterleri yer almıyor.'
-                  : 'Henüz şablon işlenmedi — sol taraftan bir şablon PDF\'i yükleyip çözümleyin.'}
-              </div>
-            ) : (
-              criteria.map((k) => (
-                <div key={k.id} className="border-ink/[.12] border px-3 py-2.5">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-ink/[.45] font-mono text-[10.5px]">{k.code}</span>
-                    <span className="text-[13.5px]">{k.title}</span>
-                    <span className="text-ink/[.45] ml-auto font-mono text-[11px]">
-                      %{k.weightPct} · maks {k.maxScore}
-                    </span>
-                  </div>
-                  {k.description && (
-                    <div className="text-ink/75 mt-1 text-[12.5px] leading-[1.5]">{k.description}</div>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
         </div>
         </div>
       </div>
