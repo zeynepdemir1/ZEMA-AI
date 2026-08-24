@@ -1,8 +1,8 @@
 {
   "_TODO": "PLAN.md §4.4 SimilarityPairSchema. Demo seed R5↔R6 (%70 metin) ve R5↔R9 (%45 tablo) için doldur.",
-  "content_type": "metin",
   "semantic_score": 0,
   "overlap_type": "none",
   "matched_passages": [],
-  "assessment": ""
+  "assessment": "",
+  "matched_visuals": []
 }

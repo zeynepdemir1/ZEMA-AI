@@ -3,7 +3,46 @@ import { callModelForCheck } from './call-claude-for-check';
 import { CHECK_INSTRUCTIONS, buildCompetitionContext } from './prompts';
 import { SCHEMAS, type CriteriaScoringPayload } from './schemas';
 import { deriveVerdict, processCriteriaScoring } from './evidence';
-import { SIMILARITY_MIN_LEXICAL, type CheckType } from './config';
+import { measureFormat, type FormatFinding } from '@/lib/reports/format-check';
+import {
+  INLINE_PDF_MAX_BYTES,
+  MULTIMODAL_CHECKS,
+  MULTIMODAL_PDF,
+  SIMILARITY_MIN_LEXICAL,
+  type CheckType,
+} from './config';
+
+/**
+ * Raporun PDF'ini Storage'dan indirir — çok-modlu analiz için.
+ *
+ * null dönerse metin-only devam edilir. Sessiz değil: neden PDF gönderilmediği
+ * loglanır, çünkü "biçim kuralları kontrol edilemedi" sonucunun sebebi
+ * denetlenebilir olmalı.
+ */
+async function loadPdfBytes(
+  db: ReturnType<typeof supabaseAdmin>,
+  filePath: string | null,
+  label: string,
+): Promise<Uint8Array | null> {
+  if (!MULTIMODAL_PDF) return null;
+  if (!filePath) {
+    console.warn(`[zema:ai] ${label}: file_path boş — metin-only analiz.`);
+    return null;
+  }
+  const { data, error } = await db.storage.from('reports').download(filePath);
+  if (error || !data) {
+    console.warn(`[zema:ai] ${label}: PDF indirilemedi (${error?.message ?? 'yok'}) — metin-only analiz.`);
+    return null;
+  }
+  if (data.size > INLINE_PDF_MAX_BYTES) {
+    console.warn(
+      `[zema:ai] ${label}: PDF ${(data.size / 1048576).toFixed(1)} MB, ` +
+        `satır içi sınır ${(INLINE_PDF_MAX_BYTES / 1048576).toFixed(0)} MB — metin-only analiz.`,
+    );
+    return null;
+  }
+  return new Uint8Array(await data.arrayBuffer());
+}
 
 /**
  * Tek bir analiz işini çalıştırır ve analysis_results'a yazar.
@@ -21,7 +60,7 @@ export async function runCheck(reportId: string, checkType: CheckType): Promise<
   // ── Rapor + yarışma bağlamı ──
   const { data: report, error: re } = await db
     .from('reports')
-    .select('id, title, extracted_text, category_id, competition_id')
+    .select('id, title, extracted_text, file_path, category_id, competition_id')
     .eq('id', reportId)
     .single();
   if (re || !report) throw new Error(`rapor okunamadı: ${re?.message ?? 'bulunamadı'}`);
@@ -55,6 +94,7 @@ export async function runCheck(reportId: string, checkType: CheckType): Promise<
   // ── Kontrole özel ek girdi ──
   let instruction = CHECK_INSTRUCTIONS[checkType];
   let pairContext: { candidateId: string; lexical: number } | null = null;
+  let otherFilePath: string | null = null;
 
   if (checkType === 'category_fit') {
     const declared = (categories ?? []).find((c) => c.id === report.category_id);
@@ -83,10 +123,10 @@ export async function runCheck(reportId: string, checkType: CheckType): Promise<
       // Bu bir "kanıt yok" durumu değil; gerçekten örtüşme yok.
       return writeResult(reportId, checkType, {
         payload: {
-          content_type: 'metin',
           semantic_score: 0,
           overlap_type: 'none',
           matched_passages: [],
+          matched_visuals: [],
           assessment:
             'Aynı yarışma ve kategoride, ön eleme eşiğini (%' +
             Math.round(SIMILARITY_MIN_LEXICAL * 100) +
@@ -102,9 +142,10 @@ export async function runCheck(reportId: string, checkType: CheckType): Promise<
 
     const { data: other } = await db
       .from('reports')
-      .select('title, extracted_text')
+      .select('title, extracted_text, file_path')
       .eq('id', list[0].candidate_id)
       .single();
+    otherFilePath = other?.file_path ?? null;
     instruction +=
       `\n\nKARŞILAŞTIRILACAK RAPOR (başlık: ${other?.title ?? '-'}):\n` +
       `<karsilastirilan_rapor>\n${other?.extracted_text ?? ''}\n</karsilastirilan_rapor>`;
@@ -140,6 +181,58 @@ export async function runCheck(reportId: string, checkType: CheckType): Promise<
       JSON.stringify(prior, null, 2);
   }
 
+  // ── Çok-modlu girdi: PDF'in kendisi ──
+  // Tablolar, şemalar ve BİÇİM KURALLARI (yazı tipi, sayfa sınırı, altbilgi)
+  // düz metinden görülemiyor. Ayrı bir OCR/tablo hattı kurmak yerine PDF
+  // doğrudan modele veriliyor. Metin de gönderilmeye devam ediyor —
+  // kanıt doğrulaması alıntıları extracted_text içinde arıyor.
+  const pdfs: Array<{ label: string; bytes: Uint8Array }> = [];
+  if (MULTIMODAL_CHECKS.has(checkType)) {
+    const own = await loadPdfBytes(db, report.file_path, `${checkType}/rapor`);
+    if (own) pdfs.push({ label: 'rapor', bytes: own });
+    if (checkType === 'similarity' && otherFilePath) {
+      const otherPdf = await loadPdfBytes(db, otherFilePath, `${checkType}/karsilastirilan`);
+      // Tablo/görsel karşılaştırması İKİ PDF gerektirir; biri eksikse
+      // görsel örtüşme aranmaz ama metin karşılaştırması yine yapılır.
+      if (otherPdf) pdfs.push({ label: 'karsilastirilan_rapor', bytes: otherPdf });
+      else if (own) pdfs.length = 0;
+    }
+  }
+
+  // ── BİÇİM KURALLARI: ölç, sorma ──
+  // Model çok-modlu denemede iki tarafa yaslı bir belgeyi "sola hizalı"
+  // diye raporladı. Yazı tipi/hizalama piksel ölçümü isteyen özellikler;
+  // yanlış bir "kurala uymuyor" bulgusu yarışmacıyı haksız cezalandırır.
+  // Ölçüm MOCK_AI'dan BAĞIMSIZ — mock modda bile bu bulgular gerçek.
+  let formatFindings: FormatFinding[] = [];
+  if (checkType === 'language_template') {
+    const spec = (competition.template_spec ?? {}) as { format?: Record<string, unknown> };
+    const fmt = spec.format ?? {};
+    const own = pdfs.find((f) => f.label === 'rapor');
+    if (own && Object.keys(fmt).length > 0) {
+      try {
+        formatFindings = await measureFormat(Uint8Array.from(own.bytes), {
+          font: typeof fmt.font === 'string' ? fmt.font : undefined,
+          page: typeof fmt.page === 'string' ? fmt.page : undefined,
+          alignment: typeof fmt.alignment === 'string' ? fmt.alignment : undefined,
+          max_pages: typeof fmt.max_pages === 'number' ? fmt.max_pages : undefined,
+          footer: typeof fmt.footer === 'string' ? fmt.footer : undefined,
+        });
+      } catch (e) {
+        // Ölçüm başarısız olursa kontrolün tamamı düşmesin — biçim bulgusu
+        // olmadan devam edilir, "uygun" DENMEZ.
+        console.warn(`[zema:ai] biçim ölçümü başarısız: ${e instanceof Error ? e.message : e}`);
+      }
+    }
+    if (formatFindings.length > 0) {
+      instruction +=
+        '\n\nÖLÇÜLEN BİÇİM BULGULARI (PDF\'ten doğrudan ölçüldü, yeniden değerlendirme):\n' +
+        formatFindings
+          .map((f) => `- ${f.rule}: ${f.status.toUpperCase()} — ${f.evidence}`)
+          .join('\n');
+    }
+  }
+
   // ── Model çağrısı ──
   const result = await callModelForCheck({
     checkType,
@@ -147,27 +240,68 @@ export async function runCheck(reportId: string, checkType: CheckType): Promise<
     reportText: report.extracted_text,
     instruction,
     schema: SCHEMAS[checkType],
+    pdfs,
   });
 
-  const outcome = await writeResult(reportId, checkType, result);
+  // Ölçülen biçim bulgularını payload'a EKLE — modelin çıktısı değil,
+  // ölçüm. UI bunları "PDF'ten ölçüldü" etiketiyle gösteriyor.
+  const enriched =
+    formatFindings.length > 0
+      ? { ...result, payload: { ...(result.payload as object), format_checks: formatFindings } }
+      : result;
+
+  const outcome = await writeResult(reportId, checkType, enriched);
 
   if (checkType === 'similarity' && pairContext) {
-    const p = result.payload as {
+    const p = result.payload as unknown as {
       semantic_score: number;
       matched_passages: unknown[];
-      content_type: string;
+      matched_visuals: Array<{ kind: 'tablo' | 'gorsel'; a_page: number; b_page: number; what: string; note: string }>;
+      assessment?: string;
     };
-    await db.from('similarity_pairs').upsert(
+    const assessment = p.assessment ?? '';
+
+    // similarity_pairs'in unique kısıtı (report_id, other_report_id,
+    // content_type) — şema en başından içerik türü başına AYRI satır
+    // öngörüyordu ama yalnızca 'metin' yazılıyordu. Artık tablo ve görsel
+    // örtüşmeleri kendi satırlarına gidiyor: hakem "metinde temiz ama
+    // bütçe tablosu aynı" durumunu ayrı ayrı karara bağlayabiliyor.
+    type PairRow = {
+      report_id: string;
+      other_report_id: string;
+      content_type: 'metin' | 'tablo' | 'gorsel';
+      lexical_score: number | null;
+      semantic_score: number;
+      evidence: Record<string, unknown>;
+    };
+    const rows: PairRow[] = [
       {
         report_id: reportId,
         other_report_id: pairContext.candidateId,
         content_type: 'metin',
         lexical_score: pairContext.lexical,
         semantic_score: p.semantic_score,
-        evidence: { matched_passages: p.matched_passages, assessment: (result.payload as { assessment?: string }).assessment ?? '' },
+        evidence: { matched_passages: p.matched_passages, assessment },
       },
-      { onConflict: 'report_id,other_report_id,content_type' },
-    );
+    ];
+
+    for (const kind of ['tablo', 'gorsel'] as const) {
+      const hits = (p.matched_visuals ?? []).filter((v) => v.kind === kind);
+      if (hits.length === 0) continue;
+      rows.push({
+        report_id: reportId,
+        other_report_id: pairContext.candidateId,
+        content_type: kind,
+        // Görsel örtüşmenin sözcüksel (trigram) karşılığı yok — uydurmuyoruz.
+        lexical_score: null,
+        semantic_score: p.semantic_score,
+        evidence: { matched_visuals: hits, assessment },
+      });
+    }
+
+    await db
+      .from('similarity_pairs')
+      .upsert(rows, { onConflict: 'report_id,other_report_id,content_type' });
   }
 
   return outcome;

@@ -124,7 +124,14 @@ export const CHECK_INSTRUCTIONS: Record<CheckType, string> = {
    İçerik kurallarına (özgün yenilik vurgusu, tekrarlayan cümle) uyulmaması
    da skora yansır.
 5. verdict: kanıtla desteklenen genel sonuç. Şablonu değerlendirecek kadar
-   metin çıkarılamamışsa 'insufficient_evidence'.`,
+   metin çıkarılamamışsa 'insufficient_evidence'.
+
+BİÇİM KURALLARI:
+Yazı tipi, sayfa boyutu, hizalama, altbilgi ve sayfa sayısı SANA ÖLÇÜM
+OLARAK VERİLİR (talimatın sonunda "ÖLÇÜLEN BİÇİM BULGULARI" başlığı altında).
+Bunlar PDF'ten doğrudan ölçülmüştür; yeniden değerlendirmeye ÇALIŞMA ve
+onlarla çelişen bir şey söyleme. Yalnızca compliance_score'u belirlerken
+hesaba kat.`,
 
   title_content: `GÖREV: Başlık ile içerik tutarlılığını denetle.
 
@@ -163,16 +170,25 @@ verememek kabul edilmez.`,
 
 Karşılaştırılacak ikinci rapor talimatın sonunda verilir.
 
-1. content_type: benzerliğin yoğunlaştığı içerik türü (metin/tablo/gorsel).
-2. semantic_score: 0-100.
-3. overlap_type — bu ayrım en önemli kısım:
+1. semantic_score: 0-100.
+2. overlap_type — bu ayrım en önemli kısım:
    - 'ortak_alan_bilgisi': ikisi de aynı yerleşik bilgiyi anlatıyor, normal
    - 'benzer_yaklasim': benzer çözüm fikri, bağımsız yazım
    - 'yakin_metin': cümle yapıları belirgin biçimde örtüşüyor
    - 'muhtemel_kopya': ifade düzeyinde birebir örtüşme
    - 'none': anlamlı örtüşme yok
-4. matched_passages: örtüşen pasaj ÇİFTLERİ, her iki raporun bölüm
-   referansıyla. Benzerlik iddia ediyorsan bu liste BOŞ OLMAMALI.
+3. matched_passages: örtüşen METİN pasajı ÇİFTLERİ, her iki raporun bölüm
+   referansıyla. Alıntılar BİREBİR olmalı — doğrulanıyor.
+4. matched_visuals: örtüşen TABLO ve GÖRSEL çiftleri. Yalnızca iki raporun
+   PDF'i de sana verildiyse doldur; verilmediyse boş dizi ver.
+   · kind: 'tablo' veya 'gorsel'
+   · a_page / b_page: hangi sayfada (hakem açıp kendi gözüyle doğrulayacak)
+   · what: NE örtüşüyor — tarif yaz, alıntı değil (tablonun/şeklin metin
+     karşılığı yok). Örn. "aynı beş satırlık bütçe tablosu, aynı kalemler
+     ve aynı birim fiyatlar" veya "aynı sistem blok şeması, kutu ve ok
+     yerleşimi dahil".
+   · note: ortak kaynak mı, aynı şablondan mı, kopya mı.
+   Aynı yerleşik gösterim (örn. standart bir devre şeması) örtüşme SAYILMAZ.
 5. assessment: hakeme yönelik kısa değerlendirme.`,
 
   criteria_scoring: `GÖREV: Raporu DEĞERLENDİRME RUBRİĞİ'ndeki her kriter için değerlendir.

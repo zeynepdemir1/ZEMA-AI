@@ -310,6 +310,12 @@ function CheckDetail({
       severity: string;
       suggestion: string;
     }>;
+    const formatChecks = (p.format_checks ?? []) as Array<{
+      rule: string;
+      status: 'uygun' | 'uygun_degil' | 'degerlendirilemedi';
+      evidence: string;
+      page: number;
+    }>;
     const spelling = issues.filter((i) => i.issue_type === 'imla');
     const other = issues.filter((i) => i.issue_type !== 'imla');
     const missing = sections.filter((s) => !s.present);
@@ -335,6 +341,37 @@ function CheckDetail({
             </div>
           )}
         </Block>
+
+        {formatChecks.length > 0 && (
+          <Block
+            title={`BİÇİM KURALLARI · ${
+              formatChecks.filter((f) => f.status === 'uygun').length
+            }/${formatChecks.length} UYGUN`}
+          >
+            <div>
+              {formatChecks.map((f) => (
+                <StateRow
+                  key={f.rule}
+                  label={
+                    f.status === 'uygun' ? 'UYGUN' : f.status === 'uygun_degil' ? 'DEĞİL' : 'BAKILAMADI'
+                  }
+                  tone={
+                    f.status === 'uygun' ? TONE.ok : f.status === 'uygun_degil' ? TONE.bad : TONE.neutral
+                  }
+                  name={f.rule}
+                  note={f.page > 0 ? `s. ${f.page} · ${f.evidence}` : f.evidence}
+                />
+              ))}
+            </div>
+            <div className={MUTED}>
+              Bu bulgular AI değerlendirmesi değil, PDF&apos;ten ölçümdür: sayfa sayısı ve
+              boyutu belge yapısından, yazı tipi ve punto gömülü yazı tipi bilgisinden,
+              hizalama satır sonlarının konumundan, altbilgi ise sayfa alt bandındaki
+              metinden okunur. &quot;Bakılamadı&quot;, ölçüm için yeterli veri olmadığını
+              gösterir.
+            </div>
+          </Block>
+        )}
 
         {spelling.length > 0 && (
           <Block title={`YAZIM HATALARI · ${spelling.length}`}>
@@ -469,6 +506,13 @@ function CheckDetail({
   // ── Benzerlik ──
   if (check.type === 'similarity') {
     const passages = (p.matched_passages ?? []) as unknown[];
+    const visuals = (p.matched_visuals ?? []) as Array<{
+      kind: 'tablo' | 'gorsel';
+      a_page: number;
+      b_page: number;
+      what: string;
+      note: string;
+    }>;
     const score = Number(p.semantic_score ?? 0);
     return (
       <>
@@ -492,6 +536,27 @@ function CheckDetail({
             Bu yüzde gerçek bir ölçüm; uyum skoru değil, o yüzden eşiğe vurulmaz.
           </div>
         </Block>
+
+        {visuals.length > 0 && (
+          <Block title={`TABLO VE GÖRSEL ÖRTÜŞMESİ · ${visuals.length}`}>
+            <div className="flex flex-col gap-3">
+              {visuals.map((v, k) => (
+                <div key={k} className="flex flex-col gap-1.5">
+                  <div className={`${SECTION} normal-case`}>
+                    {v.kind === 'tablo' ? 'TABLO' : 'GÖRSEL'} · bu rapor s. {v.a_page} ↔ diğer rapor
+                    s. {v.b_page}
+                  </div>
+                  <div className={BODY}>{v.what}</div>
+                  {v.note && <div className={MUTED}>{v.note}</div>}
+                </div>
+              ))}
+            </div>
+            <div className={MUTED}>
+              Tablo ve şekillerin metin karşılığı olmadığı için bunlar birebir alıntı değil,
+              tariftir. Sayfa numaralarından açıp kendiniz doğrulayın.
+            </div>
+          </Block>
+        )}
 
         {p.assessment ? (
           <Block title="AI DEĞERLENDİRMESİ">

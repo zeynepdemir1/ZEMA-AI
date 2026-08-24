@@ -86,6 +86,16 @@ export type CallCheckOptions<S extends z.ZodType> = {
   schema?: S;
   /** EFFORT tablosundaki varsayılanı ezmek için */
   effort?: Effort;
+  /**
+   * ÇOK-MODLU GİRDİ — PDF'lerin kendisi.
+   *
+   * Verildiğinde metinden ÖNCE gönderilir (Gemini medyayı istem metninden
+   * önce görmeyi tercih ediyor). Metin de gönderilmeye devam eder: kanıt
+   * doğrulaması alıntıları extracted_text içinde arıyor, yalnızca görsel
+   * katmandan okunan alıntılar boşluk/ligatür farkı yüzünden birebir
+   * eşleşmez ve doğru alıntılar "uydurma" damgası yerdi.
+   */
+  pdfs?: ReadonlyArray<{ label: string; bytes: Uint8Array }>;
 };
 
 /** Geliştirme sırasında şema uyarılarını kontrol başına bir kez yaz. */
@@ -105,13 +115,19 @@ export async function callModelForCheck<S extends z.ZodType = z.ZodType<unknown>
 ): Promise<CheckResult<z.output<S>>> {
   const { checkType, competitionContext, reportText, instruction, schema } = opts;
 
+  const pdfParts: Part[] = (opts.pdfs ?? []).flatMap((f) => [
+    { text: `<pdf label="${f.label}">` },
+    { inlineData: { mimeType: 'application/pdf', data: Buffer.from(f.bytes).toString('base64') } },
+    { text: '</pdf>' },
+  ]);
+
   return callModel({
     label: checkType,
     models: modelChainFor(checkType),
     systemInstruction: competitionContext,
-    // Sabit içerik önce, değişken talimat en sonda — örtük önbelleğin
-    // ortak öneki yakalayabilmesi için sıra korunuyor.
-    parts: [{ text: `<rapor>\n${reportText}\n</rapor>` }, { text: instruction }],
+    // Sıra: PDF → metin → talimat. Sabit içerik önce, değişken talimat en
+    // sonda; örtük önbelleğin ortak öneki yakalayabilmesi için korunuyor.
+    parts: [...pdfParts, { text: `<rapor>\n${reportText}\n</rapor>` }, { text: instruction }],
     schema,
     effort: opts.effort ?? EFFORT[checkType],
     promptVersion: PROMPT_VERSIONS[checkType],

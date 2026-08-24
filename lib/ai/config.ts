@@ -128,11 +128,11 @@ export const EFFORT: Record<CheckType, Effort> = {
  * → analysis_results.prompt_version
  */
 export const PROMPT_VERSIONS: Record<CheckType, string> = {
-  language_template: 'v2', // v2: gerçek yazım hatası tespiti + ÖTR şablonu
-  title_content: 'v1',
+  language_template: 'v3', // v3: PDF görsel olarak gönderiliyor → biçim kuralları kontrol edilebiliyor
+  title_content: 'v2', // v2: çok-modlu (tablo/şekil içeriği de görülüyor)
   category_fit: 'v1',
-  similarity: 'v1',
-  criteria_scoring: 'v1',
+  similarity: 'v2', // v2: tablo/görsel örtüşmesi kapsama girdi
+  criteria_scoring: 'v2', // v2: çok-modlu
   feedback_synthesis: 'v1',
 };
 
@@ -203,3 +203,54 @@ export const CHECK_SCORING: Record<CheckType, 'numeric' | 'judgment'> = {
  * Değeri değiştirirken similarity_pairs'i temizleyip yeniden analiz gerekir.
  */
 export const SIMILARITY_MIN_LEXICAL = Number(process.env.SIMILARITY_MIN_LEXICAL ?? '0.65');
+
+// ─────────────────────────────────────────────────────────────
+// Çok-modlu girdi (PDF'i doğrudan modele gönderme)
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * ÇOK-MODLU ANALİZ.
+ *
+ * Önceden modele yalnızca `reports.extracted_text` gidiyordu. Bu, düz metne
+ * dönüşmeyen her şeyi kör noktada bırakıyordu:
+ *
+ *   · tablolar — hücre yapısı kayboluyor, sayılar tek satıra karışıyor
+ *   · şemalar, grafikler, görseller — hiç yok
+ *   · BİÇİM KURALLARI — yazı tipi, sayfa boyutu, hizalama, altbilgi ve
+ *     sayfa sınırı metinden ÖLÇÜLEMEZ. Şablon "Arial 11 pt, maks 15 sayfa"
+ *     diyordu ve bu kurallar hiç kontrol edilemiyordu.
+ *
+ * Artık PDF'in kendisi `inlineData` olarak gönderiliyor; Gemini sayfaları
+ * görüntü olarak da işliyor. Ayrı bir OCR/tablo-çıkarım hattı KURULMUYOR,
+ * modelin kendi görme yeteneği kullanılıyor.
+ *
+ * Metin de gönderilmeye DEVAM EDİYOR. Sebep: kanıt doğrulaması alıntıları
+ * `extracted_text` içinde arıyor. Model yalnızca görsel katmandan okusaydı
+ * alıntılar boşluk/ligatür farkları yüzünden birebir eşleşmez, doğru
+ * alıntılar "uydurma" damgası yerdi. İkisini birlikte göndermek, kanıt
+ * disiplinini bozmadan görme yeteneği kazandırıyor.
+ *
+ * Ücretsiz katmanda kota İSTEK başına, token başına değil — PDF eklemek
+ * kotayı artırmıyor.
+ */
+export const MULTIMODAL_PDF = process.env.MULTIMODAL_PDF !== 'false';
+
+/**
+ * PDF'in eklendiği kontroller. Dışarıda kalanlar:
+ *   · category_fit — saf metin yargısı, görsel katman katkı sağlamıyor
+ *   · feedback_synthesis — girdisi diğer kontrollerin ÇIKTISI, rapor değil
+ */
+export const MULTIMODAL_CHECKS: ReadonlySet<CheckType> = new Set<CheckType>([
+  'language_template',
+  'title_content',
+  'similarity',
+  'criteria_scoring',
+]);
+
+/**
+ * inlineData ile gönderilebilecek üst sınır. Gemini'nin toplam istek boyutu
+ * sınırı ~20 MB; iki PDF gönderilen benzerlik kontrolü için pay bırakılıyor.
+ * Bu sınırın üstündeki rapor metin-only analiz ediliyor (sessizce değil —
+ * hangi kontrolün PDF gördüğü loglanıyor).
+ */
+export const INLINE_PDF_MAX_BYTES = Number(process.env.INLINE_PDF_MAX_BYTES ?? 8 * 1024 * 1024);

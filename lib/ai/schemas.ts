@@ -24,6 +24,28 @@ export type Verdict = z.infer<typeof VerdictSchema>;
  * Gemini'ye gönderilirken lib/ai/gemini-schema.ts alt kümeye çevirir.
  */
 
+/**
+ * BİÇİM KURALLARI — modelin çıktısı DEĞİL, PDF'ten ÖLÇÜM.
+ *
+ * Çok-modlu deneme sırasında model, ölçümle iki tarafa yaslı olduğu
+ * kanıtlanmış bir belgeyi "sola hizalı" diye raporladı. Yazı tipi ve
+ * hizalama piksel düzeyinde ölçüm isteyen özellikler; yanlış bir
+ * "kurala uymuyor" bulgusu yarışmacıyı haksız yere cezalandırır.
+ *
+ * Bu yüzden bu alan `lib/reports/format-check.ts` tarafından ölçülüp
+ * payload'a EKLENİYOR; modele sorulmuyor. Ölçüm MOCK_AI'dan bağımsız
+ * çalışır — mock modda bile biçim bulguları gerçektir.
+ */
+export const FormatCheckSchema = z.object({
+  /** İnsan tarafından okunur kural — şablondaki ifadeyle. */
+  rule: z.string(),
+  status: z.enum(['uygun', 'uygun_degil', 'degerlendirilemedi']),
+  /** ÖLÇÜLEN değer, veya neden ölçülemediği. */
+  evidence: z.string(),
+  /** Bulgunun sayfası; sayfa bazlı değilse 0. */
+  page: z.number().int(),
+});
+
 // §4.1 — Dil ve şablon kontrolü
 export const LanguageTemplateSchema = z.object({
   language_detected: z.string(),
@@ -85,9 +107,6 @@ export const CategoryFitSchema = z.object({
 
 // §4.4 — Benzerlik / özgünlük (ikili karşılaştırma başına bir sonuç)
 export const SimilarityPairSchema = z.object({
-  // KAPSAM KESİNTİSİ: tablo/görsel benzerliği iptal (PDF'ten tablo/görsel
-  // ayrıştırma ayrı bir çıkarım hattı gerektiriyordu — §4.4'ün açık sorusu).
-  content_type: z.literal('metin'),
   semantic_score: z.number().min(0).max(100),
   /** Ortak fikir mi ortak metin mi — planın ısrarla ayırdığı ayrım. */
   overlap_type: z.enum([
@@ -104,6 +123,29 @@ export const SimilarityPairSchema = z.object({
       note: z.string(),
       a_section_ref: z.string(),
       b_section_ref: z.string(),
+    }),
+  ),
+  /**
+   * TABLO / GÖRSEL ÖRTÜŞMESİ — PDF çok-modlu olarak gönderildiğinde dolar.
+   * §4.4'ün açık sorusuydu ve "kapsam dışı" bırakılmıştı; ayrı bir
+   * tablo-çıkarım hattı yerine modelin görme yeteneği kullanılıyor.
+   *
+   * matched_passages'tan AYRI tutuluyor, çünkü buradaki `what` alanı
+   * BİREBİR ALINTI DEĞİL, bir tarif — bir tablonun veya şeklin metin
+   * karşılığı yok. Hakem sayfa numarasından açıp kendi gözüyle doğruluyor,
+   * kanıt disiplini bozulmuyor.
+   */
+  matched_visuals: z.array(
+    z.object({
+      kind: z.enum(['tablo', 'gorsel']),
+      /** Bu raporda hangi sayfa. */
+      a_page: z.number().int(),
+      /** Karşılaştırılan raporda hangi sayfa. */
+      b_page: z.number().int(),
+      /** Ne örtüşüyor — tarif, alıntı değil. */
+      what: z.string(),
+      /** Ortak kaynak mı, aynı şablon mu, kopya mı. */
+      note: z.string(),
     }),
   ),
   assessment: z.string(),
