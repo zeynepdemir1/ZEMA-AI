@@ -2,9 +2,73 @@
 
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import type { CriterionCardData, ReviewData } from '@/lib/reports/queries';
-import { approveAllCriteria, saveCriterionText, setCriterionApproval } from './actions';
+import {
+  approveAllCriteria,
+  requeueFailedChecks,
+  saveCriterionText,
+  setCriterionApproval,
+} from './actions';
 import { CheckPanels } from './check-panels';
+
+/** Yeniden kuyruğa alınan işleri işlemek için kaç tur tick atılacak. */
+const MAX_TICKS = 20;
+
+/**
+ * Başarısız kontrolleri kurtarma düğmesi.
+ *
+ * Kuyruk yalnızca `pending` işleri kapıyor; `failed` olan iş orada kalıyor
+ * ve hakemin ekranında kalıcı bir "2 KONTROL BAŞARISIZ" rozeti bırakıyordu.
+ * Önce işler pending'e döndürülüyor, sonra kuyruk buradan döndürülüyor —
+ * yükleme formundaki desenin aynısı (Vercel Cron'a güvenilmiyor).
+ */
+function RetryFailed({ reportId, failed }: { reportId: string; failed: number }) {
+  const router = useRouter();
+  const [phase, setPhase] = useState<'idle' | 'running' | 'error'>('idle');
+  const [message, setMessage] = useState<string | null>(null);
+
+  async function onRetry() {
+    setPhase('running');
+    setMessage(null);
+    const r = await requeueFailedChecks(reportId);
+    if (!r.ok) {
+      setPhase('error');
+      setMessage(r.error ?? 'Yeniden kuyruğa alınamadı.');
+      return;
+    }
+    if (!r.requeued) {
+      setPhase('idle');
+      router.refresh();
+      return;
+    }
+    for (let i = 0; i < MAX_TICKS; i++) {
+      const t = await fetch('/api/jobs/tick', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reportId }),
+      });
+      const td = (await t.json().catch(() => ({}))) as { done?: boolean; reportPending?: number };
+      if (td.done || td.reportPending === 0) break;
+    }
+    setPhase('idle');
+    router.refresh();
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={onRetry}
+        disabled={phase === 'running'}
+        className="border-danger text-danger hover:bg-danger/[.06] border px-2 py-[3px] font-mono text-[11px] tracking-[.1em] transition-colors disabled:opacity-50"
+      >
+        {phase === 'running' ? 'YENİDEN DENENİYOR…' : `${failed} KONTROL BAŞARISIZ · YENİDEN DENE`}
+      </button>
+      {message && <span className="text-danger text-[13px] leading-[1.6]">{message}</span>}
+    </>
+  );
+}
 
 const STATUS_META = {
   done: { label: 'YAPILDI', tone: 'text-success border-success' },
@@ -46,9 +110,7 @@ export function ReviewPanel({ data }: { data: ReviewData }) {
               </span>
             )}
             {progress.failed > 0 && (
-              <span className="text-danger border-danger border px-2 py-[3px] font-mono text-[11px] tracking-[.1em]">
-                {progress.failed} KONTROL BAŞARISIZ
-              </span>
+              <RetryFailed reportId={report.id} failed={progress.failed} />
             )}
           </div>
           <h2 className="font-heading m-0 text-[24px] font-semibold">{report.team}</h2>

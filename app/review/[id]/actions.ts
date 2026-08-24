@@ -219,3 +219,70 @@ export async function approveAllCriteria(
   revalidatePath(`/review/${reportId}`);
   return { ok: true, count: rows?.length ?? 0 };
 }
+
+/**
+ * Başarısız kontrolleri yeniden kuyruğa al.
+ *
+ * NEDEN GEREKLİ: bir iş 3 denemede başarısız olunca `failed` yazılıyor ve
+ * ORADA KALIYOR — kuyruk yalnızca `pending` işleri kapıyor, geri döndürecek
+ * hiçbir yol yoktu. Canlı yüklemede geçici bir hata (kota, 503, modelin
+ * eksik alan döndürmesi) raporu kalıcı olarak eksik kontrolle bırakıyordu.
+ * Sahada görüldü: üç `category_fit` işi bu şekilde kilitlendi; aynı çağrı
+ * daha sonra elle tekrarlandığında sorunsuz çalıştı, yani hata geçiciydi.
+ *
+ * `attempts` sıfırlanıyor (yeni bir deneme turu) ve `created_at` öne
+ * alınıyor: kuyruk FIFO çalıştığı için aksi halde yeniden denenen iş
+ * sıranın en sonunda kalırdı.
+ *
+ * YETKİ: hakem kendi raporunu kurtarabilmeli — aksi halde ekranında
+ * "2 KONTROL BAŞARISIZ" yazan bir rozetle kilitli kalıp yönetici beklerdi.
+ * Yöneticiler de kuyruğu izledikleri için dahil. Bu bir analiz işlemi,
+ * yayımlama değil; §3.1'deki rol ayrımını bozmuyor.
+ */
+export async function requeueFailedChecks(
+  reportId: string,
+): Promise<{ ok: boolean; error?: string; requeued?: number }> {
+  const invalid = badId(reportId);
+  if (invalid) return { ok: false, error: invalid };
+  const auth = await authorize(['judge', 'evaluation_admin', 'competition_admin']);
+  if ('error' in auth) return { ok: false, error: auth.error };
+  const denied = await assertReportAccess(auth.user, reportId);
+  if (denied) return { ok: false, error: denied };
+
+  const db = supabaseAdmin();
+  const { data: failed, error: se } = await db
+    .from('analysis_jobs')
+    .select('id, check_type')
+    .eq('report_id', reportId)
+    .eq('status', 'failed');
+  if (se) return { ok: false, error: se.message };
+  if (!failed?.length) return { ok: true, requeued: 0 };
+
+  const { error } = await db
+    .from('analysis_jobs')
+    .update({
+      status: 'pending',
+      attempts: 0,
+      error: null,
+      started_at: null,
+      finished_at: null,
+      // Sıranın önüne al — yoksa FIFO'da en arkaya düşerdi.
+      created_at: new Date().toISOString(),
+    })
+    .in(
+      'id',
+      failed.map((j) => j.id),
+    );
+  if (error) return { ok: false, error: error.message };
+
+  await db.from('audit_log').insert({
+    actor: auth.user.id,
+    action: 'checks.requeued',
+    entity: 'reports',
+    entity_id: reportId,
+    meta: { checks: failed.map((j) => j.check_type) },
+  });
+
+  revalidatePath(`/review/${reportId}`);
+  return { ok: true, requeued: failed.length };
+}
