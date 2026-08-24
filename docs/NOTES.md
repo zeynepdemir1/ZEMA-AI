@@ -10,6 +10,59 @@
       yakalayıp kolonsuz devam ediyor (ilk denemede tüm panel sessizce
       boşalıyordu, düzeltildi). Ama metinler KAYDEDİLMEZ.
 
+## 🖼️ Çok-modlu PDF analizi + tablo/görsel benzerliği (24 Ağustos)
+
+PDF artık düz metne ek olarak `inlineData` ile doğrudan Gemini'ye gönderiliyor
+(`language_template`, `title_content`, `similarity`, `criteria_scoring`).
+Metin de gönderilmeye devam ediyor — kanıt doğrulaması alıntıları
+`extracted_text` içinde arıyor, yalnızca görsel katmandan okunan alıntılar
+boşluk/ligatür farkı yüzünden birebir eşleşmeyip "uydurma" damgası yerdi.
+
+**Biçim kuralları modele SORULMUYOR, ölçülüyor.** Çok-modlu ilk denemede
+model, ölçümle iki tarafa yaslı olduğu kanıtlanmış bir belgeyi "sola hizalı"
+diye raporladı. `lib/reports/format-check.ts` yazı tipi (metrik eşlenikleriyle
+— LibreOffice'in Arial yerine gömdüğü Liberation Sans dahil), sayfa boyutu,
+hizalama (satır sağ kenarı dağılımından) ve altbilgiyi (alt bant, gövde
+metninden boşluk oranıyla ayrılmış) PDF'ten doğrudan ölçüyor; sonuç modele
+OLGU olarak veriliyor, yeniden değerlendirilmesi istenmiyor.
+
+**Tablo/görsel benzerliği geri geldi** (PLAN.md §4.4'teki kapsam kesintisi
+geri alındı — ayrı bir OCR/tablo hattı kurmadan, modelin görme yeteneğiyle).
+`similarity_pairs` artık content_type başına (metin/tablo/gorsel) ayrı satır
+yazıyor; hakem "metin temiz ama bütçe tablosu aynı" durumunu bağımsız
+işaretleyebiliyor. `matched_visuals`'taki `what` alanı BİREBİR ALINTI DEĞİL
+— tablonun/şeklin metin karşılığı yok, hakem sayfa numarasından açıp kendi
+gözüyle doğruluyor.
+
+⚠️ Dokuz demo raporunun mevcut `analysis_results` satırları bu değişiklikten
+ÖNCE üretildi — tablo/görsel karşılaştırması ve biçim ölçümü içermiyorlar.
+Yeniden analiz 54 model çağrısı demek; kota nedeniyle demo öncesi
+YAPILMAYACAK (bkz. DEMO GÜNÜ KONTROL LİSTESİ). Kod tarafı doğrulandı
+(`tsc`, `lint`, `next build` temiz), gerçek Gemini çağrısıyla henüz
+ölçülmedi — bu ölçüm §9'daki "prova yüklemesi" adımında yapılmalı.
+
+## 🎨 T3 Vakfı logosu (24 Ağustos)
+
+Ana sayfanın header'ına (koyu zemin, beyaz logo) ve alt bilgi çubuğuna
+(açık zemin, renkli logo) resmi T3 Vakfı logosu eklendi. Kaynak: resmi
+basın kiti, t3vakfi.org/tr/hakkimizda/kurumsal-kimlik/ üzerinden indirildi.
+Dosyalar `public/t3-vakfi-logo.png` (renkli) ve `public/t3-vakfi-logo-white.png`
+(beyaz) — orijinal 4390×2481 basın kiti PNG'lerinden kırpılıp 640px genişliğe
+küçültüldü. ZEMA'nın kendi marka kimliği (Ink Navy/Teal/Gold) değişmedi.
+
+Kapsam notu: projede rol ekranları (`/review`, `/evaluation`, `/admin`,
+`/submissions`) arasında paylaşılan tek bir header bileşeni yok — her sayfa
+kendi üst kısmını çiziyor. "Genel header" olarak yalnızca ana sayfanın
+(`/`) header'ı var, logo oraya eklendi.
+
+## 🔮 Gelecek sürüm notu
+
+Sistemin gelecek sürümünde, geçmiş onaylı raporlar ve hakem düzeltmeleri
+kullanılarak bir dil modelinin ince ayar (fine-tuning) yoluyla eğitilmesi
+planlanıyor; zaman kısıtı nedeniyle bu Creathon kapsamında uygulanmadı.
+README'ye eklendi (§ Gelecek sürüm); Girişim Sunumu (pptx) yazılırken de
+"Sonraki Adımlar" bölümüne bu cümle girmeli.
+
 ## 🧩 Şablon PDF'inden otomatik kurulum (madde 3)
 
 Yarışma Yöneticisi artık `template_spec`'i elle doldurmuyor: gerçek şablon
@@ -261,6 +314,11 @@ Kod tarafı teslim edilebilir durumda. **Kalan iki zorunlu çıktı kod değil:*
 uygulama ✅, İş Modeli Canvası ❌, Girişim Sunumu ❌. Uygulama tamam;
 kritik yol artık bu ikisi. Ölçülmüş sayılar sunuma malzeme:
 57/57 kanıt doğrulama, 54 kontrol, 9 rapor, 0 uydurma.
+
+- [ ] **README — TODO, en son yapılacak.** Teslimden hemen önce, projenin
+      son haliyle ekran görüntüleri eklenerek güncellenecek. Şimdiden
+      yapılmadı — bilinçli bir sıralama kararı (proje hâlâ değişiyor,
+      ekran görüntüsü erken çekilirse bayatlar).
 
 ## 📋 Eski sıra (tamamlandı)
 

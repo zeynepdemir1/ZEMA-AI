@@ -156,7 +156,6 @@ model başına olduğu için `GEMINI_MODEL` değiştirerek devam edilebilir.
 
 ## Bilinen sınırlar
 
-- Tablo ve görsel benzerliği kapsam dışı; yalnızca metin karşılaştırılıyor.
 - Hakem–AI sohbeti (`correction_log` tabanlı "hafif öğrenme") iptal edildi;
   hakem aksiyonu doğrudan düzenlemeyle sınırlı.
 - Yarışma Yöneticisi ekranlarının bir kısmı yok; kategoriler ve rubrik seed
@@ -166,3 +165,9 @@ model başına olduğu için `GEMINI_MODEL` değiştirerek devam edilebilir.
 
 Ayrıntılı liste: [`docs/NOTES.md`](docs/NOTES.md).
 Mimari kararlar ve gerekçeleri: [`docs/PLAN.md`](docs/PLAN.md).
+
+## Gelecek sürüm
+
+Sistemin gelecek sürümünde, geçmiş onaylı raporlar ve hakem düzeltmeleri
+kullanılarak bir dil modelinin ince ayar (fine-tuning) yoluyla eğitilmesi
+planlanıyor; zaman kısıtı nedeniyle bu Creathon kapsamında uygulanmadı.

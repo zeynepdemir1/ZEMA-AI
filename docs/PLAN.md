@@ -400,11 +400,15 @@ Kategori listesi tüm raporlarda aynı → **cache prefix'ine koy.**
 
 ### 4.4 `similarity` — Benzerlik / Özgünlük
 
-> **⚠️ KAPSAM KESİNTİSİ (23 Ağustos):** Yalnızca **metin** benzerliği yapılıyor.
-> Tablo ve görsel benzerliği iptal edildi — PDF'ten tablo/görsel ayrıştırma
-> ayrı bir çıkarım hattı gerektiriyordu (bu bölümün "açık teknik soru" notu).
-> Şema `content_type: 'metin'` ile sınırlandı, UI'daki tablo/görsel
-> karşılaştırma görünümleri kaldırıldı.
+> **✅ KAPSAM KESİNTİSİ GERİ ALINDI (24 Ağustos):** 23 Ağustos'ta tablo/görsel
+> benzerliği, ayrı bir OCR/tablo-çıkarım hattı gerektirdiği için iptal
+> edilmişti. Çok-modlu geçişle (§4 — PDF artık `inlineData` olarak doğrudan
+> Gemini'ye gönderiliyor) bu ayrı hat gerekmedi: model PDF'i görsel olarak da
+> okuyor. `SimilarityPairSchema`'ya `matched_visuals` (kind: tablo/gorsel,
+> sayfa referanslı) eklendi; `similarity_pairs` artık content_type başına
+> (metin/tablo/gorsel) ayrı satır yazıyor. Aşağıdaki metin-benzerliği akışı
+> (aday eleme + ikili yargı) DEĞİŞMEDİ, yalnızca üstüne tablo/görsel katmanı
+> eklendi.
 
 İki aşamalı, çünkü N raporun tümünü Claude'a ikili karşılaştırmak O(N²) ve pahalı.
 
