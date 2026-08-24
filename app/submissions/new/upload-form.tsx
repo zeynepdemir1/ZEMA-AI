@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { supabaseBrowser } from '@/lib/supabase/browser';
 
 /**
  * PLAN.md §2.1 — analiz kuyruğunun ANA tetikleyicisi burası:
@@ -9,6 +10,30 @@ import { useRouter } from 'next/navigation';
  * Vercel Cron'a güvenilmiyor (Hobby planında sıklık çok kısıtlı).
  */
 const MAX_TICKS = 20;
+const MAX_BYTES = 20 * 1024 * 1024;
+
+/**
+ * Sunucu yanıtını GÜVENLE oku.
+ *
+ * Eskiden `await res.json()` çıplaktı. Yanıt JSON değilse (platformun kendi
+ * 413/502 sayfası, proxy hatası) bu satır throw ediyor, onSubmit async
+ * olduğu için hata hiçbir yerde yakalanmıyor ve form sonsuza kadar
+ * "yükleniyor"da kalıyordu — kullanıcıya tek bir kelime bile göstermeden.
+ */
+async function readJson(res: Response): Promise<Record<string, unknown>> {
+  const text = await res.text().catch(() => '');
+  try {
+    return JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    return {
+      error:
+        `Sunucu beklenmeyen bir yanıt döndü (HTTP ${res.status}). ` +
+        (res.status === 413
+          ? 'Dosya sunucunun kabul ettiğinden büyük olabilir.'
+          : 'Lütfen tekrar deneyin.'),
+    };
+  }
+}
 
 type Phase = 'idle' | 'uploading' | 'analyzing' | 'done' | 'error';
 
@@ -28,24 +53,71 @@ export function UploadForm({ categories }: { categories: Array<{ id: string; nam
     if (!file) return setError('PDF seçmelisiniz.');
     if (!title.trim()) return setError('Rapor başlığı zorunlu.');
 
+    // İstemci tarafı ön kontrol: sunucuya gitmeden anlaşılan hataları
+    // burada söyle, kullanıcı 20 MB'ı boşuna yüklemesin.
+    if (file.type && file.type !== 'application/pdf') {
+      return setError(`Yalnızca PDF kabul ediliyor (seçilen: ${file.type || 'bilinmeyen tür'}).`);
+    }
+    if (file.size > MAX_BYTES) {
+      return setError(
+        `Dosya çok büyük (${(file.size / 1024 / 1024).toFixed(1)} MB). Sınır 20 MB.`,
+      );
+    }
+    if (file.size === 0) {
+      return setError('Seçilen dosya boş (0 bayt).');
+    }
+
     setError(null);
     setPhase('uploading');
 
-    const form = new FormData();
-    form.set('file', file);
-    form.set('title', title.trim());
-    form.set('category_id', categoryId);
+    // ── AŞAMA 1: dosyayı DOĞRUDAN Storage'a yükle ──
+    // Kendi API rotamızdan geçirmiyoruz: Vercel'de serverless fonksiyonların
+    // istek gövdesi 4,5 MB ile sınırlı, yani 20 MB'lık ilan yalan olurdu.
+    // İmzalı URL'nin yolu sunucuda oturumdan türetiliyor (istemci seçemiyor).
+    let uploadedPath: string | null = null;
+    try {
+      const su = await fetch('/api/reports/upload-url', { method: 'POST' });
+      const sb = await readJson(su);
+      if (su.ok && typeof sb.path === 'string' && typeof sb.token === 'string') {
+        const { error: ue } = await supabaseBrowser()
+          .storage.from('reports')
+          .uploadToSignedUrl(sb.path, sb.token, file, { contentType: 'application/pdf' });
+        if (!ue) uploadedPath = sb.path;
+      }
+    } catch {
+      // Yut: aşağıdaki multipart yoluna düşülecek.
+    }
 
-    const res = await fetch('/api/reports', { method: 'POST', body: form });
-    const body = await res.json();
+    // ── AŞAMA 2: sunucuya yalnızca yolu bildir (küçük JSON gövde) ──
+    // İmzalı yükleme herhangi bir sebeple başarısız olduysa eski multipart
+    // yolu yedek olarak duruyor — yerelde ve küçük dosyalarda çalışır.
+    let res: Response;
+    if (uploadedPath) {
+      res = await fetch('/api/reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          file_path: uploadedPath,
+          title: title.trim(),
+          category_id: categoryId,
+        }),
+      });
+    } else {
+      const form = new FormData();
+      form.set('file', file);
+      form.set('title', title.trim());
+      form.set('category_id', categoryId);
+      res = await fetch('/api/reports', { method: 'POST', body: form });
+    }
+    const body = await readJson(res);
     if (!res.ok) {
       setPhase('error');
-      setError(body.error ?? 'Yükleme başarısız.');
+      setError(String(body.error ?? 'Yükleme başarısız.'));
       return;
     }
 
-    setReportId(body.report_id);
-    setProgress({ done: 0, total: body.jobs_queued ?? 6 });
+    setReportId(String(body.report_id));
+    setProgress({ done: 0, total: Number(body.jobs_queued ?? 6) });
     setPhase('analyzing');
 
     // Kuyruğu döndür — her tick 1-2 iş çalıştırır.

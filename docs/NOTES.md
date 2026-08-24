@@ -10,6 +10,70 @@
       yakalayıp kolonsuz devam ediyor (ilk denemede tüm panel sessizce
       boşalıyordu, düzeltildi). Ama metinler KAYDEDİLMEZ.
 
+## 📤 PDF yükleme sağlamlaştırması (madde 2)
+
+### Bulgu: 20 MB ilanı üretimde yalandı
+
+Rota 20 MB sınırı ilan ediyordu ama dosya **kendi API rotamızın istek
+gövdesinden** geçiyordu ve Vercel'de serverless fonksiyonların istek gövdesi
+**4,5 MB** ile sınırlı. Yani üretimde 5 MB'lık bir ÖTR, platformun kendi
+(JSON olmayan) hatasıyla reddedilecekti — üstüne form `await res.json()`
+üzerinde throw edip **sonsuza kadar "yükleniyor"da takılacaktı**, kullanıcıya
+tek kelime göstermeden.
+
+> Not: bu sınır üretim URL'i kayıtlı olmadığı için canlıda ölçülmedi;
+> Vercel'in dokümante ettiği platform sınırıdır. Çözüm sınırı ölçmeye gerek
+> bırakmıyor çünkü dosyayı fonksiyon gövdesinden tamamen çıkarıyor.
+
+### Çözüm: tarayıcı → Storage doğrudan yükleme
+
+1. `POST /api/reports/upload-url` imzalı yükleme URL'si üretir. **Yol adı
+   istemciden ALINMIYOR**, oturumun takımından türetiliyor — imzalı URL
+   yalnızca o takımın klasörüne yazabilir.
+2. Tarayıcı dosyayı doğrudan Supabase Storage'a yükler.
+3. `POST /api/reports` yalnızca `{file_path, title, category_id}` alır —
+   **123 bayt** gövde (test edilen PDF 307 KB idi).
+
+Multipart yolu yedek olarak duruyor (curl testleri, imzalı yükleme
+başarısız olursa). Sunucu istemciden gelen yolu ayrıca doğruluyor:
+başka takımın klasörü ve `..` atlatması 403.
+
+### Test korpusu — 12 PDF patolojisi, 12/12 doğru
+
+| dosya | beklenen | sonuç |
+|---|---|---|
+| normal ÖTR (Türkçe + bütçe tablosu) | 200 | 200 · 460 kelime, 371 Türkçe özel karakter, 0 mojibake, `148.500` tablodan okundu |
+| 8 sayfa uzun rapor | 200 | 200 · 2028 kelime |
+| tablo ağırlıklı (50 satır) | 200 | 200 · hücreler okundu |
+| taranmış (metin katmanı yok) | 422 | 422 · "Taranmış (görüntü) PDF olabilir" |
+| şifre korumalı | 422 | 422 · Türkçe, eyleme dönük mesaj |
+| bozuk (ilk %40) | 422 | 422 |
+| PNG, adı `.pdf` | 422 | 422 |
+| 0 bayt | 422 | 422 |
+| 11 karakter metin | 422 | 422 · "taranmış olabilir" |
+| 94 karakter metin | 422 | 422 · "yalnızca 94 karakter çıktı, en az 200 gerekiyor" |
+| 31 MB | 413 | 413 |
+| `text/plain` içerik türü | 415 | 415 |
+
+### Yol boyunca düzeltilenler
+
+- **pdf.js hataları İngilizce sızıyordu.** "No password given", "Invalid PDF
+  structure." kullanıcıya ne yapması gerektiğini anlatmıyor. Bilinen durumlar
+  Türkçe ve eyleme dönük mesajla karşılanıyor; tanınmayan hata olduğu gibi
+  bırakılıyor (bilgi kaybı yok).
+- **"Taranmış görüntü" mesajı yanıltıcıydı.** Geçerli ama kısa bir PDF de aynı
+  mesajı alıyordu. Artık 40 karakterin altı "taranmış", üstü "yalnızca N
+  karakter çıktı".
+- **`await res.json()` çıplaktı** → JSON olmayan yanıtta form sessizce
+  kilitleniyordu. `readJson()` ile sarıldı.
+- **İstemci tarafı ön kontrol yoktu** — tür/boyut/boşluk sunucuya gitmeden
+  söyleniyor.
+- **Çıkarım başarısız olduğunda yüklenen nesne Storage'da yetim kalıyordu.**
+  Artık siliniyor (test edildi: 8 → 7 nesne).
+- **13 yetim depo nesnesi bulundu ve silindi** — önceki geliştirme
+  turlarından kalmış, hiçbir `reports` satırı işaret etmiyordu.
+  Denetim sorgusu: `reports.file_path` kümesi ile Storage listesini karşılaştır.
+
 ## 🔀 Hakem ekranı tek panel
 
 Kriter kartları artık sayfa altında ayrı bir bölüm DEĞİL — "Kriter Bazlı
