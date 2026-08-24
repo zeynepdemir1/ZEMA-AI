@@ -12,6 +12,58 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { authorize } from '@/lib/supabase/server';
 
 /**
+ * YENİ yarışma oluşturur — mevcut tek satırı GÜNCELLEMEZ.
+ *
+ * Bunun eksikliği gerçek bir kafa karışıklığına yol açtı: "Yarışma
+ * Bilgileri" formu (saveCompetitionInfo) var olan satırı yerinde
+ * düzenliyor; bir kullanıcı oraya yeni ad/yıl yazdığında yeni bir yarışma
+ * sandı, ama demo yarışmasının kimliği üzerine yazıldı — kategoriler ona
+ * bağlı kaldığı için "eski kategoriler yeni yarışmada görünüyor" gibi
+ * göründü. Bu action gerçekten YENİ bir satır açıyor; kategorileri/
+ * kriterleri boş, kendi template_spec'i boş.
+ */
+export async function createCompetition(input: {
+  name: string;
+  year: number;
+  language: string;
+}): Promise<{ ok: boolean; error?: string; id?: string }> {
+  const auth = await authorize(['competition_admin']);
+  if ('error' in auth) return { ok: false, error: auth.error };
+
+  const name = input.name.trim();
+  if (!name) return { ok: false, error: 'Yarışma adı zorunlu.' };
+  if (!Number.isInteger(input.year) || input.year < 2000 || input.year > 2100) {
+    return { ok: false, error: 'Geçersiz yıl.' };
+  }
+  const language = input.language.trim() || 'tr';
+
+  const db = supabaseAdmin();
+  const { data, error } = await db
+    .from('competitions')
+    .insert({
+      name,
+      year: input.year,
+      language,
+      created_by: auth.user.id,
+      similarity_threshold: 50,
+      template_spec: {},
+    })
+    .select('id')
+    .single();
+  if (error) return { ok: false, error: error.message };
+
+  await db.from('audit_log').insert({
+    actor: auth.user.id,
+    action: 'competition.created',
+    entity: 'competitions',
+    entity_id: data.id,
+    meta: { name, year: input.year, language },
+  });
+  revalidatePath('/admin/competitions');
+  return { ok: true, id: data.id };
+}
+
+/**
  * Kategori CRUD — Yarışma Bilgileri sekmesi.
  *
  * RLS (0002_rls.sql, categories_write_admin) yazmayı yalnızca

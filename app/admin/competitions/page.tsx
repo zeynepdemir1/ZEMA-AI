@@ -1,5 +1,6 @@
-import { loadSetup } from '@/lib/reports/queries';
+import { loadAllCompetitions, loadSetup } from '@/lib/reports/queries';
 import { AdminTabs } from './tabs';
+import { CompetitionSwitcher } from './switcher';
 import { InfoCard } from './info-card';
 import { CategoriesCard } from './categories-card';
 
@@ -18,9 +19,13 @@ export const dynamic = 'force-dynamic';
  * Şablon, kriterler ve benzerlik eşiği BURADA yok — onlar
  * /admin/competitions/template'te.
  */
-export default async function CompetitionInfoPage() {
+export default async function CompetitionInfoPage({
+  searchParams,
+}: PageProps<'/admin/competitions'>) {
   await requireRole(['competition_admin']);
-  const data = await loadSetup();
+  const sp = await searchParams;
+  const compParam = typeof sp.comp === 'string' ? sp.comp : undefined;
+  const [data, allCompetitions] = await Promise.all([loadSetup(compParam), loadAllCompetitions()]);
 
   if (!data) {
     return (
@@ -41,7 +46,8 @@ export default async function CompetitionInfoPage() {
   return (
     <div className="flex-1 px-6 pt-[38px] pb-[72px] lg:px-10">
       <div className="mx-auto max-w-[980px]">
-        <AdminTabs active={1} />
+        <CompetitionSwitcher competitions={allCompetitions} activeId={competition.id} />
+        <AdminTabs active={1} comp={competition.id} />
 
         <h2 className="font-heading m-0 mb-1.5 text-[28px] font-semibold">{competition.name}</h2>
         <p className="text-ink/[.62] m-0 mb-7 text-[14.5px]">

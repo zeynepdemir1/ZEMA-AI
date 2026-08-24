@@ -1,5 +1,29 @@
 # ZEMA — Yapılacaklar / Bilinen Eksikler
 
+## ⚠️ ÇALIŞTIRILMASI GEREKEN MIGRATION — `0007_competitions_created_at.sql`
+
+**Neden gerekli — gerçek bir kullanıcı hatası bunu ortaya çıkardı (25
+Ağustos):** Yarışma Yöneticisi "Yarışma Bilgileri" formuna yeni bir ad/yıl
+yazıp YENİ bir yarışma oluşturduğunu sandı; form aslında var olan TEK
+satırı yerinde güncelliyordu (`saveCompetitionInfo` bir `UPDATE`). Demo
+yarışmasının kimliği ("TEKNOFEST 2026 — İnsansız Hava Araçları") üzerine
+yazıldı; kategoriler `competition_id` ile ona bağlı kaldığı için "eski
+kategoriler yeni yarışmada görünüyor" gibi göründü. **Kimlik geri
+yüklendi** (bilinen doğru değerle, `lib/dev-session.ts`'teki
+`DEV_COMPETITION_NAME`'den — tahmin değil), ama kök sebep — birden fazla
+yarışmayı ayırt edecek bir kolon yokluğu — çözülmedi.
+
+Bu migration `competitions`'a `created_at timestamptz default now()`
+ekliyor. `loadSetup`/`loadDashboard`/`loadAssignments` artık "en yüksek
+yıl" yerine "ilk oluşturulan" yarışmayı varsayılan alıyor — `year` artık
+yalnızca görüntü verisi, seçim anahtarı değil. **Çalıştırılmadan da
+uygulama çökmüyor** — kod kolon yokluğunu yakalayıp eski `year desc`
+davranışına düşüyor (0006'daki "kolon yokluğunu yakala" deseniyle aynı,
+test edildi). Ama çalıştırılana kadar yeni yarışma oluşturma özelliği
+`/evaluation` ve `/evaluation/assignments`'ı etkilemeyecek şekilde
+GÜVENDE kalıyor — o ekranlara henüz yarışma seçici eklenmedi, bilinçli
+olarak hep ilk (demo) yarışmayı göstermeye devam ediyorlar.
+
 ## ✅ Migration `0006_judge_notes.sql` — ÇALIŞTIRILDI (24 Ağustos)
 
 Kullanıcı Supabase SQL Editor'de çalıştırdı, başarılı. `analysis_results`'a

@@ -18,6 +18,35 @@ export function reportCode(id: string): string {
   return `R-${id.replace(/-/g, '').slice(0, 6).toUpperCase()}`;
 }
 
+/**
+ * Varsayılan yarışmayı (competitionId verilmediğinde) İLK OLUŞTURULANA
+ * göre bulur — 0007_competitions_created_at.sql ile eklenen `created_at`
+ * kolonuna göre. Bu kolon henüz migration çalıştırılmadıysa Postgres
+ * "column does not exist" hatası döner; o durumda sessizce eski "en
+ * yüksek yıl" davranışına düşülür — migration koşulmadan siteyi kırmasın
+ * (0006_judge_notes.sql'deki "kolon yokluğunu yakala" deseniyle aynı).
+ */
+async function firstCompetition(
+  db: Awaited<ReturnType<typeof supabaseServer>>,
+  select: string,
+): Promise<Record<string, unknown> | null> {
+  const byCreated = await db
+    .from('competitions')
+    .select(select)
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (!byCreated.error) return byCreated.data as Record<string, unknown> | null;
+
+  const byYear = await db
+    .from('competitions')
+    .select(select)
+    .order('year', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return byYear.data as Record<string, unknown> | null;
+}
+
 export type CriterionCardData = {
   criterionId: string;
   code: string;
@@ -506,13 +535,14 @@ export type DashData = {
 export async function loadDashboard(): Promise<DashData | null> {
   const db = await supabaseServer();
 
-  const { data: competition } = await db
-    .from('competitions')
-    .select('id, name, year')
-    .order('year', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (!competition) return null;
+  // İLK oluşturulan yarışma (bkz. 0007_competitions_created_at.sql) —
+  // /admin/competitions'ta yeni bir yarışma açılsa bile bu ekran demo
+  // yarışmasını göstermeye devam eder. Burada henüz bir yarışma seçici
+  // yok; "en yüksek yıl" ile seçmek, kullanıcının yılını değiştirdiği
+  // AYNI yarışmayı farklı bir kayıt sanmasına yol açmıştı.
+  const raw = await firstCompetition(db, 'id, name, year');
+  if (!raw) return null;
+  const competition = raw as { id: string; name: string; year: number };
 
   const [{ data: reports }, { data: teams }, { data: jobs }, { data: scores }, { data: fb }, { data: assignments }, { data: judges }] =
     await Promise.all([
@@ -646,15 +676,40 @@ export type SetupData = {
   overThresholdPct: number;
 };
 
-export async function loadSetup(): Promise<SetupData | null> {
+/** Yarışma seçici (admin sekmeleri) için tüm yarışmaların kısa listesi. */
+export async function loadAllCompetitions(): Promise<Array<{ id: string; name: string; year: number }>> {
   const db = await supabaseServer();
-  const { data: competition } = await db
+  const byCreated = await db
     .from('competitions')
-    .select('id, name, year, language, similarity_threshold, submission_deadline, template_spec')
-    .order('year', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (!competition) return null;
+    .select('id, name, year')
+    .order('created_at', { ascending: true });
+  if (!byCreated.error) return byCreated.data ?? [];
+  // created_at kolonu yok — 0007 migration'ı henüz koşulmamış.
+  const byYear = await db.from('competitions').select('id, name, year').order('year', { ascending: false });
+  return byYear.data ?? [];
+}
+
+/**
+ * competitionId verilirse o yarışmayı yükler (admin sekmelerindeki
+ * yarışma seçicinin seçtiği). Verilmezse İLK oluşturulan yarışmaya düşer
+ * (bkz. loadDashboard() — "en yüksek yıl" artık seçim anahtarı değil).
+ */
+export async function loadSetup(competitionId?: string): Promise<SetupData | null> {
+  const db = await supabaseServer();
+  const SELECT = 'id, name, year, language, similarity_threshold, submission_deadline, template_spec';
+  const raw = competitionId
+    ? (await db.from('competitions').select(SELECT).eq('id', competitionId).maybeSingle()).data
+    : await firstCompetition(db, SELECT);
+  if (!raw) return null;
+  const competition = raw as {
+    id: string;
+    name: string;
+    year: number;
+    language: string;
+    similarity_threshold: number;
+    submission_deadline: string | null;
+    template_spec: unknown;
+  };
 
   const [{ data: categories }, { data: criteria }, { data: reports }, { data: pairs }] =
     await Promise.all([
@@ -966,13 +1021,10 @@ export type JudgeLoad = { id: string; name: string; assigned: number };
 export async function loadAssignments() {
   const db = await supabaseServer();
 
-  const { data: competition } = await db
-    .from('competitions')
-    .select('id, name')
-    .order('year', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (!competition) return null;
+  // bkz. loadDashboard() — ilk oluşturulan yarışma, "en yüksek yıl" değil.
+  const raw = await firstCompetition(db, 'id, name');
+  if (!raw) return null;
+  const competition = raw as { id: string; name: string };
 
   const [{ data: reports }, { data: teams }, { data: cats }, { data: judges }, { data: assigns }, { data: jobs }] =
     await Promise.all([

@@ -16,7 +16,7 @@ const TABS = [
   { num: '2', label: 'Şablon ve kriterler', href: '/admin/competitions/template' },
 ] as const;
 
-export function AdminTabs({ active }: { active: 1 | 2 }) {
+export function AdminTabs({ active, comp }: { active: 1 | 2; comp: string }) {
   return (
     <div className="mb-[30px] flex flex-wrap items-center">
       {TABS.map((t, i) => {
@@ -24,7 +24,7 @@ export function AdminTabs({ active }: { active: 1 | 2 }) {
         return (
           <Link
             key={t.num}
-            href={t.href}
+            href={`${t.href}?comp=${comp}`}
             className={`border-ink/[.12] flex flex-1 cursor-pointer items-center gap-2.5 border px-5 py-3 no-underline ${
               i > 0 ? 'border-l-0' : ''
             } ${isActive ? 'text-ink bg-white' : 'text-ink/[.55] bg-transparent hover:bg-white'}`}
