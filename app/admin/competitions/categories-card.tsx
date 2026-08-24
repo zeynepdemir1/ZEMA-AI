@@ -126,7 +126,10 @@ export function CategoriesCard({
   const [, startTransition] = useTransition();
 
   function onDelete(cat: Category) {
-    if (cat.reportCount > 0) return; // buton zaten disabled — savunma katmanı
+    // Rapor varsa önden ENGELLEMİYORUZ — tıklanabilir kalıyor, gerçek
+    // engelleme sebebi sunucudan dönüp deleteError'da görünüyor. Önceki
+    // hâlde buton sessizce disabled'dı; kullanıcıya hiçbir açıklama
+    // görünmediği için "silme çalışmıyor" gibi geliyordu.
     if (!window.confirm(`"${cat.name}" kategorisini silmek istediğinize emin misiniz?`)) return;
     setDeleteError(null);
     setDeletingId(cat.id);
@@ -166,22 +169,13 @@ export function CategoriesCard({
                     </button>
                     <button
                       type="button"
-                      disabled={c.reportCount > 0 || deletingId === c.id}
-                      title={
-                        c.reportCount > 0
-                          ? `Bu kategoride ${c.reportCount} rapor var, silinemez.`
-                          : undefined
-                      }
+                      disabled={deletingId === c.id}
                       onClick={() => onDelete(c)}
-                      className="border-danger text-danger cursor-pointer border bg-white px-2 py-1 font-mono text-[10px] disabled:cursor-not-allowed disabled:border-ink/[.2] disabled:text-ink/[.35]"
+                      className="border-danger text-danger cursor-pointer border bg-white px-2 py-1 font-mono text-[10px] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {deletingId === c.id ? '…' : 'SİL'}
                     </button>
                   </div>
-                </div>
-                <div className="text-ink/[.55] mt-1 text-[12px] leading-[1.5]">
-                  {c.description.slice(0, 140)}
-                  {c.description.length > 140 ? '…' : ''}
                 </div>
                 {deleteError?.id === c.id && (
                   <div className="text-danger mt-1.5 text-[12px]">{deleteError.msg}</div>
