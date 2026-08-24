@@ -248,6 +248,23 @@ Yukarıdaki şablon dokümanından yarışma kural setini çıkar.
 - content_rules: biçimle ilgili OLMAYAN, içeriğe dair açık kurallar
   (örn. "literatür bilgisi aktarmak yerine özgün yenilik vurgulanmalı").
 - citation_format: atıf biçimi (IEEE, APA, …).
+- criteria: şablonda bir DEĞERLENDİRME KRİTERİ / puanlama rubriği bölümü
+  varsa (ör. "Değerlendirme Ölçütleri", "Puanlama Tablosu"), oradaki HER
+  kriteri ayrı bir satır olarak çıkar:
+    · code: şablonda kısa bir kod/numara varsa onu kullan (ör. "K1"), yoksa
+      sırayla K1, K2, … üret.
+    · name: kriterin adı, şablondaki ifadeyle.
+    · description: hakemin bu kriterde NEYİ arayacağını anlatan beklenti
+      metni — şablonda yazan açıklamayı özetleme, birebir yakın kalarak aktar.
+    · max_score: şablonda yazan azami puan. Belirtilmemişse 10 ver ve
+      "criteria[KOD].max_score"'u not_specified'a ekle.
+    · weight: şablonda yazan ağırlık yüzdesi varsa onu 0-1 arasına çevir
+      (örn. "%20" → 0.2). Hiçbir kriterde ağırlık belirtilmemişse kriterleri
+      EŞİT ağırlıkla böl (1 / kriter sayısı) ve "criteria[].weight"i
+      not_specified'a ekle — ağırlığı UYDURMA, yalnızca eşit dağıt.
+  Şablonda puanlama rubriği HİÇ yoksa criteria'yı boş dizi bırak ve
+  "criteria" değerini not_specified'a ekle — var olmayan bir rubriği ASLA
+  uydurma; bu durumda yönetici mevcut rubriği değiştirmeden kalır.
 
 UYDURMA YASAĞI — EN ÖNEMLİ KURAL:
 Şablonda AÇIKÇA yazmayan bir kuralı ASLA ekleme. Bir alanı şablonda
@@ -263,7 +280,7 @@ göre yarışma yapmasına yol açar. Eksik bırakmak, uydurmaktan iyidir.
 KANITLAMA:
 source_quotes içinde, çıkardığın her önemli alan için şablondan BİREBİR bir
 alıntı ver ve section_ref alanına gerekçelendirdiği alanın adını yaz
-("required_sections", "format.max_pages", "citation_format", …).
+("required_sections", "format.max_pages", "citation_format", "criteria[K1]", …).
 Alıntılar kelime kelime aynı olmalı — özetleme, kısaltma, düzeltme yapma.
 Bu alıntılar şablon metninde otomatik olarak aranıyor; bulunamayan alıntı
 yöneticiye "doğrulanamadı" olarak gösteriliyor.

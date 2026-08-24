@@ -12,6 +12,13 @@ const BODY = 'text-[14px] leading-[1.7] text-ink/85';
 const MUTED = 'text-[13px] leading-[1.6] text-ink/75';
 
 type Quote = { quote: string; section_ref: string; verified: boolean; match: string };
+type ExtractedCriterion = {
+  code: string;
+  name: string;
+  description: string;
+  max_score: number;
+  weight: number;
+};
 type Result = {
   spec: {
     report_type: string;
@@ -19,12 +26,14 @@ type Result = {
     format: { font: string; page: string; alignment: string; max_pages: number; footer: string };
     content_rules: string[];
     citation_format: string;
+    criteria: ExtractedCriterion[];
     not_specified: string[];
   };
   model: string;
   mocked: boolean;
   page_count: number;
   quotes: Quote[];
+  criteria: { replaced: number; note?: string };
 };
 
 async function readJson(res: Response): Promise<Record<string, unknown>> {
@@ -114,8 +123,10 @@ export function TemplateCard({
     <div className="border-ink/10 border bg-white px-[22px] py-5">
       <div className={`${SECTION} mb-2`}>ŞABLON PDF&apos;İNDEN OTOMATİK KURULUM</div>
       <p className={`${BODY} mb-4`}>
-        Gerçek yarışma şablonunu yükleyin. Zorunlu bölümler, biçim kuralları ve atıf biçimi
-        PDF&apos;ten okunup yarışma yapılandırmasına yazılır — elle doldurmanız gerekmez.
+        Gerçek yarışma şablonunu yükleyin. Zorunlu bölümler, biçim kuralları, atıf biçimi ve
+        şablonda tanımlıysa değerlendirme kriterleri (rubrik) PDF&apos;ten okunup yarışma
+        yapılandırmasına yazılır — elle doldurmanız gerekmez. Raporlar analiz edilirken AI bu
+        kriterleri kullanır.
       </p>
 
       <input
@@ -175,6 +186,35 @@ export function TemplateCard({
             <li>Altbilgi: {result.spec.format.footer || '—'}</li>
             <li>Atıf: {result.spec.citation_format || '—'}</li>
           </ul>
+
+          <div className={`${SECTION} mb-2.5`}>
+            DEĞERLENDİRME KRİTERLERİ · {result.spec.criteria.length} KRİTER
+            {result.criteria.replaced > 0 && ` · ${result.criteria.replaced} YAZILDI`}
+          </div>
+          {result.spec.criteria.length === 0 ? (
+            <div className={`${MUTED} mb-4`}>
+              Şablonda bir puanlama rubriği bulunamadı — mevcut kriterler değiştirilmedi.
+            </div>
+          ) : (
+            <div className="mb-2 flex flex-col gap-1.5">
+              {result.spec.criteria.map((c) => (
+                <div key={c.code} className="border-ink/[.14] border px-3 py-2.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[13.5px] font-medium">
+                      <span className="text-ink/[.45] font-mono text-[10.5px]">{c.code}</span> {c.name}
+                    </span>
+                    <span className="text-ink/[.45] font-mono text-[11px]">
+                      %{Math.round(c.weight * 100)} · maks {c.max_score}
+                    </span>
+                  </div>
+                  <div className="text-ink/75 mt-1 text-[12.5px] leading-[1.5]">{c.description}</div>
+                </div>
+              ))}
+            </div>
+          )}
+          {result.criteria.note && (
+            <div className={`${MUTED} mb-4 text-danger`}>{result.criteria.note}</div>
+          )}
 
           {result.spec.not_specified.length > 0 && (
             <div className="border-gold-ink/40 mb-4 border-l-2 pl-3">

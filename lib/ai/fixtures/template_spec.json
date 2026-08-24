@@ -23,6 +23,11 @@
     "Tekrarlayan cümle ve paragraflar tespit edilip raporlanmalı"
   ],
   "citation_format": "IEEE",
+  "criteria": [
+    { "code": "K1", "name": "Problem Tanımı ve Özgünlük", "description": "Problem net tanımlanmış mı, çözüm özgün mü (mock — MOCK_AI=true)", "max_score": 10, "weight": 0.2 },
+    { "code": "K2", "name": "Yöntem ve Sistem Mimarisi", "description": "Teknik yaklaşım sağlam ve gerekçeli mi (mock — MOCK_AI=true)", "max_score": 10, "weight": 0.25 },
+    { "code": "K3", "name": "Test ve Doğrulama", "description": "İddialar test/doğrulama ile destekleniyor mu (mock — MOCK_AI=true)", "max_score": 10, "weight": 0.2 }
+  ],
   "not_specified": [],
   "source_quotes": [
     { "quote": "MOCK_AI=true — bu çıktı fixture'dan geldi, gerçek çağrı yapılmadı", "section_ref": "mock" }

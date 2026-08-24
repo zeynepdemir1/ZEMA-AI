@@ -12,6 +12,52 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { authorize } from '@/lib/supabase/server';
 
 /**
+ * Yarışma Bilgileri sekmesi — ad, yıl, dil, son başvuru tarihi.
+ *
+ * Şablon/kriter/eşik BURADA yok: onlar "Şablon ve Kriterler" sekmesinin işi
+ * (bkz. app/admin/competitions/template/page.tsx). Bu action yalnızca
+ * competitions tablosunun temel alanlarına dokunuyor.
+ */
+export async function saveCompetitionInfo(
+  competitionId: string,
+  input: { name: string; year: number; language: string; submissionDeadline: string | null },
+): Promise<{ ok: boolean; error?: string }> {
+  const invalid = badId(competitionId);
+  if (invalid) return { ok: false, error: invalid };
+  const auth = await authorize(['competition_admin']);
+  if ('error' in auth) return { ok: false, error: auth.error };
+
+  const name = input.name.trim();
+  if (!name) return { ok: false, error: 'Yarışma adı zorunlu.' };
+  if (!Number.isInteger(input.year) || input.year < 2000 || input.year > 2100) {
+    return { ok: false, error: 'Geçersiz yıl.' };
+  }
+  const language = input.language.trim() || 'tr';
+
+  const db = supabaseAdmin();
+  const { error } = await db
+    .from('competitions')
+    .update({
+      name,
+      year: input.year,
+      language,
+      submission_deadline: input.submissionDeadline,
+    })
+    .eq('id', competitionId);
+  if (error) return { ok: false, error: error.message };
+
+  await db.from('audit_log').insert({
+    actor: auth.user.id,
+    action: 'competition.info_updated',
+    entity: 'competitions',
+    entity_id: competitionId,
+    meta: { name, year: input.year, language, submission_deadline: input.submissionDeadline },
+  });
+  revalidatePath('/admin/competitions');
+  return { ok: true };
+}
+
+/**
  * §4.4: similarity_threshold SADECE bir UI filtresi — değiştirmek yeniden
  * analiz TETİKLEMEZ, zaten hesaplanmış similarity_pairs satırları eşiğe göre
  * yorumlanır. Bu yüzden kaydetmek ucuz ve güvenli.
@@ -43,7 +89,7 @@ export async function saveSimilarityThreshold(
     entity_id: competitionId,
     meta: { similarity_threshold: value },
   });
-  revalidatePath('/admin/competitions');
+  revalidatePath('/admin/competitions/template');
   return { ok: true };
 }
 
@@ -86,6 +132,6 @@ export async function revertTemplateSpec(
     entity: 'competitions',
     entity_id: competitionId,
   });
-  revalidatePath('/admin/competitions');
+  revalidatePath('/admin/competitions/template');
   return { ok: true };
 }

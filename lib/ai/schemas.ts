@@ -234,6 +234,25 @@ export type PayloadFor<K extends CheckType> = z.output<SchemaFor<K>>;
  *   verifyQuotes() ile metinde aranıyor — bulunamayan alıntı uydurmadır ve
  *   yöneticiye öyle gösteriliyor (PLAN.md §1 halüsinasyon kalkanı).
  */
+/**
+ * Şablondan çıkarılan DEĞERLENDİRME KRİTERİ (rubrik satırı).
+ *
+ * `criteria` tablosunun alanlarıyla birebir eşleşiyor (bkz.
+ * app/api/competitions/[id]/template/route.ts) — çıkarım sonucu doğrudan o
+ * tabloya yazılabilsin diye kasıtlı.
+ */
+export const ExtractedCriterionSchema = z.object({
+  /** Kısa kod, ör. "K1". Şablonda yoksa sırayla üret. */
+  code: z.string(),
+  name: z.string(),
+  /** Hakemin ne aradığını anlatan, rapor değerlendirilirken kullanılacak beklenti metni. */
+  description: z.string(),
+  max_score: z.number(),
+  /** 0-1 arası ağırlık oranı (toplamda 1'e yakın olmalı). */
+  weight: z.number().min(0).max(1),
+});
+export type ExtractedCriterion = z.output<typeof ExtractedCriterionSchema>;
+
 export const TemplateSpecSchema = z.object({
   report_type: z.string(),
   language: z.string(),
@@ -247,12 +266,14 @@ export const TemplateSpecSchema = z.object({
   }),
   content_rules: z.array(z.string()),
   citation_format: z.string(),
+  /** Şablonda bulunan değerlendirme rubriği — boşsa şablonda rubrik yok demektir. */
+  criteria: z.array(ExtractedCriterionSchema),
   not_specified: z.array(z.string()),
   source_quotes: z.array(
     z.object({
       /** Şablon metninden BİREBİR alıntı. */
       quote: z.string(),
-      /** Bu alıntının hangi alanı gerekçelendirdiği (örn. "format.max_pages"). */
+      /** Bu alıntının hangi alanı gerekçelendirdiği (örn. "format.max_pages", "criteria[K1]"). */
       section_ref: z.string(),
     }),
   ),

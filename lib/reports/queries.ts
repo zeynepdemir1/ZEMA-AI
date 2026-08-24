@@ -606,6 +606,7 @@ export type SetupData = {
     id: string;
     name: string;
     year: number;
+    language: string;
     similarity_threshold: number;
     submission_deadline: string | null;
     template_spec: {
@@ -634,7 +635,14 @@ export type SetupData = {
     };
   };
   categories: Array<{ id: string; name: string; description: string; reportCount: number }>;
-  criteria: Array<{ id: string; code: string; title: string; weightPct: number; maxScore: number }>;
+  criteria: Array<{
+    id: string;
+    code: string;
+    title: string;
+    description: string;
+    weightPct: number;
+    maxScore: number;
+  }>;
   overThresholdPct: number;
 };
 
@@ -642,7 +650,7 @@ export async function loadSetup(): Promise<SetupData | null> {
   const db = await supabaseServer();
   const { data: competition } = await db
     .from('competitions')
-    .select('id, name, year, similarity_threshold, submission_deadline, template_spec')
+    .select('id, name, year, language, similarity_threshold, submission_deadline, template_spec')
     .order('year', { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -657,7 +665,7 @@ export async function loadSetup(): Promise<SetupData | null> {
         .order('name'),
       db
         .from('criteria')
-        .select('id, name, max_score, weight, sort_order')
+        .select('id, name, description, max_score, weight, sort_order')
         .eq('competition_id', competition.id)
         .order('sort_order'),
       db.from('reports').select('id, category_id').eq('competition_id', competition.id),
@@ -684,6 +692,7 @@ export async function loadSetup(): Promise<SetupData | null> {
         id: c.id,
         code: code ?? c.name,
         title: rest.join(' · ') || c.name,
+        description: c.description ?? '',
         weightPct: Math.round(Number(c.weight) * 100),
         maxScore: Number(c.max_score),
       };
