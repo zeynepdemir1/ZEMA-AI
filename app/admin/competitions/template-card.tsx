@@ -11,29 +11,16 @@ const SECTION = 'font-mono text-[11px] tracking-[.1em] text-ink/75';
 const BODY = 'text-[14px] leading-[1.7] text-ink/85';
 const MUTED = 'text-[13px] leading-[1.6] text-ink/75';
 
-type Quote = { quote: string; section_ref: string; verified: boolean; match: string };
-type ExtractedCriterion = {
-  code: string;
-  name: string;
-  description: string;
-  max_score: number;
-  weight: number;
-};
 type Result = {
   spec: {
-    report_type: string;
     required_sections: string[];
-    format: { font: string; page: string; alignment: string; max_pages: number; footer: string };
-    content_rules: string[];
-    citation_format: string;
-    criteria: ExtractedCriterion[];
-    not_specified: string[];
+    criteria: unknown[];
   };
   model: string;
   mocked: boolean;
   page_count: number;
-  quotes: Quote[];
-  criteria: { replaced: number; note?: string };
+  quotes: Array<{ verified: boolean }>;
+  criteria: { replaced: number };
 };
 
 async function readJson(res: Response): Promise<Record<string, unknown>> {
@@ -165,76 +152,26 @@ export function TemplateCard({
         </div>
       )}
 
+      {/* Başarı göstergesi — DETAY YOK. Zorunlu bölümler, biçim kuralları,
+          içerik kuralları ve kriterler artık aşağıdaki kalıcı kutularda
+          (bu kart sadece "yükle" işini yapıyor, sonucu iki kere göstermeyelim). */}
       {result && (
-        <div className="border-ink/[.12] mt-5 border-t pt-4">
-          <div className={`${SECTION} mb-2.5`}>
-            ÇIKARILDI · {result.spec.required_sections.length} ZORUNLU BÖLÜM ·{' '}
-            {result.page_count} SAYFA OKUNDU
+        <div className="border-success mt-5 border bg-[rgba(63,125,92,.06)] px-4 py-3">
+          <div className="text-success font-mono text-[11px] tracking-[.1em]">
+            ✓ ŞABLON ÇÖZÜMLENDİ · {result.page_count} SAYFA OKUNDU
           </div>
-
-          <ul className={`${BODY} m-0 mb-4 list-disc pl-5`}>
-            {result.spec.required_sections.map((s) => (
-              <li key={s}>{s}</li>
-            ))}
-          </ul>
-
-          <ul className={`${MUTED} m-0 mb-4 list-none p-0`}>
-            <li>Yazı tipi: {result.spec.format.font || '—'}</li>
-            <li>Sayfa: {result.spec.format.page || '—'}</li>
-            <li>Hizalama: {result.spec.format.alignment || '—'}</li>
-            <li>Sayfa sınırı: {result.spec.format.max_pages || '—'}</li>
-            <li>Altbilgi: {result.spec.format.footer || '—'}</li>
-            <li>Atıf: {result.spec.citation_format || '—'}</li>
-          </ul>
-
-          <div className={`${SECTION} mb-2.5`}>
-            DEĞERLENDİRME KRİTERLERİ · {result.spec.criteria.length} KRİTER
-            {result.criteria.replaced > 0 && ` · ${result.criteria.replaced} YAZILDI`}
-          </div>
-          {result.spec.criteria.length === 0 ? (
-            <div className={`${MUTED} mb-4`}>
-              Şablonda bir puanlama rubriği bulunamadı — mevcut kriterler değiştirilmedi.
-            </div>
-          ) : (
-            <div className="mb-2 flex flex-col gap-1.5">
-              {result.spec.criteria.map((c) => (
-                <div key={c.code} className="border-ink/[.14] border px-3 py-2.5">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-[13.5px] font-medium">
-                      <span className="text-ink/[.45] font-mono text-[10.5px]">{c.code}</span> {c.name}
-                    </span>
-                    <span className="text-ink/[.45] font-mono text-[11px]">
-                      %{Math.round(c.weight * 100)} · maks {c.max_score}
-                    </span>
-                  </div>
-                  <div className="text-ink/75 mt-1 text-[12.5px] leading-[1.5]">{c.description}</div>
-                </div>
-              ))}
-            </div>
-          )}
-          {result.criteria.note && (
-            <div className={`${MUTED} mb-4 text-danger`}>{result.criteria.note}</div>
-          )}
-
-          {result.spec.not_specified.length > 0 && (
-            <div className="border-gold-ink/40 mb-4 border-l-2 pl-3">
-              <div className={`${SECTION} mb-1.5`}>ŞABLONDA BELİRTİLMEMİŞ</div>
-              <div className={MUTED}>
-                {result.spec.not_specified.join(' · ')} — bu alanlar boş bırakıldı, model uydurmadı.
-              </div>
-            </div>
-          )}
-
-          <div className={MUTED}>
+          <div className={`${MUTED} mt-1.5`}>
             {result.mocked ? (
-              <>Mock mod (MOCK_AI=true) — gerçek çağrı yapılmadı, sabit çıktı gösteriliyor.</>
+              <>Mock mod (MOCK_AI=true) — gerçek çağrı yapılmadı, sabit çıktı gösterildi.</>
             ) : (
               <>
-                {result.model} · alıntı doğrulama: {verified}/{result.quotes.length} alıntı şablon
-                metninde birebir bulundu
-                {verified < result.quotes.length && ' — doğrulanmayanları gözden geçirin'}
+                {result.model} · {result.spec.required_sections.length} zorunlu bölüm ·{' '}
+                {result.spec.criteria.length} kriter · alıntı doğrulama: {verified}/
+                {result.quotes.length}
+                {result.criteria.replaced > 0 && ` · kriterler güncellendi (${result.criteria.replaced})`}
               </>
             )}
+            {' '}— aşağıdaki kutulara yazıldı.
           </div>
         </div>
       )}

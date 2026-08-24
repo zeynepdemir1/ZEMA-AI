@@ -64,6 +64,52 @@ export async function createCompetition(input: {
 }
 
 /**
+ * Zorunlu bölüm başlıklarını elle düzenler.
+ *
+ * AI çıkarımı yanlış/eksik olabilir (bkz. template-card.tsx'in "AI ÇIKTISI"
+ * uyarısı) — Yarışma Yöneticisi burayı doğrudan düzeltebilsin diye var.
+ * template_spec BİR JSONB blob; yalnızca required_sections alanını
+ * değiştirip diğer alanlara (format, criteria, source, previous…)
+ * DOKUNMADAN geri yazıyoruz.
+ */
+export async function updateRequiredSections(
+  competitionId: string,
+  sections: string[],
+): Promise<{ ok: boolean; error?: string }> {
+  const invalid = badId(competitionId);
+  if (invalid) return { ok: false, error: invalid };
+  const auth = await authorize(['competition_admin']);
+  if ('error' in auth) return { ok: false, error: auth.error };
+
+  const cleaned = sections.map((s) => s.trim()).filter(Boolean);
+
+  const db = supabaseAdmin();
+  const { data: comp, error: se } = await db
+    .from('competitions')
+    .select('template_spec')
+    .eq('id', competitionId)
+    .maybeSingle();
+  if (se || !comp) return { ok: false, error: se?.message ?? 'Yarışma bulunamadı.' };
+
+  const spec = (comp.template_spec ?? {}) as Record<string, unknown>;
+  const { error } = await db
+    .from('competitions')
+    .update({ template_spec: { ...spec, required_sections: cleaned } })
+    .eq('id', competitionId);
+  if (error) return { ok: false, error: error.message };
+
+  await db.from('audit_log').insert({
+    actor: auth.user.id,
+    action: 'competition.sections_edited',
+    entity: 'competitions',
+    entity_id: competitionId,
+    meta: { count: cleaned.length },
+  });
+  revalidatePath('/admin/competitions/template');
+  return { ok: true };
+}
+
+/**
  * Kategori CRUD — Yarışma Bilgileri sekmesi.
  *
  * RLS (0002_rls.sql, categories_write_admin) yazmayı yalnızca
