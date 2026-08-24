@@ -5,7 +5,7 @@ import Link from 'next/link';
  *
  * ⚠️ HUKUKİ GÖZDEN GEÇİRME GEREKLİ. Bu metin KVKK m.10'un saydığı zorunlu
  * unsurları kapsayacak şekilde yapılandırıldı, ama hukukçu onayından
- * geçmedi. Aşağıda [KÖŞELİ PARANTEZ] içindeki alanlar doldurulmalı.
+ * geçmedi. Veri sorumlusu bilgileri (ad, adres, e-posta) dolduruldu.
  *
  * m.10 kontrol listesi ve karşılıkları:
  *   veri sorumlusunun kimliği        → "Veri sorumlusu"
@@ -21,7 +21,7 @@ const SECTIONS = [
     body:
       'ZEMA, T3 Vakfı Bursiyer Yapay Zeka Creathonu kapsamında geliştirilen bir rapor ' +
       'değerlendirme uygulamasıdır. Bu metin kapsamında veri sorumlusu ' +
-      '[Hatice Zeynep Demir], adres [İzmit,Kocaeli/Türkiye], e-posta [hzeynepdemirr@gmail.com].',
+      'Hatice Zeynep Demir, adres İzmit, Kocaeli/Türkiye, e-posta hzeynepdemirr@gmail.com.',
   },
   {
     title: 'İşlenen kişisel veriler',
@@ -96,7 +96,7 @@ const SECTIONS = [
   {
     title: 'Başvuru',
     body:
-      'Haklarınızı kullanmak için — silme talebi dahil — [hzeynepdemirr@gmail.com] ' +
+      'Haklarınızı kullanmak için — silme talebi dahil — hzeynepdemirr@gmail.com ' +
       'adresine yazılı olarak başvurabilirsiniz. Başvurunuz en geç otuz gün içinde ' +
       'yanıtlanır. Uygulama içinden tek tıkla hesap silme özelliği henüz sunulmuyor; ' +
       'talebiniz bu adres üzerinden işlenir.',
