@@ -8,7 +8,33 @@ import { supabaseBrowser } from '@/lib/supabase/browser';
  * PLAN.md §2.1 — analiz kuyruğunun ANA tetikleyicisi burası:
  * yükleme bittikten sonra client `/api/jobs/tick`'i döngüde çağırır.
  * Vercel Cron'a güvenilmiyor (Hobby planında sıklık çok kısıtlı).
+ *
+ * ⚠️ README'nin güvenlik modeli: yarışmacı ham AI analiz sürecini hiçbir
+ * şekilde görmemeli (yalnızca hakem onaylı `feedback` nihai sonucunu görür).
+ * Bu yüzden tetikleme döngüsü hâlâ burada çalışıyor — kuyruğun tek
+ * güvenilir tetikleyicisi bu, Vercel Cron'a düşmek istemiyoruz — ama
+ * SESSİZ: hiçbir state güncellemesi yapmıyor, hiçbir "X/6 KONTROL" göstergesi
+ * render etmiyor. Kullanıcı yüklemeden hemen sonra yönlendiriliyor; bu
+ * fonksiyon arka planda, ekranda görünmeden ilerlemeye devam ediyor.
  */
+async function tickQueueInBackground(reportId: string) {
+  for (let i = 0; i < MAX_TICKS; i++) {
+    try {
+      const t = await fetch('/api/jobs/tick', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reportId }),
+      });
+      const td = await t.json().catch(() => ({}));
+      if (td.done || td.reportPending === 0) break;
+    } catch {
+      break; // ağ hatası — sessizce vazgeç, yedek Vercel Cron devam ettirir
+    }
+  }
+}
+
+/** Başarı mesajının ekranda kalma süresi — yönlendirmeden önce okunabilsin. */
+const REDIRECT_DELAY_MS = 1400;
 const MAX_TICKS = 20;
 const MAX_BYTES = 20 * 1024 * 1024;
 
@@ -35,7 +61,7 @@ async function readJson(res: Response): Promise<Record<string, unknown>> {
   }
 }
 
-type Phase = 'idle' | 'uploading' | 'analyzing' | 'done' | 'error';
+type Phase = 'idle' | 'uploading' | 'done' | 'error';
 
 export function UploadForm({ categories }: { categories: Array<{ id: string; name: string }> }) {
   const router = useRouter();
@@ -44,7 +70,6 @@ export function UploadForm({ categories }: { categories: Array<{ id: string; nam
   const [categoryId, setCategoryId] = useState(categories[0]?.id ?? '');
   const [phase, setPhase] = useState<Phase>('idle');
   const [error, setError] = useState<string | null>(null);
-  const [progress, setProgress] = useState({ done: 0, total: 6 });
   const [reportId, setReportId] = useState<string | null>(null);
 
   async function onSubmit(e: React.FormEvent) {
@@ -116,31 +141,23 @@ export function UploadForm({ categories }: { categories: Array<{ id: string; nam
       return;
     }
 
-    setReportId(String(body.report_id));
-    setProgress({ done: 0, total: Number(body.jobs_queued ?? 6) });
-    setPhase('analyzing');
-
-    // Kuyruğu döndür — her tick 1-2 iş çalıştırır.
-    // reportId gönderiliyor: global `pending` ilerleme çubuğu için yanlış,
-    // başka raporun kuyruğu varsa çubuk 0'da takılıyor.
-    for (let i = 0; i < MAX_TICKS; i++) {
-      const t = await fetch('/api/jobs/tick', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reportId: body.report_id }),
-      });
-      const td = await t.json().catch(() => ({}));
-      if (typeof td.reportPending === 'number') {
-        setProgress((p) => ({ ...p, done: Math.max(0, p.total - td.reportPending) }));
-      }
-      if (td.done || td.reportPending === 0) break;
-    }
-
+    const newReportId = String(body.report_id);
+    setReportId(newReportId);
     setPhase('done');
-    router.refresh();
+
+    // Kuyruğu tetikle — AMA sessizce. Bu, analiz işlerinin tek güvenilir
+    // tetikleyicisi (PLAN.md §2.1, Vercel Cron Hobby planında güvenilmez);
+    // kaldırılmıyor, yalnızca yarışmacıya hiçbir ilerleme göstermiyor.
+    // Yönlendirmeden SONRA da arka planda çalışmaya devam eder.
+    void tickQueueInBackground(newReportId);
+
+    // Kısa bir süre başarı mesajını göster, sonra otomatik yönlendir.
+    // Rapor detay sayfası (/submissions/[id]) yalnızca genel durum
+    // etiketi gösterir — AI analiz ilerlemesi/skoru orada da yok.
+    setTimeout(() => router.push(`/submissions/${newReportId}`), REDIRECT_DELAY_MS);
   }
 
-  const busy = phase === 'uploading' || phase === 'analyzing';
+  const busy = phase === 'uploading';
 
   return (
     <form onSubmit={onSubmit} className="border-ink/10 border bg-white p-7">
@@ -195,38 +212,19 @@ export function UploadForm({ categories }: { categories: Array<{ id: string; nam
         </div>
       )}
 
-      {phase === 'analyzing' && (
-        <div className="border-teal mb-5 border bg-[rgba(76,133,119,.06)] px-4 py-3">
-          <div className="text-teal-ink mb-2 font-mono text-[10.5px] tracking-[.12em]">
-            AI ANALİZİ SÜRÜYOR · {progress.done}/{progress.total} KONTROL
-          </div>
-          <div className="bg-ink/[.09] h-[5px]">
-            <div
-              className="bg-teal h-[5px] transition-all"
-              style={{ width: `${(progress.done / progress.total) * 100}%` }}
-            />
-          </div>
-        </div>
-      )}
-
       {phase === 'done' && reportId && (
         <div className="border-success mb-5 border bg-[rgba(63,125,92,.06)] px-4 py-3 text-[13px] leading-[1.6]">
-          Rapor yüklendi ve analiz tamamlandı. Değerlendirme hakem incelemesine geçti; sonuç
-          yayımlandığında <span className="font-mono">{reportId.slice(0, 8)}</span> raporunuzun
-          sayfasında görünecek.
+          Raporunuz alındı, değerlendirme sürecine girdi. Sonuç hakem onayından geçip
+          yayımlandığında rapor sayfanızda görünecek — yönlendiriliyorsunuz…
         </div>
       )}
 
       <button
         type="submit"
-        disabled={busy}
+        disabled={busy || phase === 'done'}
         className="bg-ink w-full cursor-pointer border-none py-[14px] font-sans text-[15px] font-semibold text-white disabled:opacity-50"
       >
-        {phase === 'uploading'
-          ? 'Yükleniyor…'
-          : phase === 'analyzing'
-            ? 'Analiz ediliyor…'
-            : 'Raporu Yükle ve Analiz Et'}
+        {phase === 'uploading' ? 'Yükleniyor…' : phase === 'done' ? 'Alındı ✓' : 'Raporu Yükle ve Analiz Et'}
       </button>
     </form>
   );

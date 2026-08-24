@@ -89,30 +89,11 @@ export default async function SubmissionsPage() {
                         ✓ GERİ BİLDİRİM HAZIR
                       </span>
                     )}
-                    {r.failed > 0 && (
-                      <span className="text-danger border-danger border px-2 py-[3px] font-mono text-[10px] tracking-[.1em]">
-                        {r.failed} KONTROL BAŞARISIZ
-                      </span>
-                    )}
                   </div>
                   <div className="text-ink text-[16px] font-semibold">{r.title}</div>
                   <div className="text-ink/[.55] mt-1 text-[13px]">
                     {r.team} · {r.category}
                   </div>
-
-                  {r.checksTotal > 0 && (
-                    <div className="mt-3 max-w-[280px]">
-                      <div className="bg-ink/[.09] mb-1.5 h-[5px]">
-                        <div
-                          className="bg-teal h-[5px]"
-                          style={{ width: `${(r.checksDone / r.checksTotal) * 100}%` }}
-                        />
-                      </div>
-                      <div className="text-ink/[.5] font-mono text-[10.5px]">
-                        {r.checksDone}/{r.checksTotal} KONTROL TAMAM
-                      </div>
-                    </div>
-                  )}
                 </Link>
               );
             })}
