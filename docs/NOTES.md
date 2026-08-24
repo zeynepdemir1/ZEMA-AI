@@ -1,14 +1,10 @@
 # ZEMA — Yapılacaklar / Bilinen Eksikler
 
-## ⚠️ ÇALIŞTIRILMASI GEREKEN MIGRATION
+## ✅ Migration `0006_judge_notes.sql` — ÇALIŞTIRILDI (24 Ağustos)
 
-- [ ] **`supabase/migrations/0006_judge_notes.sql`** — SQL Editor'de çalıştır.
-      `analysis_results`'a `judge_note` + `judge_note_at` kolonları ve hakem
-      için UPDATE politikası ekliyor. Dört kontrolün hakem geri bildirim
-      kutuları bu kolona yazıyor.
-      **Çalıştırılmadan da uygulama çöküyor DEĞİL** — sorgu kolon yokluğunu
-      yakalayıp kolonsuz devam ediyor (ilk denemede tüm panel sessizce
-      boşalıyordu, düzeltildi). Ama metinler KAYDEDİLMEZ.
+Kullanıcı Supabase SQL Editor'de çalıştırdı, başarılı. `analysis_results`'a
+`judge_note` + `judge_note_at` kolonları ve hakem UPDATE politikası eklendi.
+Dört kontrolün hakem geri bildirim metinleri artık gerçekten kaydediliyor.
 
 ## 🖼️ Çok-modlu PDF analizi + tablo/görsel benzerliği (24 Ağustos)
 
@@ -516,17 +512,15 @@ modelden** (`gemini-3.5-flash`) 2. anahtarla alındı.
 
 ## ⚖️ Hukuki / uyum
 
-- [ ] **KVKK metninde DOLDURULACAK ALANLAR var.** `app/gizlilik/page.tsx`
-      KVKK m.10 kontrol listesine göre yeniden yazıldı (10 bölüm: veri
-      sorumlusu, veri kategorileri, amaçlar, toplama yöntemi ve hukuki sebep,
-      aktarım, yurt dışına aktarım, otomatik analiz ve insan denetimi,
-      saklama, m.11 hakları, başvuru). **Üç alan köşeli parantez içinde
-      boş:** `[VERİ SORUMLUSU UNVANI / AD SOYAD]`, `[ADRES]`,
-      `[İLETİŞİM E-POSTASI]` (iki yerde). Bunlar doldurulmadan teslim
-      edilmemeli — m.10 veri sorumlusunun kimliğini ve başvuru yolunu
-      zorunlu kılıyor.
-      Ayrıca metin hukukçu onayından GEÇMEDİ; yapılan iş m.10/m.11
-      unsurlarını eksiksiz hale getirmek oldu, hukuki mütalaa değil.
+- [x] **KVKK metnindeki boş alanlar dolduruldu (24 Ağustos, kullanıcı).**
+      `app/gizlilik/page.tsx`, m.10 kontrol listesine göre yazılmıştı (10
+      bölüm). Üç alan artık gerçek değerle dolu: veri sorumlusu adı, adres,
+      iletişim e-postası (iki yerde). Küçük gözlem: alanlar hâlâ köşeli
+      parantez İÇİNDE gösteriliyor (ör. "[Hatice Zeynep Demir]") — bu
+      görsel biçim placeholder izlenimi verebilir, istenirse parantezler
+      kaldırılabilir (kozmetik, kullanıcı kararı).
+      Metin hâlâ hukukçu onayından GEÇMEDİ; yapılan iş m.10/m.11
+      unsurlarını eksiksiz hale getirmekti, hukuki mütalaa değil.
 
 ---
 

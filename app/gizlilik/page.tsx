@@ -21,7 +21,7 @@ const SECTIONS = [
     body:
       'ZEMA, T3 Vakfı Bursiyer Yapay Zeka Creathonu kapsamında geliştirilen bir rapor ' +
       'değerlendirme uygulamasıdır. Bu metin kapsamında veri sorumlusu ' +
-      '[VERİ SORUMLUSU UNVANI / AD SOYAD], adres [ADRES], e-posta [İLETİŞİM E-POSTASI].',
+      '[Hatice Zeynep Demir], adres [İzmit,Kocaeli/Türkiye], e-posta [hzeynepdemirr@gmail.com].',
   },
   {
     title: 'İşlenen kişisel veriler',
@@ -96,7 +96,7 @@ const SECTIONS = [
   {
     title: 'Başvuru',
     body:
-      'Haklarınızı kullanmak için — silme talebi dahil — [İLETİŞİM E-POSTASI] ' +
+      'Haklarınızı kullanmak için — silme talebi dahil — [hzeynepdemirr@gmail.com] ' +
       'adresine yazılı olarak başvurabilirsiniz. Başvurunuz en geç otuz gün içinde ' +
       'yanıtlanır. Uygulama içinden tek tıkla hesap silme özelliği henüz sunulmuyor; ' +
       'talebiniz bu adres üzerinden işlenir.',
