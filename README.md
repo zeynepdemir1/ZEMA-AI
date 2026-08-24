@@ -77,7 +77,7 @@ dönmüyor.
 - **Hakem** yalnızca kendisine *atanmış* raporu görür ve yalnızca ona müdahale
   edebilir.
 - **Yayımlama** yetkisi tek roldedir: Değerlendirme Yöneticisi.
-- Mutasyon yapan sekiz server action'ın hepsinde rol kontrolü var — bir kısmı
+- Mutasyon yapan on iki server action'ın hepsinde rol kontrolü var — bir kısmı
   `service_role` kullandığı için RLS orada kalkan değil.
 - Roller kayıt ekranında **seçilmez**. Yarışmacı serbest kaydolur; diğer üç rol
   yalnızca doğru kayıt koduyla açılır. Kodlar sunucuda kalır, istemciye
@@ -150,7 +150,8 @@ model başına olduğu için `GEMINI_MODEL` değiştirerek devam edilebilir.
 /evaluation                  değerlendirme panosu
 /evaluation/assignments      hakem ataması (manuel + dengeli dağıt)
 /evaluation/feedback/[id]    geri bildirim düzenleme ve yayımlama
-/admin/competitions          yarışma, rubrik, benzerlik eşiği
+/admin/competitions          yarışma bilgileri (ad/yıl/dil/son başvuru) + kategori CRUD
+/admin/competitions/template şablon yükleme (AI çıkarımı: bölümler + rubrik), benzerlik eşiği
 /demo                        rol geçişi — navigasyonda linklenmez
 ```
 
@@ -158,8 +159,9 @@ model başına olduğu için `GEMINI_MODEL` değiştirerek devam edilebilir.
 
 - Hakem–AI sohbeti (`correction_log` tabanlı "hafif öğrenme") iptal edildi;
   hakem aksiyonu doğrudan düzenlemeyle sınırlı.
-- Yarışma Yöneticisi ekranlarının bir kısmı yok; kategoriler ve rubrik seed
-  SQL ile yönetiliyor.
+- Yarışma Yöneticisi ekranlarının bir kısmı yok; rubrik ya şablon PDF'inden
+  AI ile çıkarılıyor ya da seed SQL ile elle yönetiliyor (kategoriler artık
+  admin panelinden CRUD edilebiliyor).
 - `/gizlilik` metni taslak; hukuki gözden geçirme gerekiyor.
 - Taranmış (metin katmanı olmayan) PDF kabul edilmiyor; OCR kapsam dışı.
 

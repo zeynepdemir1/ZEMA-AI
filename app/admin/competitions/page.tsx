@@ -1,6 +1,7 @@
 import { loadSetup } from '@/lib/reports/queries';
 import { AdminTabs } from './tabs';
 import { InfoCard } from './info-card';
+import { CategoriesCard } from './categories-card';
 
 import { requireRole } from '@/lib/supabase/server';
 
@@ -9,9 +10,10 @@ export const dynamic = 'force-dynamic';
 /**
  * Sekme 1 — Yarışma Bilgileri.
  *
- * Yalnızca yarışmanın temel bilgileri: ad, yıl, dil, son başvuru tarihi
- * ve tanımlı kategoriler (salt okunur — kategori CRUD ekranı bilinçli
- * olarak kapsam dışı bırakıldı, bkz. docs/NOTES.md §8 madde 6).
+ * Yarışmanın temel bilgileri (ad, yıl, dil, son başvuru tarihi) ve
+ * kategoriler (ekle/düzenle/sil — daha önce salt okunurdu, kriter CRUD'ı
+ * hâlâ Supabase Studio/seed SQL ile yönetiliyor, bkz. docs/NOTES.md §8
+ * madde 6, kategoriler o kesme kararının dışına alındı).
  *
  * Şablon, kriterler ve benzerlik eşiği BURADA yok — onlar
  * /admin/competitions/template'te.
@@ -58,34 +60,7 @@ export default async function CompetitionInfoPage() {
             }}
           />
 
-          <div className="border-ink/10 border bg-white p-[26px]">
-            <div className="mb-2.5 flex items-center justify-between">
-              <span className="text-ink/75 font-mono text-[10.5px] tracking-[.12em]">KATEGORİLER</span>
-              <span className="text-ink/[.45] font-mono text-[11px]">{categories.length} ADET</span>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              {categories.length === 0 ? (
-                <div className="text-ink/75 text-[13px]">Tanımlı kategori yok.</div>
-              ) : (
-                categories.map((c) => (
-                  <div key={c.id} className="border-ink/[.12] border px-3 py-2.5">
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-[13.5px] font-medium">{c.name}</span>
-                      <span className="text-ink/[.45] font-mono text-[10.5px]">{c.reportCount} RAPOR</span>
-                    </div>
-                    <div className="text-ink/[.55] mt-1 text-[12px] leading-[1.5]">
-                      {c.description.slice(0, 140)}
-                      {c.description.length > 140 ? '…' : ''}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-            <div className="text-ink/[.5] mt-4 text-[12px] leading-[1.5]">
-              Kategori ekleme/düzenleme bu ekranda yok — Supabase Studio üzerinden{' '}
-              <span className="font-mono">categories</span> tablosundan yönetiliyor.
-            </div>
-          </div>
+          <CategoriesCard competitionId={competition.id} categories={categories} />
         </div>
       </div>
     </div>

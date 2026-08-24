@@ -12,6 +12,119 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { authorize } from '@/lib/supabase/server';
 
 /**
+ * Kategori CRUD — Yarışma Bilgileri sekmesi.
+ *
+ * RLS (0002_rls.sql, categories_write_admin) yazmayı yalnızca
+ * competition_admin'e veriyor — PLAN.md §3.1 matrisiyle aynı satır. authorize()
+ * burada RLS'in ikinci savunma katmanı: supabaseAdmin() service_role ile RLS'i
+ * baypas ediyor, o yüzden rol kontrolü BURADA da yapılmazsa yalnızca RLS'e
+ * güvenmiş oluruz — diğer action'larla aynı iki-katmanlı desen korunuyor.
+ */
+export async function createCategory(
+  competitionId: string,
+  input: { name: string; description: string },
+): Promise<{ ok: boolean; error?: string }> {
+  const invalid = badId(competitionId);
+  if (invalid) return { ok: false, error: invalid };
+  const auth = await authorize(['competition_admin']);
+  if ('error' in auth) return { ok: false, error: auth.error };
+
+  const name = input.name.trim();
+  const description = input.description.trim();
+  if (!name) return { ok: false, error: 'Kategori adı zorunlu.' };
+  if (!description) return { ok: false, error: 'Kategori açıklaması zorunlu.' };
+
+  const db = supabaseAdmin();
+  const { data, error } = await db
+    .from('categories')
+    .insert({ competition_id: competitionId, name, description })
+    .select('id')
+    .single();
+  if (error) return { ok: false, error: error.message };
+
+  await db.from('audit_log').insert({
+    actor: auth.user.id,
+    action: 'category.created',
+    entity: 'categories',
+    entity_id: data.id,
+    meta: { name },
+  });
+  revalidatePath('/admin/competitions');
+  return { ok: true };
+}
+
+export async function updateCategory(
+  categoryId: string,
+  input: { name: string; description: string },
+): Promise<{ ok: boolean; error?: string }> {
+  const invalid = badId(categoryId);
+  if (invalid) return { ok: false, error: invalid };
+  const auth = await authorize(['competition_admin']);
+  if ('error' in auth) return { ok: false, error: auth.error };
+
+  const name = input.name.trim();
+  const description = input.description.trim();
+  if (!name) return { ok: false, error: 'Kategori adı zorunlu.' };
+  if (!description) return { ok: false, error: 'Kategori açıklaması zorunlu.' };
+
+  const db = supabaseAdmin();
+  const { error } = await db.from('categories').update({ name, description }).eq('id', categoryId);
+  if (error) return { ok: false, error: error.message };
+
+  await db.from('audit_log').insert({
+    actor: auth.user.id,
+    action: 'category.updated',
+    entity: 'categories',
+    entity_id: categoryId,
+    meta: { name },
+  });
+  revalidatePath('/admin/competitions');
+  return { ok: true };
+}
+
+/**
+ * Kategori silme — raporu olan bir kategori silinemez.
+ *
+ * `reports.category_id` `categories(id)`e FK ama `on delete` davranışı
+ * belirtilmemiş (varsayılan RESTRICT) — yani veritabanı zaten engelleyip
+ * ham bir Postgres hatası döndürürdü. Burada ÖNDEN kontrol edip anlamlı bir
+ * Türkçe mesaj veriyoruz; DB kısıtı yine de son savunma hattı olarak duruyor.
+ */
+export async function deleteCategory(categoryId: string): Promise<{ ok: boolean; error?: string }> {
+  const invalid = badId(categoryId);
+  if (invalid) return { ok: false, error: invalid };
+  const auth = await authorize(['competition_admin']);
+  if ('error' in auth) return { ok: false, error: auth.error };
+
+  const db = supabaseAdmin();
+  const { count, error: ce } = await db
+    .from('reports')
+    .select('id', { count: 'exact', head: true })
+    .eq('category_id', categoryId);
+  if (ce) return { ok: false, error: ce.message };
+  if ((count ?? 0) > 0) {
+    return {
+      ok: false,
+      error: `Bu kategoride ${count} rapor var, silinemez. Önce raporları başka bir kategoriye taşıyın.`,
+    };
+  }
+
+  const { data: cat } = await db.from('categories').select('name').eq('id', categoryId).maybeSingle();
+  const { error } = await db.from('categories').delete().eq('id', categoryId);
+  if (error) return { ok: false, error: error.message };
+
+  await db.from('audit_log').insert({
+    actor: auth.user.id,
+    action: 'category.deleted',
+    entity: 'categories',
+    entity_id: categoryId,
+    meta: { name: cat?.name ?? null },
+  });
+  revalidatePath('/admin/competitions');
+  return { ok: true };
+}
+
+/**
  * Yarışma Bilgileri sekmesi — ad, yıl, dil, son başvuru tarihi.
  *
  * Şablon/kriter/eşik BURADA yok: onlar "Şablon ve Kriterler" sekmesinin işi
