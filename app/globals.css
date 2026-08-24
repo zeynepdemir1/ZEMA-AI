@@ -21,6 +21,26 @@
   --color-danger: #B4483F;
   --color-canvas: #F7F7F5;       /* sayfa zemini */
 
+  /* ─── T3 Vakfı aidiyet aksanı ───
+     ZEMA'nın marka sistemi (Ink Navy / Slate Teal / Seal Gold) DEĞİŞMİYOR.
+     T3 KYS'nin dört kurumsal renginden yalnızca turuncu alındı, çünkü
+     ölçümde ZEMA zeminleriyle çalışan tek renk o:
+
+       renk          Ink Navy   beyaz kart
+       T3 Kırmızı      2.58        5.52
+       T3 Mavi         3.15        4.52
+       T3 Turuncu      7.54        1.89
+       T3 Koyu Gri     1.44        9.87
+
+     ⚠️ YALNIZCA KOYU ZEMİNDE METİN OLARAK KULLAN. Beyaz/canvas üzerinde
+     1.89:1 — AA'nın çok altında. Açık zeminde ancak kenarlık/ayraç gibi
+     dekoratif öğe olarak kullanılabilir, metin rengi olarak ASLA.
+
+     Kırmızı ve mavi bilinçli olarak ALINMADI: ZEMA'nın renkleri anlam
+     taşıyor (teal = AI üretimi, gold = hakem onaylı, danger = uygun değil).
+     Yeni bir kırmızı/mavi bu kodlamayı bulanıklaştırırdı. */
+  --color-t3-amber: #F4B106;
+
   --font-sans: var(--font-plex-sans), system-ui, sans-serif;
   --font-mono: var(--font-plex-mono), ui-monospace, monospace;
   --font-heading: var(--font-grotesk), var(--font-plex-sans), sans-serif;

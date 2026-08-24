@@ -67,14 +67,23 @@ export default function LandingPage() {
                 zeminde beyaz resmi logo, ince ayraçla ZEMA markasından
                 ayrılıyor. Kaynak: t3vakfi.org resmi basın kiti. */}
             <span className="h-6 w-px bg-white/[.18]" aria-hidden />
-            <Image
-              src="/t3-vakfi-logo-white.png"
-              alt="T3 Vakfı"
-              width={640}
-              height={246}
-              className="h-6 w-auto opacity-90"
-              priority
-            />
+            <div className="flex items-center gap-2.5">
+              <Image
+                src="/t3-vakfi-logo-white.png"
+                alt="T3 Vakfı"
+                width={640}
+                height={246}
+                className="h-6 w-auto opacity-90"
+                priority
+              />
+              {/* Aidiyet etiketi. Logo zaten "T3 Vakfı" diyor, o yüzden
+                  etiket yalnızca programı adlandırıyor — tekrar yok.
+                  Turuncu burada güvenli: Ink Navy üzerinde 7.54:1.
+                  Dar ekranda gizleniyor, ZEMA markasını sıkıştırmasın. */}
+              <span className="text-t3-amber hidden font-mono text-[10px] tracking-[.14em] sm:inline">
+                BURSİYER PROGRAMI
+              </span>
+            </div>
           </div>
           <div className="flex items-center gap-7 text-[13.5px]">
             {/* Tasarımda bu üçü düz <span>'di, yani tıklanamıyordu.
@@ -154,7 +163,7 @@ export default function LandingPage() {
 
       {/* ─── Nasıl çalışır ─── */}
       <div id="nasil-calisir" className="mx-auto max-w-[1180px] scroll-mt-6 px-10 pt-[72px] pb-5">
-        <div className="text-teal mb-[10px] font-mono text-[11px] tracking-[.18em]">
+        <div className="text-teal-ink mb-[10px] font-mono text-[11px] tracking-[.18em]">
           NASIL ÇALIŞIR
         </div>
         <h2 className="font-heading m-0 mb-[38px] text-[30px] font-semibold tracking-[-.01em]">
@@ -166,7 +175,7 @@ export default function LandingPage() {
               key={s.n}
               className={`border-ink/10 ${s.accent} border border-t-[3px] bg-white px-6 pt-[26px] pb-7`}
             >
-              <div className="text-ink/[.22] mb-[14px] font-mono text-[26px]">{s.n}</div>
+              <div className="text-ink/55 mb-[14px] font-mono text-[26px]">{s.n}</div>
               <h3 className="font-heading m-0 mb-[10px] text-[19px] font-semibold">{s.title}</h3>
               <p className="text-ink/[.68] m-0 text-[14.5px] leading-[1.62]">{s.body}</p>
             </div>
@@ -176,7 +185,7 @@ export default function LandingPage() {
 
       {/* ─── Roller ─── */}
       <div id="roller" className="mx-auto max-w-[1180px] scroll-mt-6 px-10 pt-14 pb-5">
-        <div className="text-teal mb-[10px] font-mono text-[11px] tracking-[.18em]">ROLLER</div>
+        <div className="text-teal-ink mb-[10px] font-mono text-[11px] tracking-[.18em]">ROLLER</div>
         <h2 className="font-heading m-0 mb-3 text-[30px] font-semibold tracking-[-.01em]">
           Dört rol, tek kayıt akışı
         </h2>
@@ -194,7 +203,7 @@ export default function LandingPage() {
               <p className="text-ink/[.68] m-0 mb-3 text-[13.5px] leading-[1.6]">{r.body}</p>
               <div
                 className={`font-mono text-[10px] tracking-[.12em] ${
-                  r.code ? 'text-gold' : 'text-teal'
+                  r.code ? 'text-gold-ink' : 'text-teal-ink'
                 }`}
               >
                 {r.code ? 'KAYIT KODU GEREKLİ' : 'SERBEST KAYIT'}
@@ -211,27 +220,39 @@ export default function LandingPage() {
             <div className="font-heading mb-1.5 text-[20px] font-semibold">
               Değerlendirme sürecinizi ZEMA ile kurun
             </div>
-            <div className="text-ink/[.62] text-[14px]">
+            <div className="text-ink/75 text-[14px]">
               Yarışmacılar doğrudan kaydolur; hakem ve yöneticiler kayıt koduyla rollerine atanır.
             </div>
           </div>
           <DemoVideoDialog />
         </div>
-        <div className="border-ink/10 text-ink/[.45] mt-[34px] flex flex-wrap items-center justify-between gap-4 border-t pt-5 font-mono text-[11px] tracking-[.1em]">
-          <div className="flex items-center gap-3">
-            <span>ZEMA · T3 VAKFI CREATHON</span>
-            <Image
-              src="/t3-vakfi-logo.png"
-              alt="T3 Vakfı"
-              width={640}
-              height={246}
-              className="h-5 w-auto opacity-80"
-            />
+        <div className="border-ink/10 mt-[34px] border-t pt-5">
+          {/* Alfa %45'ti — canvas üzerinde 2.61:1, AA'nın altında. %75 ile
+              6.15:1. Bu blok açık zeminde ve önceki kontrast taraması
+              app/page.tsx'i "koyu zeminli" diye atlamıştı. */}
+          <div className="text-ink/75 flex flex-wrap items-center justify-between gap-4 font-mono text-[11px] tracking-[.1em]">
+            <div className="flex items-center gap-3">
+              <span>ZEMA · T3 VAKFI CREATHON</span>
+              <Image
+                src="/t3-vakfi-logo.png"
+                alt="T3 Vakfı"
+                width={640}
+                height={246}
+                className="h-5 w-auto opacity-80"
+              />
+            </div>
+            {/* Eski metin "VERİLER TÜRKİYE'DE İŞLENİR" idi ve KVKK aydınlatma
+                metniyle ÇELİŞİYORDU: rapor içeriği analiz için Google Gemini'ye,
+                yani yurt dışına aktarılıyor. Gerçekle uyumlu ifadeye çevrildi. */}
+            <span>KVKK UYUMLU · AÇIK RIZA İLE ANALİZ EDİLİR</span>
           </div>
-          {/* Eski metin "VERİLER TÜRKİYE'DE İŞLENİR" idi ve KVKK aydınlatma
-              metniyle ÇELİŞİYORDU: rapor içeriği analiz için Google Gemini'ye,
-              yani yurt dışına aktarılıyor. Gerçekle uyumlu ifadeye çevrildi. */}
-          <span>KVKK UYUMLU · AÇIK RIZA İLE ANALİZ EDİLİR</span>
+
+          {/* T3 aidiyeti — düz ve doğrulanabilir bir ifade. Turuncu burada
+              yalnızca KENARLIK: açık zeminde metin rengi olarak 1.89:1 ile
+              kullanılamaz, dekoratif ayraç olarak sorun değil. */}
+          <div className="border-t3-amber text-ink/75 mt-4 border-l-2 pl-3 text-[13px] leading-[1.6]">
+            T3 Vakfı Bursiyer Yapay Zeka Creathonu kapsamında geliştirilmiştir.
+          </div>
         </div>
       </div>
     </div>

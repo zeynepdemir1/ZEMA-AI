@@ -1,5 +1,56 @@
 # ZEMA — Yapılacaklar / Bilinen Eksikler
 
+## 🟠 T3 Vakfı görsel entegrasyonu (25 Ağustos)
+
+ZEMA'nın marka sistemi (Ink Navy / Slate Teal / Seal Gold) DEĞİŞMEDİ. T3
+aidiyeti ikincil bir katman olarak eklendi.
+
+**Logo:** `/public`'te zaten iki dosya vardı (`t3-vakfi-logo.png` ve
+`t3-vakfi-logo-white.png`, v0.5'te eklenmiş) — yeni bir `t3-logo.png`
+eklemeye gerek yok, mevcutlar kullanılıyor. Header'da beyaz sürüm, ince
+ayraçla ZEMA markasından ayrılmış, yanında `BURSİYER PROGRAMI` etiketi.
+Logo zaten "T3 Vakfı" dediği için etiket yalnızca programı adlandırıyor.
+
+**Renk — ölçümle seçildi.** T3'ün dört kurumsal renginden yalnızca turuncu
+(#F4B106) alındı, çünkü ZEMA zeminleriyle çalışan tek renk o:
+
+| renk | Ink Navy | beyaz kart |
+|---|---|---|
+| T3 Kırmızı | 2.58 ✗ | 5.52 ✓ |
+| T3 Mavi | 3.15 ✗ | 4.52 ✓ |
+| **T3 Turuncu** | **7.54 ✓** | 1.89 ✗ |
+| T3 Koyu Gri | 1.44 ✗ | 9.87 ✓ |
+
+Turuncu **yalnızca koyu zeminde metin** olarak kullanılıyor (header etiketi,
+7.54:1). Açık zeminli footer'da metin rengi olarak 1.89:1 — kullanılamaz;
+orada yalnızca 2 px kenarlık, yani dekoratif ayraç.
+
+Kırmızı ve mavi bilinçli olarak ALINMADI: ZEMA'nın renkleri anlam taşıyor
+(teal = AI üretimi, gold = hakem onaylı, danger = uygun değil). Yeni bir
+kırmızı/mavi bu kodlamayı bulanıklaştırırdı. T3 KYS'nin "turuncu kart +
+sarı buton" tasarım dili de kopyalanmadı.
+
+**"T3 Vakfı Onaylı Platform" ifadesi KULLANILMADI.** Bu, gerçek bir kurumun
+onayını iddia eder; ZEMA bir Creathon projesi, T3 Vakfı'nın onayladığı bir
+platform değil. Yerine doğrulanabilir ifade kullanıldı: footer'da
+"T3 Vakfı Bursiyer Yapay Zeka Creathonu kapsamında geliştirilmiştir."
+
+### Yol boyunca bulunan AA ihlalleri (app/page.tsx)
+
+Önceki kontrast taraması bu dosyayı "koyu zeminli" diye ATLAMIŞTI, oysa
+sayfanın büyük kısmı açık zemin. Ölçülüp düzeltildi:
+
+| yer | önce | sonra |
+|---|---|---|
+| footer şeridi `ink/45` | 2.61 ✗ | `ink/75` 6.15 ✓ |
+| kapanış kartı `ink/62` | 4.13 ✗ | `ink/75` 6.15 ✓ |
+| adım numarası `ink/22` (26px) | 1.54 ✗ | `ink/55` 3.47 ✓ (büyük metin eşiği 3.0) |
+| bölüm etiketleri `text-teal` | 3.97 ✗ | `text-teal-ink` 5.42 ✓ |
+| rol kartı etiketi `text-gold`/`text-teal` | 2.92 / 4.26 ✗ | `-ink` 5.01 / 5.81 ✓ |
+
+Hero içindeki `text-gold` (4.87:1) ve `-pale` varyantları koyu zeminde
+zaten geçiyor, dokunulmadı.
+
 ## ✅ Migration `0007_competitions_created_at.sql` — ÇALIŞTIRILDI (25 Ağustos)
 
 Kullanıcı Supabase SQL Editor'de çalıştırdı, Success. `competitions`'a
