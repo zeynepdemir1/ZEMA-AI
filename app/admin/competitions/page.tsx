@@ -1,4 +1,5 @@
 import { loadSetup } from '@/lib/reports/queries';
+import { TemplateCard } from './template-card';
 import { ThresholdCard } from './threshold-card';
 
 import { requireRole } from '@/lib/supabase/server';
@@ -128,11 +129,44 @@ export default async function CompetitionSetupPage() {
                 <span>ATIF {competition.template_spec.citation_format ?? '—'}</span>
               </div>
               {competition.template_spec.format?.footer && (
-                <div className="text-ink/[.45] mt-1 font-mono text-[10.5px]">
+                <div className="text-ink/75 mt-1 font-mono text-[10.5px]">
                   ALTBİLGİ: {competition.template_spec.format.footer}
                 </div>
               )}
             </div>
+
+            {/* Şablon PDF'ten çıkarıldıysa künyesi: hangi model, kaç alıntı
+                doğrulandı. Elle girilen spec'te bu blok hiç görünmüyor. */}
+            {competition.template_spec.source && (
+              <div className="border-ink/[.12] mb-5 border-l-2 pl-3">
+                <div className="text-ink/75 mb-1.5 font-mono text-[11px] tracking-[.1em]">
+                  ŞABLON PDF&apos;İNDEN ÇIKARILDI
+                </div>
+                <ul className="text-ink/75 m-0 list-none p-0 text-[13px] leading-[1.6]">
+                  <li>Model: {competition.template_spec.source.model ?? '—'}</li>
+                  {competition.template_spec.source.extracted_at && (
+                    <li>
+                      Tarih:{' '}
+                      {new Date(competition.template_spec.source.extracted_at).toLocaleString(
+                        'tr-TR',
+                        { dateStyle: 'medium', timeStyle: 'short' },
+                      )}
+                    </li>
+                  )}
+                  <li>
+                    Alıntı doğrulama: {competition.template_spec.source.quotes_verified ?? 0}/
+                    {competition.template_spec.source.quotes_total ?? 0} alıntı şablonda birebir
+                    bulundu
+                  </li>
+                  {(competition.template_spec.not_specified ?? []).length > 0 && (
+                    <li>
+                      Şablonda belirtilmemiş:{' '}
+                      {(competition.template_spec.not_specified ?? []).join(' · ')}
+                    </li>
+                  )}
+                </ul>
+              </div>
+            )}
 
             {(competition.template_spec.content_rules ?? []).length > 0 && (
               <div className="border-ink/[.12] mb-5 border-l-2 pl-3">
@@ -169,6 +203,11 @@ export default async function CompetitionSetupPage() {
           </div>
 
           <div className="flex flex-col gap-5">
+            <TemplateCard
+              competitionId={competition.id}
+              hasPrevious={Boolean(competition.template_spec.previous)}
+            />
+
             <ThresholdCard
               competitionId={competition.id}
               initial={competition.similarity_threshold}

@@ -10,6 +10,74 @@
       yakalayıp kolonsuz devam ediyor (ilk denemede tüm panel sessizce
       boşalıyordu, düzeltildi). Ama metinler KAYDEDİLMEZ.
 
+## 🧩 Şablon PDF'inden otomatik kurulum (madde 3)
+
+Yarışma Yöneticisi artık `template_spec`'i elle doldurmuyor: gerçek şablon
+PDF'ini yükleyip **Yükle ve Çözümle**'ye basıyor.
+
+Akış: PDF → imzalı URL ile doğrudan Storage → metin çıkarımı → Gemini
+(yapılandırılmış çıktı, `TemplateSpecSchema`) → alıntı doğrulama →
+`competitions.template_spec`.
+
+### Uydurma yasağı şemaya gömülü
+
+Yapılandırılmış çıktı modeli HER alanı doldurmaya zorluyor; bu da şablonda
+yazmayan kuralı "genelde böyle olur" diye tamamlama riski demek. Yarışma
+kuralları uydurulamaz — yönetici şablonda olmayan bir kurala göre yarışma
+yapamaz. İki alan bunun için var:
+
+- `not_specified`: şablonda bulunamayan alanların adları. Model boş
+  string / 0 bırakıp adı buraya yazıyor, uydurmuyor. Ekranda
+  "ŞABLONDA BELİRTİLMEMİŞ" olarak gösteriliyor.
+- `source_quotes`: her alanı gerekçelendiren, şablondan BİREBİR alıntı.
+  Mevcut `verifyQuotes()` ile şablon metninde aranıyor — kontrollerdeki
+  halüsinasyon kalkanının aynısı. Ekranda "9/9 alıntı şablonda birebir
+  bulundu" biçiminde görünüyor.
+
+### Geri dönüş garantisi
+
+Yeni spec yazılırken eskisi `template_spec.previous` altına saklanıyor ve
+ekranda **ÖNCEKİ ŞABLONA DÖN** düğmesi çıkıyor. Yarışma kuralları tek bir
+model çağrısına emanet edilemez. Tek kademe geçmiş tutuluyor
+(`previous.previous` siliniyor) — sonsuz yuvalanma olmasın.
+
+### Depolama: migration gerekmedi
+
+Şablonlar `reports` kovasında `_templates/<yarışma_id>/<uuid>.pdf` yolunda.
+`0002_rls.sql`'deki yarışmacı politikaları ilk klasör adının UUID olmasını ve
+kullanıcının o takımın üyesi olmasını şart koşuyor; `_templates` UUID
+regex'ini geçmediği için yarışmacılara **kapalı**. `auth_is_staff()` politikası
+personele okuma veriyor — şablon zaten personel belgesi.
+
+### Gerçek şablonla ölçüm (24 Ağustos, MOCK_AI=false)
+
+Gerçek bir TEKNOFEST ÖTR kılavuzu biçiminde 10 bölümlük şablon PDF'i
+(Robotaksi ÖTR kuralları) çözümlendi:
+
+- **12/12 alan doğru**: maks 15 sayfa, Arial 11, A4 dikey, iki tarafa yaslı,
+  IEEE, altbilgi "takım adı + sayfa numarası", dil `tr`, 10 bölüm eksiksiz,
+  başlıklardaki numaralandırma ("2.9.") temizlenmiş.
+- **9/9 alıntı birebir doğrulandı**, uydurma yok.
+- `not_specified` boş — şablonda her alan gerçekten yazıyordu.
+
+Küçük kusur: "en fazla 15 sayfa" ve "satır aralığı 1,15" hem `format`'ta hem
+`content_rules`'ta görünüyor. Tekrar, uydurma değil; `content_rules` serbest
+metin olarak prompt'a gidiyor, zarar yok.
+
+### Rota güvenliği (canlı test)
+
+| deneme | sonuç |
+|---|---|
+| yarışmacı → `template-url` | 403 |
+| yarışmacı → `template` | 403 |
+| anonim → `template-url` | 307 → `/auth` (middleware) |
+| başka yarışmanın klasörüne yol | 403 |
+| `..` ile yol atlatma | 403 |
+| yönetici → tam akış | 200, spec yazıldı, denetim kaydı düştü |
+
+Geri alma testi: `previous` geri yüklendiğinde spec **birebir** eski haline
+döndü, demo verisi bozulmadı.
+
 ## 📤 PDF yükleme sağlamlaştırması (madde 2)
 
 ### Bulgu: 20 MB ilanı üretimde yalandı

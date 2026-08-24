@@ -1,4 +1,4 @@
-import { ApiError, type ThinkingConfig } from '@google/genai';
+import { ApiError, type Part, type ThinkingConfig } from '@google/genai';
 import type { z } from 'zod';
 import { genai, keyCount } from './client';
 import {
@@ -104,41 +104,90 @@ export async function callModelForCheck<S extends z.ZodType = z.ZodType<unknown>
   opts: CallCheckOptions<S>,
 ): Promise<CheckResult<z.output<S>>> {
   const { checkType, competitionContext, reportText, instruction, schema } = opts;
-  const model = modelFor(checkType);
-  const promptVersion = PROMPT_VERSIONS[checkType];
 
-  // ─── MOCK YOLU (PLAN.md §5.4) — sağlayıcı değişikliğinden etkilenmedi ───
+  return callModel({
+    label: checkType,
+    models: modelChainFor(checkType),
+    systemInstruction: competitionContext,
+    // Sabit içerik önce, değişken talimat en sonda — örtük önbelleğin
+    // ortak öneki yakalayabilmesi için sıra korunuyor.
+    parts: [{ text: `<rapor>\n${reportText}\n</rapor>` }, { text: instruction }],
+    schema,
+    effort: opts.effort ?? EFFORT[checkType],
+    promptVersion: PROMPT_VERSIONS[checkType],
+    mockPayload: FIXTURES[checkType],
+    mockModel: modelFor(checkType),
+  });
+}
+
+export type ModelCallOptions<S extends z.ZodType> = {
+  /** Log ve hata mesajlarında görünen ad (kontrol adı, "template_spec", …) */
+  label: string;
+  /** Denenecek model sırası; her model havuzdaki her anahtarla denenir. */
+  models: string[];
+  systemInstruction: string;
+  /** İstek gövdesi. Metin, satır içi PDF veya görüntü parçaları olabilir. */
+  parts: Part[];
+  schema?: S;
+  effort: Effort;
+  promptVersion: string;
+  /** MOCK_AI=true iken dönecek sabit içerik. */
+  mockPayload: unknown;
+  /** Mock dönüşünde `mock:<model>` olarak raporlanacak model. */
+  mockModel: string;
+};
+
+/**
+ * HER MODEL ÇAĞRISININ TEK KAPISI (PLAN.md §5.4).
+ *
+ * MOCK_AI=true  → gerçek API HİÇ çağrılmaz, verilen mockPayload döner.
+ * MOCK_AI=false → Gemini çağrılır; model × anahtar zinciri boyunca denenir.
+ *
+ * Kural: hiçbir yerde doğrudan genai() çağırma, her zaman buradan geç.
+ * Aksi halde MOCK_AI bayrağı baypas edilir ve kota boşa gider.
+ *
+ * `parts` dışarıdan geliyor: aynı kapı hem düz metin kontrollerini hem
+ * doğrudan PDF gönderen çok-modlu çağrıları taşıyor.
+ */
+export async function callModel<S extends z.ZodType = z.ZodType<unknown>>(
+  opts: ModelCallOptions<S>,
+): Promise<CheckResult<z.output<S>>> {
+  const { label, models, systemInstruction, parts, schema, promptVersion } = opts;
+
+  // ─── MOCK YOLU (PLAN.md §5.4) ───
   if (MOCK_AI) {
-    const fixture = FIXTURES[checkType];
     // Şema verildiyse fixture'ı da doğrula: fixture şemadan saparsa hatayı
     // UI'da değil burada yakalamak istiyoruz.
-    const payload = (schema ? schema.parse(fixture) : fixture) as z.output<S>;
-    return { payload, model: `mock:${model}`, promptVersion, usage: null, mocked: true };
+    const payload = (schema ? schema.parse(opts.mockPayload) : opts.mockPayload) as z.output<S>;
+    return {
+      payload,
+      model: `mock:${opts.mockModel}`,
+      promptVersion,
+      usage: null,
+      mocked: true,
+    };
   }
 
   // ─── GERÇEK API YOLU (Gemini) ───
   if (!schema) {
     throw new Error(
-      `callModelForCheck(${checkType}): MOCK_AI=false iken schema zorunlu — ` +
+      `callModel(${label}): MOCK_AI=false iken schema zorunlu — ` +
         'yapılandırılmış çıktı olmadan gerçek çağrı yapma (PLAN.md §4).',
     );
   }
 
   const { schema: responseJsonSchema, notes } = geminiSchemaFromZod(schema);
-  if (notes.length && !warned.has(checkType) && process.env.NODE_ENV !== 'production') {
-    warned.add(checkType);
-    console.warn(`[zema:ai] ${checkType} şeması Gemini'ye uyarlandı:\n  ${notes.join('\n  ')}`);
+  if (notes.length && !warned.has(label) && process.env.NODE_ENV !== 'production') {
+    warned.add(label);
+    console.warn(`[zema:ai] ${label} şeması Gemini'ye uyarlandı:\n  ${notes.join('\n  ')}`);
   }
 
-  const thinkingConfig: ThinkingConfig = {
-    thinkingLevel: THINKING_LEVEL[opts.effort ?? EFFORT[checkType]],
-  };
+  const thinkingConfig: ThinkingConfig = { thinkingLevel: THINKING_LEVEL[opts.effort] };
 
-  const models = modelChainFor(checkType);
   const plan = attemptPlan(models);
   let response: Awaited<ReturnType<ReturnType<typeof genai>['models']['generateContent']>> | undefined;
   let lastError: unknown = null;
-  let servedBy = model;
+  let servedBy = models[0];
 
   for (let i = 0; i < plan.length; i++) {
     const attempt = plan[i];
@@ -147,7 +196,7 @@ export async function callModelForCheck<S extends z.ZodType = z.ZodType<unknown>
       servedBy = attempt.model;
       if (i > 0 && process.env.NODE_ENV !== 'production') {
         console.warn(
-          `[zema:ai] ${checkType}: ${i} deneme başarısız → ${describeAttempt(attempt)} ile yanıt alındı.`,
+          `[zema:ai] ${label}: ${i} deneme başarısız → ${describeAttempt(attempt)} ile yanıt alındı.`,
         );
       }
       break;
@@ -156,11 +205,12 @@ export async function callModelForCheck<S extends z.ZodType = z.ZodType<unknown>
       const status = e instanceof ApiError ? e.status : undefined;
 
       // Kota doldu → bu (model, anahtar) çiftini soğumaya al ki sıradaki
-      // kontroller aynı doomed çağrıyı tekrarlamasın.
+      // çağrılar aynı doomed isteği tekrarlamasın.
       if (status === 429) markExhausted(attempt, retryAfterMs(e));
       // Anahtarın kendisi bozuk → o anahtarı tüm modeller için ele. Yoksa
       // .env'e yanlış yapıştırılmış tek bir anahtar bütün zinciri 400 ile
-      // düşürürdü (400 normalde fallthrough etmez).
+      // düşürürdü (400 normalde fallthrough etmez, etmemeli de: şema hatası
+      // her modelde tekrarlanır, boşuna kota harcanmasın).
       const badKey = isInvalidKeyError(e);
       if (badKey) {
         markKeyInvalid(attempt.keyIndex, models);
@@ -169,9 +219,6 @@ export async function callModelForCheck<S extends z.ZodType = z.ZodType<unknown>
         }
       }
 
-      // Yalnızca KOTA (429), MODEL YOK (404) ve GEÇERSİZ ANAHTAR durumunda
-      // sıradakine geç. Diğer 400'ler zincirin geri kalanında da başarısız
-      // olur; boşuna kota harcamak yerine hemen yükselt.
       const fallthrough = status === 429 || status === 404 || badKey;
       if (!fallthrough || i === plan.length - 1) break;
     }
@@ -180,14 +227,15 @@ export async function callModelForCheck<S extends z.ZodType = z.ZodType<unknown>
   if (!response) {
     const where = `${plan.length} deneme (${keyCount()} anahtar × ${models.length} model) · ${poolStatus(models)}`;
     if (lastError instanceof ApiError) {
-      const retryable = lastError.status === 429 || lastError.status === 503 || lastError.status >= 500;
+      const retryable =
+        lastError.status === 429 || lastError.status === 503 || lastError.status >= 500;
       throw new CheckCallError(
-        `callModelForCheck(${checkType}): hiçbir model/anahtar bileşimi yanıt vermedi — ${where}. ` +
+        `callModel(${label}): hiçbir model/anahtar bileşimi yanıt vermedi — ${where}. ` +
           `Son hata: ${lastError.status} — ${lastError.message}`,
         { retryable, cause: lastError },
       );
     }
-    throw new CheckCallError(`callModelForCheck(${checkType}): ağ hatası — ${where}`, {
+    throw new CheckCallError(`callModel(${label}): ağ hatası — ${where}`, {
       retryable: true,
       cause: lastError,
     });
@@ -196,16 +244,9 @@ export async function callModelForCheck<S extends z.ZodType = z.ZodType<unknown>
   async function callOnce(attempt: Attempt) {
     return genai(attempt.keyIndex).models.generateContent({
       model: attempt.model,
-      // Sabit içerik önce, değişken talimat en sonda — örtük önbelleğin
-      // ortak öneki yakalayabilmesi için sıra korunuyor.
-      contents: [
-        {
-          role: 'user',
-          parts: [{ text: `<rapor>\n${reportText}\n</rapor>` }, { text: instruction }],
-        },
-      ],
+      contents: [{ role: 'user', parts }],
       config: {
-        systemInstruction: competitionContext,
+        systemInstruction,
         responseMimeType: 'application/json',
         responseJsonSchema,
         thinkingConfig,
@@ -216,10 +257,9 @@ export async function callModelForCheck<S extends z.ZodType = z.ZodType<unknown>
   // Prompt seviyesinde engellenme (güvenlik filtresi) — exception fırlatmaz.
   const blockReason = response.promptFeedback?.blockReason;
   if (blockReason) {
-    throw new CheckCallError(
-      `callModelForCheck(${checkType}): istem engellendi — ${blockReason}`,
-      { retryable: false },
-    );
+    throw new CheckCallError(`callModel(${label}): istem engellendi — ${blockReason}`, {
+      retryable: false,
+    });
   }
 
   const candidate = response.candidates?.[0];
@@ -227,15 +267,14 @@ export async function callModelForCheck<S extends z.ZodType = z.ZodType<unknown>
   if (finish && finish !== 'STOP') {
     // MAX_TOKENS → çıktı yarıda kesildi, JSON bozuk gelir; SAFETY/RECITATION →
     // model reddetti. İkisi de sessizce yutulmamalı (PLAN.md §5.3).
-    throw new CheckCallError(
-      `callModelForCheck(${checkType}): tamamlanmadı — finishReason: ${finish}`,
-      { retryable: finish === 'MAX_TOKENS' },
-    );
+    throw new CheckCallError(`callModel(${label}): tamamlanmadı — finishReason: ${finish}`, {
+      retryable: finish === 'MAX_TOKENS',
+    });
   }
 
   const text = response.text;
   if (!text) {
-    throw new CheckCallError(`callModelForCheck(${checkType}): boş yanıt`, { retryable: true });
+    throw new CheckCallError(`callModel(${label}): boş yanıt`, { retryable: true });
   }
 
   // Gemini responseJsonSchema ile JSON garanti eder ama doğrulamayı yine de
@@ -245,10 +284,7 @@ export async function callModelForCheck<S extends z.ZodType = z.ZodType<unknown>
   try {
     parsed = JSON.parse(text);
   } catch {
-    throw new CheckCallError(
-      `callModelForCheck(${checkType}): yanıt geçerli JSON değil`,
-      { retryable: true },
-    );
+    throw new CheckCallError(`callModel(${label}): yanıt geçerli JSON değil`, { retryable: true });
   }
 
   const payload = schema.parse(parsed) as z.output<S>;

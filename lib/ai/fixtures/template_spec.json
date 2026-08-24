@@ -1,0 +1,30 @@
+{
+  "report_type": "Ön Tasarım Raporu",
+  "language": "tr",
+  "required_sections": [
+    "Problem Tanımı",
+    "Literatür Taraması",
+    "Yöntem ve Sistem Mimarisi",
+    "Test ve Doğrulama",
+    "Zaman Planı ve Bütçe",
+    "Risk Değerlendirmesi",
+    "Sonuç",
+    "Kaynakça"
+  ],
+  "format": {
+    "font": "Arial 11 pt",
+    "page": "A4 dikey",
+    "alignment": "iki tarafa yaslı",
+    "max_pages": 15,
+    "footer": "takım adı + sayfa numarası"
+  },
+  "content_rules": [
+    "Genel ve literatür bilgisi aktarmak yerine projenin özgün yeniliği vurgulanmalı",
+    "Tekrarlayan cümle ve paragraflar tespit edilip raporlanmalı"
+  ],
+  "citation_format": "IEEE",
+  "not_specified": [],
+  "source_quotes": [
+    { "quote": "MOCK_AI=true — bu çıktı fixture'dan geldi, gerçek çağrı yapılmadı", "section_ref": "mock" }
+  ]
+}

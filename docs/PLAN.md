@@ -595,6 +595,14 @@ catch (e) {
 - `response.promptFeedback.blockReason` → güvenlik filtresi istemi engelledi (kalıcı)
 - `response.candidates[0].finishReason !== 'STOP'` → `MAX_TOKENS` (çıktı yarıda kesilir, JSON bozuk gelir — yeniden denenebilir), `SAFETY` / `RECITATION` (kalıcı)
 
+**Şablon çıkarımı (24 Ağustos):** `template_spec` artık elle doldurulmak
+zorunda değil — Yarışma Yöneticisi gerçek şablon PDF'ini yükleyince
+`extractTemplateSpec()` yapılandırılmış çıktı ile spec'i üretiyor.
+Uydurmaya karşı iki alan: `not_specified` (şablonda bulunamayan alanlar) ve
+`source_quotes` (birebir alıntılar, `verifyQuotes()` ile doğrulanıyor).
+Eski spec `template_spec.previous`'ta saklanıp geri alınabiliyor.
+Gerçek bir 10 bölümlük ÖTR kılavuzunda 12/12 alan ve 9/9 alıntı doğru çıktı.
+
 **Sahadan gözlem (23 Ağustos):** Ücretsiz katmanda **503 UNAVAILABLE ve 429 
 istisna değil, normal işleyişin parçası.** İlk gerçek çağrı denemesi 503 aldı; 
 `gemini-3.7-flash` üzerinde 6 deneme üst üste düştü. Backoff'lu yeniden deneme 

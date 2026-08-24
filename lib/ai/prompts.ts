@@ -206,3 +206,49 @@ Bu metin yarışmacıya gidecek; ham analiz verisi sızmamalı.
    'how' alanı somut bir eylem olmalı ("iki güncel kaynak ekleyin" gibi).
 4. next_steps: en fazla 4 madde, sıradaki somut adımlar.`,
 };
+
+// ─────────────────────────────────────────────────────────────
+// ŞABLON ÇIKARIMI (yarışma kurulumu, kontrol değil)
+// ─────────────────────────────────────────────────────────────
+
+export const TEMPLATE_EXTRACTION_ROLE = [
+  'Sen TEKNOFEST yarışma şablonlarını okuyup makine tarafından işlenebilir bir',
+  'kural setine çeviren bir asistansın. Görevin ŞABLONDA YAZANI çıkarmak;',
+  'şablonda olmayan hiçbir kuralı eklemiyorsun.',
+  '',
+  YAZIM_KURALI,
+].join('\n');
+
+export const TEMPLATE_EXTRACTION_INSTRUCTION = `
+Yukarıdaki şablon dokümanından yarışma kural setini çıkar.
+
+ÇIKARILACAKLAR:
+- report_type: dokümanın tanımladığı rapor türü (örn. "Ön Tasarım Raporu").
+- language: raporun yazılacağı dil kodu ("tr", "en").
+- required_sections: raporda BULUNMASI ZORUNLU bölüm başlıkları, şablondaki
+  sırayla. Başlıkları şablondaki yazımıyla ver — kendi kelimelerinle yeniden
+  adlandırma. Numaralandırmayı ("3.1") başlığa dahil etme.
+- format.font / page / alignment / max_pages / footer: biçim kuralları.
+- content_rules: biçimle ilgili OLMAYAN, içeriğe dair açık kurallar
+  (örn. "literatür bilgisi aktarmak yerine özgün yenilik vurgulanmalı").
+- citation_format: atıf biçimi (IEEE, APA, …).
+
+UYDURMA YASAĞI — EN ÖNEMLİ KURAL:
+Şablonda AÇIKÇA yazmayan bir kuralı ASLA ekleme. Bir alanı şablonda
+bulamadıysan:
+  · metin alanları için boş string ("") ver,
+  · max_pages için 0 ver,
+  · liste alanları için boş dizi ver,
+  · VE o alanın adını not_specified dizisine yaz
+    (örn. "format.footer", "citation_format").
+"Genelde böyle olur" diye tamamlamak, yöneticinin şablonda olmayan bir kurala
+göre yarışma yapmasına yol açar. Eksik bırakmak, uydurmaktan iyidir.
+
+KANITLAMA:
+source_quotes içinde, çıkardığın her önemli alan için şablondan BİREBİR bir
+alıntı ver ve section_ref alanına gerekçelendirdiği alanın adını yaz
+("required_sections", "format.max_pages", "citation_format", …).
+Alıntılar kelime kelime aynı olmalı — özetleme, kısaltma, düzeltme yapma.
+Bu alıntılar şablon metninde otomatik olarak aranıyor; bulunamayan alıntı
+yöneticiye "doğrulanamadı" olarak gösteriliyor.
+`.trim();

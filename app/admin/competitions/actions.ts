@@ -46,3 +46,46 @@ export async function saveSimilarityThreshold(
   revalidatePath('/admin/competitions');
   return { ok: true };
 }
+
+/**
+ * Şablon çıkarımını geri al.
+ *
+ * AI çıkarımı yanlış olabilir ve yarışma kuralları tek bir model çağrısına
+ * emanet edilemez. Çıkarım sırasında eski spec `template_spec.previous`
+ * altına yazılıyor; bu action onu geri yükler.
+ */
+export async function revertTemplateSpec(
+  competitionId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const invalid = badId(competitionId);
+  if (invalid) return { ok: false, error: invalid };
+  const auth = await authorize(['competition_admin']);
+  if ('error' in auth) return { ok: false, error: auth.error };
+
+  const db = supabaseAdmin();
+  const { data, error } = await db
+    .from('competitions')
+    .select('template_spec')
+    .eq('id', competitionId)
+    .maybeSingle();
+  if (error || !data) return { ok: false, error: 'Yarışma bulunamadı.' };
+
+  const spec = data.template_spec as Record<string, unknown> | null;
+  const previous = spec?.previous as Record<string, unknown> | null | undefined;
+  if (!previous) return { ok: false, error: 'Geri dönülecek önceki şablon yok.' };
+
+  const { error: ue } = await db
+    .from('competitions')
+    .update({ template_spec: previous })
+    .eq('id', competitionId);
+  if (ue) return { ok: false, error: ue.message };
+
+  await db.from('audit_log').insert({
+    actor: auth.user.id,
+    action: 'competition.template_reverted',
+    entity: 'competitions',
+    entity_id: competitionId,
+  });
+  revalidatePath('/admin/competitions');
+  return { ok: true };
+}

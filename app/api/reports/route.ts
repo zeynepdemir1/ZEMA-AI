@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { extractText, getDocumentProxy } from 'unpdf';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { extractPdfText, pdfErrorMessage } from '@/lib/reports/pdf';
 import { pathBelongsToTeam, resolveUploaderTeam } from '@/lib/reports/upload';
 
 /**
@@ -31,32 +31,6 @@ import { pathBelongsToTeam, resolveUploaderTeam } from '@/lib/reports/upload';
 const MAX_BYTES = 20 * 1024 * 1024; // 20 MB
 /** Bu eşiğin altında anlamlı bir değerlendirme yapılamaz. */
 const MIN_TEXT_CHARS = 200;
-
-/**
- * pdf.js hataları İngilizce ve teknik ("No password given", "Invalid PDF
- * structure."). Bunlar doğrudan kullanıcıya gösterildiğinde ne yapması
- * gerektiğini anlatmıyor. Bilinen durumları Türkçe ve eyleme dönük mesajla
- * karşılıyoruz; tanınmayanı olduğu gibi bırakıp bilgi kaybetmiyoruz.
- */
-function pdfErrorMessage(e: unknown): string {
-  const raw = e instanceof Error ? e.message : '';
-  if (/password/i.test(raw)) {
-    return (
-      'PDF şifre korumalı olduğu için açılamadı. Şifreyi kaldırıp yeniden ' +
-      'yükleyin (Yazdır → PDF olarak kaydet ile şifresiz bir kopya üretebilirsiniz).'
-    );
-  }
-  if (/size is zero|empty/i.test(raw)) {
-    return 'Dosya boş (0 bayt). Yükleme sırasında bir sorun olmuş olabilir, tekrar deneyin.';
-  }
-  if (/invalid pdf|structure|corrupt|xref/i.test(raw)) {
-    return (
-      'Dosya geçerli bir PDF gibi görünmüyor veya bozuk. Uzantısı .pdf olan ' +
-      'ama aslında PDF olmayan dosyalar da bu hatayı verir.'
-    );
-  }
-  return `PDF okunamadı: ${raw || 'bilinmeyen hata'}`;
-}
 
 export async function POST(req: Request) {
   const db = supabaseAdmin();
@@ -179,10 +153,9 @@ export async function POST(req: Request) {
   let extracted: string;
   let pageCount: number;
   try {
-    const pdf = await getDocumentProxy(bytes);
-    pageCount = pdf.numPages;
-    const { text } = await extractText(pdf, { mergePages: true });
-    extracted = (Array.isArray(text) ? text.join('\n') : text).trim();
+    const out = await extractPdfText(bytes);
+    extracted = out.text;
+    pageCount = out.pageCount;
   } catch (e) {
     return fail({ error: pdfErrorMessage(e) }, 422);
   }

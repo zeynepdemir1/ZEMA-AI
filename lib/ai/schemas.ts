@@ -169,3 +169,51 @@ export type SchemaFor<K extends CheckType> = (typeof SCHEMAS)[K];
 /** run-check.ts'in kanıt doğrulamasına geçirdiği yük tipi. */
 export type CriteriaScoringPayload = z.output<typeof CriteriaScoringSchema>;
 export type PayloadFor<K extends CheckType> = z.output<SchemaFor<K>>;
+
+// ─────────────────────────────────────────────────────────────
+// ŞABLON ÇIKARIMI (kontrol değil — yarışma kurulumu)
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Yarışma Yöneticisi'nin yüklediği gerçek şablon PDF'inden çıkarılan spec.
+ *
+ * Şekil, `scripts/seed.ts`'teki elle yazılmış TEMPLATE_SPEC ile BİREBİR aynı
+ * tutuldu: aynı alan `competitions.template_spec`'e yazılıyor ve
+ * buildCompetitionContext tarafından JSON olarak prompt'a giriyor. Elle
+ * girilen ile çıkarılan spec farklı şekilde olsaydı, aynı alanı okuyan
+ * ekranlar ve promptlar iki farklı biçimle uğraşmak zorunda kalırdı.
+ *
+ * İki alan spec'in kendisine değil, ÇIKARIMIN GÜVENİLİRLİĞİNE dair:
+ *
+ * - `not_specified`: şablonda gerçekten yazmayan alanlar. Yapılandırılmış
+ *   çıktı her alanı doldurmaya zorluyor; model uydurmak yerine buraya
+ *   yazsın diye var. Boş string / 0 gördüğünde bu listeye bak.
+ * - `source_quotes`: her çıkarımı doğrulayan, şablondan BİREBİR alıntı.
+ *   verifyQuotes() ile metinde aranıyor — bulunamayan alıntı uydurmadır ve
+ *   yöneticiye öyle gösteriliyor (PLAN.md §1 halüsinasyon kalkanı).
+ */
+export const TemplateSpecSchema = z.object({
+  report_type: z.string(),
+  language: z.string(),
+  required_sections: z.array(z.string()),
+  format: z.object({
+    font: z.string(),
+    page: z.string(),
+    alignment: z.string(),
+    max_pages: z.number().int(),
+    footer: z.string(),
+  }),
+  content_rules: z.array(z.string()),
+  citation_format: z.string(),
+  not_specified: z.array(z.string()),
+  source_quotes: z.array(
+    z.object({
+      /** Şablon metninden BİREBİR alıntı. */
+      quote: z.string(),
+      /** Bu alıntının hangi alanı gerekçelendirdiği (örn. "format.max_pages"). */
+      section_ref: z.string(),
+    }),
+  ),
+});
+
+export type TemplateSpec = z.output<typeof TemplateSpecSchema>;

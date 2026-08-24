@@ -620,6 +620,17 @@ export type SetupData = {
         footer?: string;
       };
       content_rules?: string[];
+      not_specified?: string[];
+      /** Şablon PDF'inden otomatik çıkarıldıysa çıkarımın künyesi. */
+      source?: {
+        model?: string;
+        extracted_at?: string;
+        page_count?: number;
+        quotes_verified?: number;
+        quotes_total?: number;
+      };
+      /** Çıkarım öncesindeki spec — yanlış çıkarımdan dönmek için. */
+      previous?: unknown;
     };
   };
   categories: Array<{ id: string; name: string; description: string; reportCount: number }>;
