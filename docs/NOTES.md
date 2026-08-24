@@ -583,7 +583,8 @@ denenir, daha zayıf modele düşmek son çaredir — analiz kalitesi korunur.
   ve boşluklu değerler ayıklanır.
 - **Anahtarlar farklı AI Studio PROJELERİNDEN olmalı.** Aynı projeden ikinci
   anahtar üretmek kotayı artırmaz — kota projeye bağlı.
-  3 proje × 3 model × 20 = **180 istek/gün**.
+  N proje × 3 model × 20 istek/gün. **25 Ağustos itibarıyla 4 anahtar
+  doğrulandı → 240 istek/gün.**
 - 429 alan (model, anahtar) çifti bir süre "soğumaya" alınır ki sonraki
   kontroller aynı doomed çağrıyı tekrarlamasın. Soğuma çifti ELEMEZ,
   listenin sonuna atar — kota gece yarısı sıfırlanırken süreç ayakta
@@ -592,6 +593,39 @@ denenir, daha zayıf modele düşmek son çaredir — analiz kalitesi korunur.
   Bu olmasa `.env`'e yanlış yapıştırılmış tek bir anahtar bütün zinciri
   düşürürdü — 400 normalde fallthrough etmiyor.
 - **Log'a anahtar DEĞERİ hiç yazılmaz**, yalnızca sıra numarası (`anahtar #2`).
+
+### 403 zinciri kesiyordu — düzeltildi (25 Ağustos)
+
+Üçüncü/dördüncü anahtar eklenirken ortaya çıktı. Yeni anahtarlardan biri
+`models.list()`'te **403** verdi: *"Gemini API has not been used in project
+1014944337025 before or it is disabled."* Birkaç dakika sonra kendiliğinden
+düzeldi — yeni etkinleştirilen API'nin yayılması.
+
+Ama 403 fallthrough listesinde DEĞİLDİ (`429 || 404 || badKey`), yani zinciri
+**olduğu yerde kesiyordu**. Dört anahtarlı havuzda ilk üçü 429 alıp
+dördüncüsü 403 verdiğinde çağrı tamamen başarısız oluyor, oysa zincirdeki
+diğer iki modelin ilk üç anahtardaki kotası hiç denenmemiş oluyordu.
+
+Düzeltme: 403 anahtara özgü sayılıyor (projede API etkin değil, anahtar
+kısıtlı, faturalandırma engeli — hepsi başka anahtarla çalışır) ve zincir
+devam ediyor. Soğuma **15 dakika**, kalıcı değil: 403 geçiciydi ve anahtarı
+bir yıllığına elemek iki dakika sonra geçerli olacak bir anahtarı kaybetmek
+olurdu. 400 `API_KEY_INVALID` için kalıcı eleme aynen duruyor.
+
+Test: dört hata sınıfının dördü de doğru karar veriyor (429/400-anahtar/403
+devam eder, 400-şema keser); 403 senaryosunda zincir `flash-lite`'a geçiyor
+ve 12 çiftin 6'sı hâlâ denenebilir kalıyor.
+
+### Anahtar sayımında iki tuzak
+
+1. `env | grep -c '^GOOGLE_API_KEY'` **yanlış sayar** — boş slotları da sayar.
+   `keyCount()` veya değer uzunluğu kontrolü kullan.
+2. Anahtar dizelerinin farklı olması **ayrı proje demek değildir**. Aynı
+   projeden üretilen iki anahtar aynı kotayı paylaşır ve havuz bunu tespit
+   edemez. Kapasite iddiası ancak projelerin ayrı olduğu AI Studio'dan
+   doğrulanırsa geçerli.
+3. Çalışan `next dev` sunucusu `.env.local` değişikliğini görmez —
+   yeni anahtar eklendikten sonra **yeniden başlatmak** gerekir.
 
 Canlı doğrulandı (24 Ağustos): #1 kasten bozuk anahtar + #2 gerçek anahtar
 ile çağrı yapıldı; #1 reddedilip üç modelden de elendi, yanıt **en iyi
@@ -604,7 +638,7 @@ modelden** (`gemini-3.5-flash`) 2. anahtarla alındı.
 
 - **Canlı yükleme yok** (PLAN §9). `MOCK_AI=true` kalıyor.
 - **Kota: proje × model başına günde 20 istek.** Demo öncesi 2-3 AI Studio
-  projesinden anahtar üretip `GOOGLE_API_KEY_1..3`'e Vercel'de de ekle.
+  projesinden anahtar üretip `GOOGLE_API_KEY_1..10`'a Vercel'de de ekle.
 - `NEXT_PUBLIC_DEMO_MODE=true` kalıyor — `/demo` rol geçişinin tek yolu.
   Auth bağlandı ama rol başına ayrı giriş yapmak demoyu yavaşlatır.
 

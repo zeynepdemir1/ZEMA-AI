@@ -24,6 +24,14 @@ export type Attempt = { model: string; keyIndex: number };
 const DEFAULT_COOLDOWN_MS = 10 * 60_000;
 /** Geçersiz anahtar kotayla ilgisiz — süreç boyunca bir daha denenmesin. */
 const INVALID_KEY_COOLDOWN_MS = 365 * 24 * 60 * 60_000;
+/**
+ * 403 için KISA soğuma. Sebep sahada görüldü: yeni açılmış bir Google Cloud
+ * projesinde Gemini API etkinleştirildikten sonra birkaç dakika boyunca
+ * "has not been used in project N before or it is disabled" 403'ü dönüyor,
+ * sonra kendiliğinden düzeliyor. Bu anahtarı bir yıllığına elemek, iki
+ * dakika sonra geçerli olacak bir anahtarı kalıcı olarak kaybetmek olurdu.
+ */
+const KEY_BLOCKED_COOLDOWN_MS = 15 * 60_000;
 
 const coolingUntil = new Map<string, number>();
 
@@ -38,12 +46,22 @@ export function markExhausted(a: Attempt, retryAfterMs?: number): void {
   coolingUntil.set(id(a), Date.now() + (retryAfterMs ?? DEFAULT_COOLDOWN_MS));
 }
 
-/** Anahtarın kendisi bozuk (yanlış yapıştırılmış, iptal edilmiş): tüm modeller için ele. */
-export function markKeyInvalid(keyIndex: number, models: string[]): void {
+/**
+ * Anahtarın KENDİSİ kullanılamıyor: tüm modeller için ele.
+ * Süre çağıran tarafından belirlenir — kalıcı bozukluk (400) ile geçici
+ * engel (403) aynı şey değil.
+ */
+export function markKeyInvalid(
+  keyIndex: number,
+  models: string[],
+  cooldownMs: number = INVALID_KEY_COOLDOWN_MS,
+): void {
   for (const model of models) {
-    coolingUntil.set(id({ model, keyIndex }), Date.now() + INVALID_KEY_COOLDOWN_MS);
+    coolingUntil.set(id({ model, keyIndex }), Date.now() + cooldownMs);
   }
 }
+
+export const KEY_BLOCKED_MS = KEY_BLOCKED_COOLDOWN_MS;
 
 export function attemptPlan(models: string[], keys = keyCount()): Attempt[] {
   const pairs: Attempt[] = [];
@@ -69,10 +87,28 @@ export function retryAfterMs(e: unknown): number | undefined {
   return Number.isFinite(sec) && sec > 0 ? Math.min(sec * 1000, DEFAULT_COOLDOWN_MS) : undefined;
 }
 
-/** Anahtarın kendisi mi geçersiz? (400 + API_KEY_INVALID) */
+/** Anahtarın kendisi mi geçersiz? (400 + API_KEY_INVALID) — kalıcı. */
 export function isInvalidKeyError(e: unknown): boolean {
   if (!(e instanceof ApiError) || e.status !== 400) return false;
   return /API_KEY_INVALID|API key not valid|API key expired/i.test(e.message);
+}
+
+/**
+ * Anahtar geçerli ama BU ANAHTARLA erişilemiyor mu? (403)
+ *
+ * Kaynakları: projede Gemini API etkin değil (SERVICE_DISABLED), anahtara
+ * konmuş kısıt (referrer/IP), faturalandırma engeli. Hepsi ANAHTARA özgü —
+ * başka bir anahtarla aynı istek çalışır.
+ *
+ * NEDEN ÖNEMLİ: 403 daha önce fallthrough listesinde DEĞİLDİ, yani zinciri
+ * olduğu yerde kesiyordu. Dört anahtarlı bir havuzda ilk üçü 429 alıp
+ * dördüncüsü 403 verdiğinde çağrı tamamen başarısız oluyordu — oysa
+ * zincirdeki DİĞER MODELLERİN ilk üç anahtardaki kotası hiç denenmemiş
+ * oluyordu. Sahada 25 Ağustos'ta yeni eklenen anahtarda tam olarak bu 403
+ * görüldü (birkaç dakika sonra kendiliğinden düzeldi).
+ */
+export function isKeyBlockedError(e: unknown): boolean {
+  return e instanceof ApiError && e.status === 403;
 }
 
 /** Tanı çıktısı — hangi çiftler soğumada? Anahtar DEĞERİ asla yazılmaz. */

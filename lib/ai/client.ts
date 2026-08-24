@@ -9,7 +9,11 @@ import { GoogleGenAI } from '@google/genai';
  * NEDEN HAVUZ: ücretsiz katman kotası PROJE × MODEL başına günde 20 istek.
  * Dokuz raporun altı kontrolü = 54 çağrı, yani tek anahtarla tek günde
  * demoyu hazırlamak mümkün değil. Birden fazla Google AI Studio projesinden
- * anahtar eklenince kota toplanır: 3 anahtar × 3 model × 20 = 180 istek/gün.
+ * anahtar eklenince kota toplanır: N anahtar × M model × 20 istek/gün.
+ *
+ * ⚠️ Anahtarların FARKLI PROJELERDEN olması şart. Aynı projeden üretilen
+ * ikinci anahtar aynı kota havuzunu paylaşır ve hiçbir şey kazandırmaz;
+ * havuz bunu tespit EDEMEZ (anahtar dizeleri farklıdır, dedupe yakalamaz).
  *
  * Anahtar sırası: GOOGLE_API_KEY (varsa) sonra GOOGLE_API_KEY_1..10.
  * Tekrarlananlar atılır — aynı anahtarı iki değişkene yapıştırmak boşuna

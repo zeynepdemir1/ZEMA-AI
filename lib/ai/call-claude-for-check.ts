@@ -5,6 +5,8 @@ import {
   attemptPlan,
   describeAttempt,
   isInvalidKeyError,
+  isKeyBlockedError,
+  KEY_BLOCKED_MS,
   markExhausted,
   markKeyInvalid,
   poolStatus,
@@ -235,7 +237,23 @@ export async function callModel<S extends z.ZodType = z.ZodType<unknown>>(
         }
       }
 
-      const fallthrough = status === 429 || status === 404 || badKey;
+      // 403: anahtar geçerli ama bu anahtarla erişilemiyor (projede API
+      // etkin değil, anahtar kısıtlı, faturalandırma engeli). ANAHTARA özgü,
+      // başka anahtarla aynı istek çalışır — bu yüzden zinciri kesmemeli.
+      // KISA soğuma: yeni etkinleştirilmiş bir projede 403 birkaç dakika
+      // sürüp kendiliğinden geçiyor, anahtarı bir yıllığına elemek yanlış.
+      const keyBlocked = !badKey && isKeyBlockedError(e);
+      if (keyBlocked) {
+        markKeyInvalid(attempt.keyIndex, models, KEY_BLOCKED_MS);
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(
+            `[zema:ai] ${describeAttempt(attempt)} 403 verdi (projede API etkin değil ` +
+              `veya anahtar kısıtlı) — ${Math.round(KEY_BLOCKED_MS / 60000)} dk atlanıyor.`,
+          );
+        }
+      }
+
+      const fallthrough = status === 429 || status === 404 || badKey || keyBlocked;
       if (!fallthrough || i === plan.length - 1) break;
     }
   }
