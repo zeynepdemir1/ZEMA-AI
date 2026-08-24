@@ -1,5 +1,40 @@
 # ZEMA — Yapılacaklar / Bilinen Eksikler
 
+## ⚠️ ÇALIŞTIRILMASI GEREKEN MIGRATION
+
+- [ ] **`supabase/migrations/0006_judge_notes.sql`** — SQL Editor'de çalıştır.
+      `analysis_results`'a `judge_note` + `judge_note_at` kolonları ve hakem
+      için UPDATE politikası ekliyor. Dört kontrolün hakem geri bildirim
+      kutuları bu kolona yazıyor.
+      **Çalıştırılmadan da uygulama çöküyor DEĞİL** — sorgu kolon yokluğunu
+      yakalayıp kolonsuz devam ediyor (ilk denemede tüm panel sessizce
+      boşalıyordu, düzeltildi). Ama metinler KAYDEDİLMEZ.
+
+## 🔀 Hakem ekranı tek panel
+
+Kriter kartları artık sayfa altında ayrı bir bölüm DEĞİL — "Kriter Bazlı
+Değerlendirme" satırının detay açılımının içinde. Sayfada tekrar eden bölüm
+kalmadı.
+
+Dört kontrolün (dil/şablon, başlık-içerik, kategori, benzerlik) her birinde
+AI analizinin altında düzenlenebilir bir hakem metni var. Ön dolu değer:
+sorun yoksa "Bu kriterde eksiklik tespit edilmedi.", varsa AI çıktısından
+türetilmiş öneri. `analysis_results.judge_note`'a kaydediliyor — modelin
+`payload`'ına DOKUNMUYOR, "AI ne dedi / hakem ne dedi" ayrımı korunuyor.
+
+"Yarışmacı Geri Bildirimi" paneli bu dört metni ve kriter kartlarının
+onaylanan metinlerini otomatik derliyor (`compileFeedback`). "Bu kriterde
+eksiklik tespit edilmedi." maddeleri güçlü yön sayılmıyor, atlanıyor.
+
+**⚠️ ROL AYRIMI GERİLİMİ:** İstek "hakem ... yayımlasın" diyordu, ama §3.1
+matrisi feedback için "Değ. Yöneticisi CRUD + publish" diyor ve bu ayrım
+önceki turda açıkça talep edildi. Uygulanan çözüm: hakemin butonu
+**"Onayla ve Yayıma Gönder"** — taslağı kesinleştirip `feedback` satırına
+`is_published=false` yazıyor ve raporu `under_review` yapıyor. Yayımlama
+Değerlendirme Yöneticisi ekranında tek tık. Hakemin doğrudan yayımlaması
+isteniyorsa `submitFeedbackDraft` yerine `publishFeedback` çağrılması
+yeterli (tek satır) — ama bu §3.1'i ihlal eder.
+
 ## 📄 Rapor şablonu — kaynak ve kapsam
 
 Rapor türü TEKNOFEST'in genelinde kullanılan gerçek terim olan **"Ön Tasarım

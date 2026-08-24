@@ -52,6 +52,13 @@ export type CheckResultView = {
   scoring: 'numeric' | 'judgment';
   model: string;
   payload: Record<string, unknown>;
+  /** Hakemin yazdığı metin; null ise henüz dokunmamış. */
+  judgeNote: string | null;
+  /**
+   * Metin kutusuna ÖN DOLU gelecek değer: hakem yazdıysa onun metni,
+   * yazmadıysa sorun varsa AI'nin önerisi, sorun yoksa standart cümle.
+   */
+  suggestedNote: string;
 };
 
 export type ReviewData = {
@@ -113,10 +120,10 @@ export async function loadReview(reportId: string): Promise<ReviewData | null> {
         .from('ai_criterion_scores')
         .select('criterion_id, status, score, confidence, ai_text, final_text, edit_status, evidence')
         .eq('report_id', reportId),
-      db
-        .from('analysis_results')
-        .select('check_type, verdict, score, payload, model')
-        .eq('report_id', reportId),
+      // judge_note 0006 migration'ıyla geliyor. Kolon yokken tüm sorgu
+      // 42703 ile düşüyor ve panel SESSİZCE boşalıyordu — yanıltıcı bir
+      // bozulma. Yoksa kolonsuz tekrar deneniyor.
+      selectAnalysisResults(db, reportId),
       db.from('analysis_jobs').select('status').eq('report_id', reportId),
     ]);
 
@@ -186,6 +193,10 @@ export async function loadReview(reportId: string): Promise<ReviewData | null> {
         scoring,
         model: r.model ?? '—',
         payload,
+        judgeNote: (r as { judge_note?: string | null }).judge_note ?? null,
+        suggestedNote:
+          (r as { judge_note?: string | null }).judge_note ??
+          suggestNote(type, verdict, payload),
       },
     ];
   });
@@ -219,6 +230,90 @@ export async function loadReview(reportId: string): Promise<ReviewData | null> {
       failed: jobList.filter((j) => j.status === 'failed').length,
     },
   };
+}
+
+/**
+ * Hakemin metin kutusuna ön dolu gelecek öneri.
+ *
+ * Sorun yoksa standart cümle; varsa AI'nin kendi ifadesinden türetilir.
+ * Hakem her iki durumda da serbestçe değiştirebilir.
+ */
+const NO_ISSUE = 'Bu kriterde eksiklik tespit edilmedi.';
+
+function suggestNote(
+  type: string,
+  verdict: string,
+  p: Record<string, unknown>,
+): string {
+  if (verdict === 'pass') return NO_ISSUE;
+
+  if (type === 'language_template') {
+    const secs = (p.sections ?? []) as Array<{ name: string; present: boolean; substantive: boolean }>;
+    const missing = secs.filter((s) => !s.present).map((s) => s.name);
+    const empty = secs.filter((s) => s.present && !s.substantive).map((s) => s.name);
+    const issues = (p.language_issues ?? []) as Array<{ issue_type: string }>;
+    const spelling = issues.filter((i) => i.issue_type === 'imla').length;
+    const parts: string[] = [];
+    if (missing.length) parts.push(`Şu zorunlu bölümler eksik: ${missing.join(', ')}.`);
+    if (empty.length) parts.push(`Şu bölümlerin başlığı var ama içeriği yetersiz: ${empty.join(', ')}.`);
+    if (spelling) parts.push(`Raporda ${spelling} yazım hatası tespit edildi; metni bir kez daha gözden geçirin.`);
+    return parts.join(' ') || NO_ISSUE;
+  }
+
+  if (type === 'title_content') {
+    const unmet = (p.unmet_promises ?? []) as Array<{ promise: string }>;
+    const suggested = (p.suggested_titles ?? []) as string[];
+    const parts: string[] = [];
+    if (unmet.length)
+      parts.push(
+        `Başlığın vaat ettiği ${unmet.map((u) => `"${u.promise}"`).join(', ')} içerikte karşılanmıyor.`,
+      );
+    if (suggested.length) parts.push(`Alternatif başlık önerisi: ${suggested[0]}`);
+    return parts.join(' ') || NO_ISSUE;
+  }
+
+  if (type === 'category_fit') {
+    const q = String(p.conflicting_quote ?? '').trim();
+    const reason = String(p.reason ?? '');
+    if (!q) return reason || NO_ISSUE;
+    return `Raporun "${q}" ifadesi beyan edilen kategoriyle örtüşmüyor. ${reason}`;
+  }
+
+  if (type === 'similarity') {
+    const score = Number(p.semantic_score ?? 0);
+    const passages = (p.matched_passages ?? []) as unknown[];
+    if (!passages.length) return NO_ISSUE;
+    return `Rapor, aynı kategorideki başka bir raporla %${score} oranında metin örtüşmesi gösteriyor; ${passages.length} pasaj eşleşti. Özgünlük açısından gözden geçirilmesi gerekiyor.`;
+  }
+
+  return NO_ISSUE;
+}
+
+/** analysis_results seçimi — judge_note kolonu yokken kolonsuz devam eder. */
+async function selectAnalysisResults(
+  db: Awaited<ReturnType<typeof supabaseServer>>,
+  reportId: string,
+) {
+  const withNote = await db
+    .from('analysis_results')
+    .select('check_type, verdict, score, payload, model, judge_note')
+    .eq('report_id', reportId);
+  if (!withNote.error) return withNote;
+
+  if (withNote.error.code === '42703') {
+    // 0006 henüz çalıştırılmamış.
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn(
+        '[zema] analysis_results.judge_note yok — 0006_judge_notes.sql çalıştırılmalı. ' +
+          'Hakem geri bildirim kutuları kaydetmeyecek.',
+      );
+    }
+    return db
+      .from('analysis_results')
+      .select('check_type, verdict, score, payload, model')
+      .eq('report_id', reportId);
+  }
+  return withNote;
 }
 
 export type SidebarReport = {

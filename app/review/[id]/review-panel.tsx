@@ -108,59 +108,48 @@ export function ReviewPanel({ data }: { data: ReviewData }) {
         </div>
       )}
 
-      {/* ─── Altı AI kontrolü + kriter kartları ─── */}
+      {/* ─── Tek panel: altı AI kontrolü, kriter kartları içinde ─── */}
       <div className="bg-canvas flex flex-1 flex-col gap-4 overflow-auto px-8 pt-6 pb-[60px]">
-        {/* Şartnamenin altı gereksinimi burada görünür.
-            Bu blok eklenene kadar dört kontrol çalışıp gösterilmiyordu. */}
-        <CheckPanels checks={data.checks} reportId={report.id} />
-
-        {cards.length === 0 && (
-          <div className="border-ink/[.22] border border-dashed bg-white p-10 text-center">
-            <div className="font-heading mb-2 text-[18px] font-semibold">
-              Bu rapor için henüz kriter değerlendirmesi yok
-            </div>
-            <div className="text-ink/85 text-[14px] leading-[1.6]">
-              Analiz kuyruğu tamamlandığında kriterler burada görünecek.
-            </div>
-          </div>
-        )}
-
-        {cards.map((card) => (
-          <CriterionCard
-            key={card.criterionId}
-            card={card}
-            reportId={report.id}
-            pending={pending}
-            editing={editing === card.criterionId}
-            draft={draft}
-            onDraft={setDraft}
-            onStartEdit={() => {
-              setEditing(card.criterionId);
-              setDraft(card.text);
-            }}
-            onCancel={() => setEditing(null)}
-            onSave={() => run(() => saveCriterionText(report.id, card.criterionId, draft))}
-            onToggleApproval={() =>
-              run(() => setCriterionApproval(report.id, card.criterionId, card.origin !== 'hakem'))
-            }
-          />
-        ))}
+        <CheckPanels
+          checks={data.checks}
+          reportId={report.id}
+          cards={cards}
+          renderCards={() =>
+            cards.length === 0 ? (
+              <div className="border-ink/30 text-ink/75 border border-dashed bg-white px-6 py-6 text-center text-[14px]">
+                Bu rapor için henüz kriter değerlendirmesi yok.
+              </div>
+            ) : (
+              cards.map((card) => (
+                <CriterionCard
+                  key={card.criterionId}
+                  card={card}
+                  reportId={report.id}
+                  pending={pending}
+                  editing={editing === card.criterionId}
+                  draft={draft}
+                  onDraft={setDraft}
+                  onStartEdit={() => {
+                    setEditing(card.criterionId);
+                    setDraft(card.text);
+                  }}
+                  onCancel={() => setEditing(null)}
+                  onSave={() => run(() => saveCriterionText(report.id, card.criterionId, draft))}
+                  onToggleApproval={() =>
+                    run(() =>
+                      setCriterionApproval(report.id, card.criterionId, card.origin !== 'hakem'),
+                    )
+                  }
+                />
+              ))
+            )
+          }
+        />
       </div>
     </div>
   );
 }
 
-/**
- * Kriter kartı — TAM ÜÇ görsel kat:
- *   1. AI DEĞERLENDİRMESİ  → nötr, kart üstünde düz zemin
- *   2. KANIT               → sol teal kenarlık + hafif teal zemin (12.7:1)
- *   3. HAKEM METNİ         → belirgin ayrı kart, gold kenarlıklı
- *
- * "Beklenti" artık kat değil: rubrik referansı, başlığın altında tek satır.
- * Kontrast: Ink Navy metin en az %75 alfa (ölçüm: %50 → 2.98:1 AA başarısız,
- * %75 → 6.15:1). Gövde 14px / 1.7. `text-gold-ink` metin olarak KULLANILMIYOR
- * (2.92:1); metin için `text-gold-ink` (5.01:1).
- */
 function CriterionCard({
   card,
   pending,

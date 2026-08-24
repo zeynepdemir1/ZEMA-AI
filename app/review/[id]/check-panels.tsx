@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { THRESHOLD_NOTE } from '@/lib/ai/config';
-import type { CheckResultView } from '@/lib/reports/queries';
+import { compileFeedback } from '@/lib/reports/compile-feedback';
+import type { CheckResultView, CriterionCardData } from '@/lib/reports/queries';
+import { saveCheckNote, submitFeedbackDraft } from './actions';
 
 /**
  * Altı AI kontrolünün hakem ekranındaki gösterimi (PLAN.md §6).
@@ -107,6 +109,14 @@ function Block({ title, children }: { title: string; children: React.ReactNode }
   );
 }
 
+/** Hakem metin kutusu eklenen dört kontrol. */
+const NOTE_CHECKS = new Set([
+  'language_template',
+  'title_content',
+  'category_fit',
+  'similarity',
+]);
+
 const TONE = {
   ok: { text: 'text-success', border: 'border-success' },
   warn: { text: 'text-gold-ink', border: 'border-gold' },
@@ -114,12 +124,72 @@ const TONE = {
   neutral: { text: 'text-ink/75', border: 'border-ink/30' },
 } as const;
 
+/** Hakemin düzenlediği geri bildirim metni — dört kontrol için. */
+function JudgeNote({
+  reportId,
+  checkType,
+  initial,
+  hasNote,
+}: {
+  reportId: string;
+  checkType: string;
+  initial: string;
+  hasNote: boolean;
+}) {
+  const [text, setText] = useState(initial);
+  const [pending, start] = useTransition();
+  const [saved, setSaved] = useState(hasNote);
+  const dirty = text !== initial;
+
+  return (
+    <section className="border-gold border-ink/10 border border-l-[3px] bg-[rgba(201,138,62,.06)] px-4 py-4">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <h4 className="text-gold-ink m-0 font-mono text-[11px] tracking-[.1em]">
+          HAKEM GERİ BİLDİRİMİ · YARIŞMACIYA GİDECEK
+        </h4>
+        {saved && !dirty && (
+          <span className="text-success font-mono text-[11px]">✓ kaydedildi</span>
+        )}
+      </div>
+      <p className="text-ink/75 m-0 mb-3 text-[13px] leading-[1.6]">
+        AI önerisi ön dolu geldi. Serbestçe değiştirebilirsiniz; bu metin nihai geri
+        bildirim taslağına girer.
+      </p>
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        rows={3}
+        className="border-ink/30 text-ink w-full resize-y border bg-white px-4 py-3 text-[14px] leading-[1.7]"
+      />
+      {dirty && (
+        <button
+          disabled={pending}
+          onClick={() =>
+            start(async () => {
+              const r = await saveCheckNote(reportId, checkType, text);
+              if (r.ok) setSaved(true);
+            })
+          }
+          className="bg-gold-ink mt-3 cursor-pointer border-none px-5 py-2.5 text-[14px] font-semibold text-white disabled:opacity-50"
+        >
+          {pending ? 'Kaydediliyor…' : 'Metni kaydet'}
+        </button>
+      )}
+    </section>
+  );
+}
+
 export function CheckPanels({
   checks,
   reportId,
+  cards,
+  renderCards,
 }: {
   checks: CheckResultView[];
   reportId: string;
+  cards: CriterionCardData[];
+  /** Kriter kartları burada, "Kriter Bazlı Değerlendirme" panelinin içinde render edilir. */
+  renderCards: () => React.ReactNode;
 }) {
   const firstProblem =
     checks.find((c) => c.verdict === 'fail')?.type ??
@@ -182,7 +252,21 @@ export function CheckPanels({
             {isOpen && (
               <div className="bg-canvas border-ink/10 border-t px-7 pt-6 pb-7">
                 <div className="flex flex-col gap-7">
-                  <CheckDetail check={c} reportId={reportId} />
+                  <CheckDetail
+                    check={c}
+                    reportId={reportId}
+                    cards={cards}
+                    renderCards={renderCards}
+                    allChecks={checks}
+                  />
+                  {NOTE_CHECKS.has(c.type) && (
+                    <JudgeNote
+                      reportId={reportId}
+                      checkType={c.type}
+                      initial={c.suggestedNote}
+                      hasNote={c.judgeNote !== null}
+                    />
+                  )}
                 </div>
                 <div className="border-ink/10 text-ink/75 mt-7 flex flex-wrap gap-x-6 gap-y-1 border-t pt-4 font-mono text-[11px]">
                   <span>karar: {why}</span>
@@ -197,7 +281,19 @@ export function CheckPanels({
   );
 }
 
-function CheckDetail({ check, reportId }: { check: CheckResultView; reportId: string }) {
+function CheckDetail({
+  check,
+  reportId,
+  cards,
+  renderCards,
+  allChecks,
+}: {
+  check: CheckResultView;
+  reportId: string;
+  cards: CriterionCardData[];
+  renderCards: () => React.ReactNode;
+  allChecks: CheckResultView[];
+}) {
   const p = check.payload;
 
   // ── Dil ve şablon ──
@@ -384,11 +480,13 @@ function CheckDetail({ check, reportId }: { check: CheckResultView; reportId: st
               name="Metin benzerliği"
               note={`${passages.length} eşleşen pasaj`}
             />
-            <StateRow
-              label="TÜR"
-              tone={TONE.neutral}
-              name={String(p.overlap_type ?? '—').replace(/_/g, ' ')}
-            />
+            {String(p.overlap_type ?? 'none') !== 'none' && (
+              <StateRow
+                label="TÜR"
+                tone={TONE.neutral}
+                name={String(p.overlap_type).replace(/_/g, ' ')}
+              />
+            )}
           </div>
           <div className={MUTED}>
             Bu yüzde gerçek bir ölçüm; uyum skoru değil, o yüzden eşiğe vurulmaz.
@@ -438,7 +536,6 @@ function CheckDetail({ check, reportId }: { check: CheckResultView; reportId: st
             bulundu
             {stats.diacriticsQuotes ? ` · ${stats.diacriticsQuotes} yazım farkı` : ''}.
           </div>
-          <div className={MUTED}>Kriter kriter düzenleme ve onay aşağıdaki kartlarda.</div>
         </Block>
 
         {p.overall_note ? (
@@ -446,75 +543,173 @@ function CheckDetail({ check, reportId }: { check: CheckResultView; reportId: st
             <div className={BODY}>{String(p.overall_note)}</div>
           </Block>
         ) : null}
+
+        {/* Kriter kartları AYRI bölüm değil — bu panelin içinde. */}
+        <Block title={`KRİTER KARTLARI · ${cards.length}`}>
+          <div className="flex flex-col gap-4">{renderCards()}</div>
+        </Block>
       </>
     );
   }
 
-  // ── Yarışmacı geri bildirimi ──
+  // ── Yarışmacı geri bildirimi: derle → düzenle → yayıma gönder ──
   if (check.type === 'feedback_synthesis') {
-    const strengths = (p.strengths ?? []) as string[];
-    const improvements = (p.improvements ?? []) as Array<{
-      area: string;
-      what: string;
-      how: string;
-      priority: string;
-    }>;
-    const steps = (p.next_steps ?? []) as string[];
-    return (
-      <>
-        <div className="border-l-gold border-ink/10 border border-l-[3px] bg-[rgba(201,138,62,.07)] px-4 py-3">
-          <div className="text-ink text-[14px] leading-[1.7]">
-            Yarışmacıya gidecek <strong>taslak</strong>. Yayımlama yetkisi Değerlendirme
-            Yöneticisindedir; onaylanmadan görünmez.
-          </div>
-        </div>
-
-        {p.summary ? <div className={BODY}>{String(p.summary)}</div> : null}
-
-        {strengths.length > 0 && (
-          <Block title={`GÜÇLÜ YÖNLER · ${strengths.length}`}>
-            <Bullets items={strengths} />
-          </Block>
-        )}
-
-        {improvements.length > 0 && (
-          <Block title={`GELİŞTİRİLECEK ALANLAR · ${improvements.length}`}>
-            <div className="flex flex-col gap-4">
-              {improvements.map((i, k) => (
-                <div key={k} className="flex flex-col gap-1.5">
-                  <div className="flex flex-wrap items-baseline gap-2">
-                    <span className="text-ink text-[14px] leading-[1.5] font-semibold">
-                      {i.area}
-                    </span>
-                    {i.priority === 'high' && (
-                      <span className="text-danger border-danger border px-1.5 py-0.5 font-mono text-[10px] tracking-[.08em]">
-                        ÖNCELİKLİ
-                      </span>
-                    )}
-                  </div>
-                  <div className={BODY}>{i.what}</div>
-                  <div className="text-teal-ink text-[14px] leading-[1.7]">→ {i.how}</div>
-                </div>
-              ))}
-            </div>
-          </Block>
-        )}
-
-        {steps.length > 0 && (
-          <Block title="SONRAKİ ADIMLAR">
-            <ol className="m-0 flex list-none flex-col gap-2 p-0">
-              {steps.map((t, k) => (
-                <li key={k} className={`flex gap-2.5 ${BODY}`}>
-                  <span className="text-teal-ink shrink-0 font-mono text-[13px]">{k + 1}.</span>
-                  <span>{t}</span>
-                </li>
-              ))}
-            </ol>
-          </Block>
-        )}
-      </>
-    );
+    return <FeedbackCompiler reportId={reportId} checks={allChecks} cards={cards} synthesis={p} />;
   }
 
   return <div className={BODY}>Bu kontrol için ayrıntılı gösterim tanımlanmadı.</div>;
+}
+
+
+
+/** Geri bildirim taslağı alanı — render içinde tanımlanamaz, dışarıda. */
+function DraftField({
+  label,
+  hint,
+  value,
+  onChange,
+  rows,
+}: {
+  label: string;
+  hint: string;
+  value: string;
+  onChange: (v: string) => void;
+  rows: number;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <h4 className={`${SECTION} m-0`}>{label}</h4>
+      <p className="text-ink/75 m-0 text-[13px] leading-[1.6]">{hint}</p>
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        rows={rows}
+        className="border-ink/30 text-ink w-full resize-y border bg-white px-4 py-3 text-[14px] leading-[1.7]"
+      />
+    </div>
+  );
+}
+
+/**
+ * Yarışmacı geri bildirimi — dört kontrolün hakem metinleri + kriter
+ * kartlarının onaylanan metinlerinden otomatik derlenir, hakem düzenler.
+ *
+ * ⚠️ ROL AYRIMI: Hakem YAYIMLAMIYOR. §3.1 matrisi feedback için
+ * "Değ. Yöneticisi CRUD + publish" diyor. Hakemin aksiyonu taslağı
+ * kesinleştirip yayıma göndermek; yayımlama Değerlendirme Yöneticisi
+ * ekranında tek tık.
+ */
+function FeedbackCompiler({
+  reportId,
+  checks,
+  cards,
+  synthesis,
+}: {
+  reportId: string;
+  checks: CheckResultView[];
+  cards: CriterionCardData[];
+  synthesis: Record<string, unknown>;
+}) {
+  const compiled = compileFeedback(checks, cards, synthesis);
+  const [summary, setSummary] = useState(compiled.summary);
+  const [strengths, setStrengths] = useState(compiled.strengths.join('\n'));
+  const [improvements, setImprovements] = useState(
+    compiled.improvements.map((i) => `${i.area}: ${i.what}`).join('\n'),
+  );
+  const [steps, setSteps] = useState(compiled.next_steps.join('\n'));
+  const [pending, start] = useTransition();
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const lines = (v: string) => v.split('\n').map((x) => x.trim()).filter(Boolean);
+
+  function submit() {
+    setMsg(null);
+    start(async () => {
+      const r = await submitFeedbackDraft(reportId, {
+        summary: summary.trim(),
+        strengths: lines(strengths),
+        improvements: lines(improvements).map((l) => {
+          const [area, ...rest] = l.split(':');
+          return {
+            area: rest.length ? area.trim() : 'Geliştirilecek alan',
+            what: rest.length ? rest.join(':').trim() : l,
+            how: '',
+            priority: 'medium',
+          };
+        }),
+        next_steps: lines(steps),
+      });
+      setMsg({ ok: r.ok, text: r.ok ? 'Taslak yayıma gönderildi.' : (r.error ?? 'Hata') });
+    });
+  }
+
+
+  return (
+    <>
+      <div className="border-l-gold border-ink/10 border border-l-[3px] bg-[rgba(201,138,62,.07)] px-4 py-3">
+        <div className="text-ink text-[14px] leading-[1.7]">
+          Aşağıdaki taslak, dört kontrol için yazdığınız metinler ve kriter kartlarından
+          <strong> otomatik derlendi</strong>. Son hâlini düzenleyip yayıma gönderin.
+          Yayımlama yetkisi Değerlendirme Yöneticisindedir.
+        </div>
+      </div>
+
+      <DraftField
+        label="ÖZET"
+        hint="Raporun genel durumu, bir iki cümle."
+        value={summary}
+        onChange={setSummary}
+        rows={3}
+      />
+      <DraftField
+        label={`GÜÇLÜ YÖNLER · ${lines(strengths).length}`}
+        hint="Her satır bir madde. Karşılanan kriterlerden derlendi."
+        value={strengths}
+        onChange={setStrengths}
+        rows={5}
+      />
+      <DraftField
+        label={`GELİŞTİRİLECEK ALANLAR · ${lines(improvements).length}`}
+        hint="Her satır bir madde. 'Alan: açıklama' biçimi korunursa başlık ayrı gösterilir."
+        value={improvements}
+        onChange={setImprovements}
+        rows={7}
+      />
+      <DraftField
+        label={`SONRAKİ ADIMLAR · ${lines(steps).length}`}
+        hint="Her satır bir madde."
+        value={steps}
+        onChange={setSteps}
+        rows={4}
+      />
+
+      {msg && (
+        <div
+          className={`border px-4 py-3 text-[14px] leading-[1.6] ${
+            msg.ok
+              ? 'border-success text-success bg-[rgba(63,125,92,.07)]'
+              : 'border-danger text-danger bg-[rgba(180,72,63,.07)]'
+          }`}
+        >
+          {msg.text}
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center gap-4">
+        <button
+          disabled={pending}
+          onClick={submit}
+          className="bg-gold-ink cursor-pointer border-none px-6 py-3 text-[15px] font-semibold text-white disabled:opacity-50"
+        >
+          {pending ? 'Gönderiliyor…' : 'Onayla ve Yayıma Gönder'}
+        </button>
+        <Link
+          href={`/submissions/${reportId}`}
+          className="text-teal-ink text-[14px] no-underline"
+        >
+          Yarışmacının göreceği hali →
+        </Link>
+      </div>
+    </>
+  );
 }
