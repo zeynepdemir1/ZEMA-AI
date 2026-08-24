@@ -301,18 +301,18 @@ Kontroller iki gruba ayrıldı (`CHECK_SCORING`):
 
 Her rozetin `title` açıklaması var; kapalı panelde de HTML'de bulunuyor.
 
-## 🔴 KRİTİK YOL — 24 Ağustos, teslime ~2 gün
+## ✅ KRİTİK YOL — 24 Ağustos'ta açıldı, 24 Ağustos'ta kapandı
 
-Kod tarafı teslim edilebilir durumda. **Kalan iki zorunlu çıktı kod değil:**
+Kod tarafı teslim edilebilir durumda. Kod dışı iki zorunlu çıktı —
+**İş Modeli Canvası** (9 kutu) ve **Girişim Sunumu** (pptx: Problem → Çözüm
+→ Nasıl Çalışır → Farklılaşma → Etki → Ekip → Sonraki Adımlar) — bu reponun
+DIŞINDA, ayrı bir Claude sohbetinde hazırlandı (kullanıcı onayı, 24 Ağustos).
+Bu repoda dosyaları yok; bu bilinçli bir ayrım, §7'nin "paralel ilerleyen,
+kod dışı teslimat" ayrımıyla tutarlı.
 
-- [ ] **İş Modeli Canvası** — 9 kutu. §7'de "paralel yürüyen, kod dışı
-      teslimat" olarak işaretli, henüz hiç başlanmadı.
-- [ ] **Girişim Sunumu (pptx)** — Problem → Çözüm → Nasıl Çalışır →
-      Farklılaşma → Etki → Ekip → Sonraki Adımlar. Henüz başlanmadı.
-
-26 Ağustos 10:00'da **üç çıktı birlikte** isteniyor (§7): canlıda çalışan
-uygulama ✅, İş Modeli Canvası ❌, Girişim Sunumu ❌. Uygulama tamam;
-kritik yol artık bu ikisi. Ölçülmüş sayılar sunuma malzeme:
+26 Ağustos 10:00'da istenen üç çıktının (§7) üçü de artık karşılanıyor:
+canlıda çalışan uygulama ✅, İş Modeli Canvası ✅ (repo dışı), Girişim
+Sunumu ✅ (repo dışı). Ölçülmüş sayılar sunuma malzeme olarak kullanıldı:
 57/57 kanıt doğrulama, 54 kontrol, 9 rapor, 0 uydurma.
 
 - [ ] **README — TODO, en son yapılacak.** Teslimden hemen önce, projenin
