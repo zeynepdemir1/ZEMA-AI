@@ -58,6 +58,38 @@ export type CompetitionContextInput = {
  * ⚠️ Buraya tarih/saat veya sırasız serileştirme KOYMA: Gemini'nin örtük
  * önbelleği ortak öneke bakıyor, değişken içerik onu sessizce bozar.
  */
+/**
+ * `template_spec` içindeki KÜNYE alanları — prompt'a GİTMEZ.
+ *
+ * Şablon PDF'inden otomatik çıkarım eklendiğinde (bkz. extract-template.ts)
+ * `template_spec`'e üç alan daha yazılmaya başlandı: çıkarımın künyesi
+ * (`source`), çıkarımı gerekçelendiren birebir alıntılar (`source_quotes`)
+ * ve geri dönüş için saklanan eski spec'in TAM KOPYASI (`previous`).
+ *
+ * Bunlar yarışma KURALI değil, çıkarımın denetim kaydı. Ama
+ * buildCompetitionContext spec'i olduğu gibi JSON'a çevirdiği için hepsi
+ * HER kontrolün sistem talimatına giriyordu — canlı yarışmada ölçüldü:
+ * 3.773 bayt gönderiliyordu, gerçek kurallar 1.983 bayttı. Yarısı künye.
+ * `previous` ayrıca eski kuralların tam bir kopyası olduğu için modele
+ * ÇELİŞEN iki kural seti gösteriyordu.
+ *
+ * Liste bilinçli olarak KARA LİSTE (izin listesi değil): `template_spec`
+ * yönetici tarafından düzenlenebiliyor ve ileride gerçek bir kural alanı
+ * eklenirse sessizce düşmesin. Buradaki üç alanı yazan tek yer şablon
+ * çıkarım rotası, yani liste kapalı ve denetlenebilir.
+ */
+const TEMPLATE_SPEC_METADATA_KEYS = ['source', 'source_quotes', 'previous'] as const;
+
+export function templateRulesForPrompt(spec: unknown): Record<string, unknown> {
+  if (!spec || typeof spec !== 'object' || Array.isArray(spec)) return {};
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(spec as Record<string, unknown>)) {
+    if ((TEMPLATE_SPEC_METADATA_KEYS as readonly string[]).includes(k)) continue;
+    out[k] = v;
+  }
+  return out;
+}
+
 export function buildCompetitionContext(input: CompetitionContextInput): string {
   const { competition, categories, criteria } = input;
 
@@ -81,7 +113,7 @@ export function buildCompetitionContext(input: CompetitionContextInput): string 
     `YARIŞMA: ${competition.name} (${competition.year}), rapor dili: ${competition.language}`,
     '',
     'ŞABLON KURALLARI:',
-    JSON.stringify(competition.template_spec, null, 2),
+    JSON.stringify(templateRulesForPrompt(competition.template_spec), null, 2),
     '',
     'KATEGORİLER:',
     kategoriler,

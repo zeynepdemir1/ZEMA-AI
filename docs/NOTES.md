@@ -1,28 +1,56 @@
 # ZEMA — Yapılacaklar / Bilinen Eksikler
 
-## ⚠️ ÇALIŞTIRILMASI GEREKEN MIGRATION — `0007_competitions_created_at.sql`
+## ✅ Migration `0007_competitions_created_at.sql` — ÇALIŞTIRILDI (25 Ağustos)
 
-**Neden gerekli — gerçek bir kullanıcı hatası bunu ortaya çıkardı (25
-Ağustos):** Yarışma Yöneticisi "Yarışma Bilgileri" formuna yeni bir ad/yıl
-yazıp YENİ bir yarışma oluşturduğunu sandı; form aslında var olan TEK
-satırı yerinde güncelliyordu (`saveCompetitionInfo` bir `UPDATE`). Demo
-yarışmasının kimliği ("TEKNOFEST 2026 — İnsansız Hava Araçları") üzerine
-yazıldı; kategoriler `competition_id` ile ona bağlı kaldığı için "eski
-kategoriler yeni yarışmada görünüyor" gibi göründü. **Kimlik geri
-yüklendi** (bilinen doğru değerle, `lib/dev-session.ts`'teki
-`DEV_COMPETITION_NAME`'den — tahmin değil), ama kök sebep — birden fazla
-yarışmayı ayırt edecek bir kolon yokluğu — çözülmedi.
+Kullanıcı Supabase SQL Editor'de çalıştırdı, Success. `competitions`'a
+`created_at` eklendi; varsayılan yarışma artık "en yüksek yıl" değil
+"ilk oluşturulan". `year` yalnızca görüntü verisi.
 
-Bu migration `competitions`'a `created_at timestamptz default now()`
-ekliyor. `loadSetup`/`loadDashboard`/`loadAssignments` artık "en yüksek
-yıl" yerine "ilk oluşturulan" yarışmayı varsayılan alıyor — `year` artık
-yalnızca görüntü verisi, seçim anahtarı değil. **Çalıştırılmadan da
-uygulama çökmüyor** — kod kolon yokluğunu yakalayıp eski `year desc`
-davranışına düşüyor (0006'daki "kolon yokluğunu yakala" deseniyle aynı,
-test edildi). Ama çalıştırılana kadar yeni yarışma oluşturma özelliği
-`/evaluation` ve `/evaluation/assignments`'ı etkilemeyecek şekilde
-GÜVENDE kalıyor — o ekranlara henüz yarışma seçici eklenmedi, bilinçli
-olarak hep ilk (demo) yarışmayı göstermeye devam ediyorlar.
+**Bilinen incelik:** mevcut iki yarışmanın `created_at` değeri BİREBİR AYNI
+(migration anında ikisi de `default now()` aldı). Eşitlik durumunda Postgres
+satır sırası garanti değil, yani varsayılan yarışma teorik olarak istekler
+arasında değişebilir. Şu an doğru yarışmayı (demo) veriyor. Yeni yarışmalar
+gerçek `created_at` alacağı için sorun kendiliğinden daralıyor; kalıcı
+çözüm gerekirse sıralamaya ikincil anahtar (`id`) eklenir.
+
+## ✅ Prompt yükü temizlendi (25 Ağustos)
+
+`buildCompetitionContext` `template_spec`'i olduğu gibi JSON'a çevirip
+sistem talimatına basıyordu. Şablon PDF'inden otomatik çıkarım eklendikten
+sonra spec'e üç künye alanı girdi — `source` (çıkarım künyesi),
+`source_quotes` (birebir alıntılar) ve `previous` (eski spec'in TAM
+KOPYASI). Bunlar yarışma kuralı değil, denetim kaydı; ama HER kontrolün
+her çağrısında modele gidiyordu.
+
+Canlı yarışmada ölçüldü: **4.351 → 2.299 bayt (%47 azalma)**. `previous`
+ayrıca eski kuralların tam kopyası olduğu için modele ÇELİŞEN iki kural
+seti gösteriyordu — asıl sorun bu.
+
+`templateRulesForPrompt()` künye alanlarını süzüyor. Liste bilinçli olarak
+KARA LİSTE: `template_spec` yönetici tarafından düzenlenebiliyor ve ileride
+gerçek bir kural alanı eklenirse sessizce düşmemeli. Nitekim 2025
+yarışmasının spec'inde şablondan çıkarılmış bir `criteria` alanı var ve
+korunuyor — izin listesi olsaydı o düşerdi.
+
+## ✅ Başarısız kontroller kurtarılabiliyor (25 Ağustos)
+
+Bir iş 3 denemede başarısız olunca `failed` yazılıyordu ve ORADA KALIYORDU:
+kuyruk yalnızca `pending` işleri kapıyor, geri döndürecek yol yoktu.
+Hakemin ekranında kalıcı bir "2 KONTROL BAŞARISIZ" rozeti kalıyor, rapor
+eksik kontrolle mühürleniyordu.
+
+Sahada görüldü: üç `category_fit` işi bu şekilde kilitlendi (`is_consistent`
+alanı gelmemiş). Aynı çağrı sonradan birebir tekrarlandığında sorunsuz
+çalıştı — yani hata GEÇİCİYDİ ve kurtarılabilir bir durumdu.
+
+`requeueFailedChecks()` işleri `pending`'e döndürüyor, `attempts`'i
+sıfırlıyor ve `created_at`'i öne alıyor (kuyruk FIFO — aksi halde yeniden
+denenen iş en arkaya düşerdi). Rozet artık düğme: basınca işler kuyruğa
+dönüyor ve kuyruk istemciden döndürülüyor (yükleme formundaki desen).
+
+Yetki `judge` + iki yönetici rolü — `/review/[id]` sayfasının rol
+korumasıyla birebir aynı. Hakem kendi raporunu kurtarabilmeli, aksi halde
+yönetici beklerdi. Bu bir analiz işlemi, yayımlama değil; §3.1 bozulmuyor.
 
 ## ✅ Migration `0006_judge_notes.sql` — ÇALIŞTIRILDI (24 Ağustos)
 
