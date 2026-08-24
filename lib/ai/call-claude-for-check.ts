@@ -1,6 +1,16 @@
 import { ApiError, type ThinkingConfig } from '@google/genai';
 import type { z } from 'zod';
-import { genai } from './client';
+import { genai, keyCount } from './client';
+import {
+  attemptPlan,
+  describeAttempt,
+  isInvalidKeyError,
+  markExhausted,
+  markKeyInvalid,
+  poolStatus,
+  retryAfterMs,
+  type Attempt,
+} from './key-pool';
 import { geminiSchemaFromZod } from './gemini-schema';
 import {
   EFFORT,
@@ -124,52 +134,68 @@ export async function callModelForCheck<S extends z.ZodType = z.ZodType<unknown>
     thinkingLevel: THINKING_LEVEL[opts.effort ?? EFFORT[checkType]],
   };
 
-  const chain = modelChainFor(checkType);
+  const models = modelChainFor(checkType);
+  const plan = attemptPlan(models);
   let response: Awaited<ReturnType<ReturnType<typeof genai>['models']['generateContent']>> | undefined;
   let lastError: unknown = null;
   let servedBy = model;
 
-  for (let i = 0; i < chain.length; i++) {
-    const candidate = chain[i];
+  for (let i = 0; i < plan.length; i++) {
+    const attempt = plan[i];
     try {
-      response = await callOnce(candidate);
-      servedBy = candidate;
+      response = await callOnce(attempt);
+      servedBy = attempt.model;
       if (i > 0 && process.env.NODE_ENV !== 'production') {
         console.warn(
-          `[zema:ai] ${checkType}: ${chain.slice(0, i).join(', ')} kotası/erişimi ` +
-            `başarısız → ${candidate} ile yanıt alındı.`,
+          `[zema:ai] ${checkType}: ${i} deneme başarısız → ${describeAttempt(attempt)} ile yanıt alındı.`,
         );
       }
       break;
     } catch (e) {
       lastError = e;
-      // Yalnızca KOTA (429) ve MODEL YOK (404) durumunda sıradakine geç.
-      // 400 gibi istek hataları zincirin geri kalanında da başarısız olur;
-      // boşuna kota harcamak yerine hemen yükselt.
       const status = e instanceof ApiError ? e.status : undefined;
-      const fallthrough = status === 429 || status === 404;
-      if (!fallthrough || i === chain.length - 1) break;
+
+      // Kota doldu → bu (model, anahtar) çiftini soğumaya al ki sıradaki
+      // kontroller aynı doomed çağrıyı tekrarlamasın.
+      if (status === 429) markExhausted(attempt, retryAfterMs(e));
+      // Anahtarın kendisi bozuk → o anahtarı tüm modeller için ele. Yoksa
+      // .env'e yanlış yapıştırılmış tek bir anahtar bütün zinciri 400 ile
+      // düşürürdü (400 normalde fallthrough etmez).
+      const badKey = isInvalidKeyError(e);
+      if (badKey) {
+        markKeyInvalid(attempt.keyIndex, models);
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(`[zema:ai] ${describeAttempt(attempt)} reddedildi (geçersiz anahtar) — atlanıyor.`);
+        }
+      }
+
+      // Yalnızca KOTA (429), MODEL YOK (404) ve GEÇERSİZ ANAHTAR durumunda
+      // sıradakine geç. Diğer 400'ler zincirin geri kalanında da başarısız
+      // olur; boşuna kota harcamak yerine hemen yükselt.
+      const fallthrough = status === 429 || status === 404 || badKey;
+      if (!fallthrough || i === plan.length - 1) break;
     }
   }
 
   if (!response) {
+    const where = `${plan.length} deneme (${keyCount()} anahtar × ${models.length} model) · ${poolStatus(models)}`;
     if (lastError instanceof ApiError) {
-      const retryable = lastError.status === 503 || lastError.status >= 500;
+      const retryable = lastError.status === 429 || lastError.status === 503 || lastError.status >= 500;
       throw new CheckCallError(
-        `callModelForCheck(${checkType}): zincirdeki modellerin hiçbiri yanıt vermedi ` +
-          `(${chain.join(' → ')}). Son hata: ${lastError.status} — ${lastError.message}`,
+        `callModelForCheck(${checkType}): hiçbir model/anahtar bileşimi yanıt vermedi — ${where}. ` +
+          `Son hata: ${lastError.status} — ${lastError.message}`,
         { retryable, cause: lastError },
       );
     }
-    throw new CheckCallError(`callModelForCheck(${checkType}): ağ hatası`, {
+    throw new CheckCallError(`callModelForCheck(${checkType}): ağ hatası — ${where}`, {
       retryable: true,
       cause: lastError,
     });
   }
 
-  async function callOnce(useModel: string) {
-    return genai().models.generateContent({
-      model: useModel,
+  async function callOnce(attempt: Attempt) {
+    return genai(attempt.keyIndex).models.generateContent({
+      model: attempt.model,
       // Sabit içerik önce, değişken talimat en sonda — örtük önbelleğin
       // ortak öneki yakalayabilmesi için sıra korunuyor.
       contents: [

@@ -551,6 +551,7 @@ Gerçek 20 sayfalık raporlarda girdi 12–15k token olacağı için rapor baş�
 
 - **§5.4'teki `MOCK_AI` bayrağı artık daha da kritik.** Kota bitince geliştirme durur.
 - Job runner 429'u **yeniden denenebilir** olarak işaretliyor ve backoff uyguluyor (§5.3). Ücretsiz katmanda 429 istisna değil, normal işleyişin parçası.
+- **Anahtar havuzu:** `GOOGLE_API_KEY_1..10` ile birden fazla AI Studio projesinin kotası toplanır. Deneme sırası model-baskın (`flash/#1 → flash/#2 → … → flash-lite/#1`): en iyi modelde kalmak, zayıf modele düşmekten önce gelir. Detay: `lib/ai/key-pool.ts`, NOTES.md "Kota güvenliği".
 - Demo günü seed raporların sonuçları DB'de hazır dursun (§9); canlı çağrı yalnızca tek bir rapor için yapılsın. Kota tükenirse demo çökmez.
 
 ### 5.4 Geliştirme Modu — Mock API (kota tasarrufu için ZORUNLU)

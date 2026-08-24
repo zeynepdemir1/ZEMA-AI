@@ -118,7 +118,9 @@ npm run dev
 | `NEXT_PUBLIC_SUPABASE_URL` · `..._ANON_KEY` | Supabase → Project Settings → API |
 | `SUPABASE_SERVICE_ROLE_KEY` | **sunucu tarafı**, RLS'i baypas eder |
 | `GOOGLE_API_KEY` | aistudio.google.com/apikey (ücretsiz) — **sunucu tarafı** |
+| `GOOGLE_API_KEY_1..10` | ek anahtar havuzu. Kota model × **proje** başına günde 20 istek; farklı AI Studio projelerinden anahtar eklemek kotayı toplar |
 | `GEMINI_MODEL` | `gemini-3.5-flash` |
+| `GEMINI_MODEL_CHAIN` | 429/404'te denenecek model sırası |
 | `MOCK_AI` | **varsayılan `true`** — env unutulursa gerçek API çağrılmaz |
 | `REGISTRATION_CODE_*` | üç rol için kayıt kodu. Gerçek değerler repoya girmez |
 | `NEXT_PUBLIC_DEMO_MODE` | `/demo` rol geçiş ekranını açar. Build anında okunur |

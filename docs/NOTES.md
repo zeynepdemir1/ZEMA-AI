@@ -276,13 +276,37 @@ Mock modda tick çalıştırmak gerçek analiz sonuçlarını fixture ile eziyor
 üstüne yazılmıyor (`run-check.ts`). Yani en kötü senaryoda yeni yükleme
 fixture alır, mevcut dokuz raporun verisi bozulmaz.
 
-### Kota güvenliği — otomatik model fallback var
+### Kota güvenliği — İKİ BOYUTLU fallback (model × anahtar)
 
-Bir model 429 (günlük kota) veya 404 (model kaldırılmış) verirse
-`callModelForCheck` zincirdeki sıradaki modele otomatik geçiyor. Hangi
-modelin yanıt verdiği `analysis_results.model`'e yazılıyor. Zincir
-`GEMINI_MODEL_CHAIN` ile değiştirilebilir. Test edildi: geçersiz model
-zincirin başına konduğunda ikinciye düşüp gerçek yanıt alındı.
+Ücretsiz katman kotası **proje × model başına günde 20 istek**. Dokuz raporun
+altı kontrolü 54 çağrı demek, yani tek anahtar tek gün için yetmiyor.
+
+`callModelForCheck` artık iki boyutta düşüyor. Deneme sırası **model-baskın**:
+
+```
+flash/#1 → flash/#2 → flash/#3 → flash-lite/#1 → … → 3.7-flash/#3
+```
+
+Yani bir modelin kotası bir anahtarda dolduğunda ÖNCE diğer anahtarlar
+denenir, daha zayıf modele düşmek son çaredir — analiz kalitesi korunur.
+
+- Anahtarlar: `GOOGLE_API_KEY`, sonra `GOOGLE_API_KEY_1..10`. Tekrarlananlar
+  ve boşluklu değerler ayıklanır.
+- **Anahtarlar farklı AI Studio PROJELERİNDEN olmalı.** Aynı projeden ikinci
+  anahtar üretmek kotayı artırmaz — kota projeye bağlı.
+  3 proje × 3 model × 20 = **180 istek/gün**.
+- 429 alan (model, anahtar) çifti bir süre "soğumaya" alınır ki sonraki
+  kontroller aynı doomed çağrıyı tekrarlamasın. Soğuma çifti ELEMEZ,
+  listenin sonuna atar — kota gece yarısı sıfırlanırken süreç ayakta
+  kalabileceği için bellekteki işaret bayat olabilir.
+- Geçersiz anahtar (400 `API_KEY_INVALID`) tüm modeller için elenir.
+  Bu olmasa `.env`'e yanlış yapıştırılmış tek bir anahtar bütün zinciri
+  düşürürdü — 400 normalde fallthrough etmiyor.
+- **Log'a anahtar DEĞERİ hiç yazılmaz**, yalnızca sıra numarası (`anahtar #2`).
+
+Canlı doğrulandı (24 Ağustos): #1 kasten bozuk anahtar + #2 gerçek anahtar
+ile çağrı yapıldı; #1 reddedilip üç modelden de elendi, yanıt **en iyi
+modelden** (`gemini-3.5-flash`) 2. anahtarla alındı.
 
 ### Diğer kurallar
 
@@ -290,7 +314,8 @@ zincirin başına konduğunda ikinciye düşüp gerçek yanıt alındı.
 - Kalibrasyon panosu senaryodan çıkarıldı.
 
 - **Canlı yükleme yok** (PLAN §9). `MOCK_AI=true` kalıyor.
-- **Kota: model başına günde 20 istek.** Demo günü deneme analizi çalıştırma.
+- **Kota: proje × model başına günde 20 istek.** Demo öncesi 2-3 AI Studio
+  projesinden anahtar üretip `GOOGLE_API_KEY_1..3`'e Vercel'de de ekle.
 - `NEXT_PUBLIC_DEMO_MODE=true` kalıyor — `/demo` rol geçişinin tek yolu.
   Auth bağlandı ama rol başına ayrı giriş yapmak demoyu yavaşlatır.
 
