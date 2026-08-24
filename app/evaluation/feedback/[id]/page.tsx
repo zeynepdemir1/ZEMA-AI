@@ -16,11 +16,11 @@ export default async function FeedbackPage({ params }: PageProps<'/evaluation/fe
   return (
     <div className="flex-1 px-6 pt-8 pb-[72px] lg:px-10">
       <div className="mx-auto max-w-[860px]">
-        <Link href="/evaluation" className="text-teal mb-[18px] inline-block text-[13px] no-underline">
+        <Link href="/evaluation" className="text-teal-ink mb-[18px] inline-block text-[13px] no-underline">
           ← Değerlendirme panosuna dön
         </Link>
 
-        <div className="text-ink/50 mb-2.5 font-mono text-[10.5px] tracking-[.14em]">
+        <div className="text-ink/75 mb-2.5 font-mono text-[10.5px] tracking-[.14em]">
           GERİ BİLDİRİM YAYIMLAMA · {draft.report.code}
         </div>
         <h1 className="font-heading m-0 mb-1.5 text-[28px] font-semibold">{draft.report.team}</h1>
@@ -33,7 +33,7 @@ export default async function FeedbackPage({ params }: PageProps<'/evaluation/fe
             <div className="font-heading mb-2 text-[18px] font-semibold">
               Geri bildirim taslağı henüz üretilmedi
             </div>
-            <div className="text-ink/60 mx-auto max-w-[520px] text-[13.5px] leading-[1.6]">
+            <div className="text-ink/75 mx-auto max-w-[520px] text-[13.5px] leading-[1.6]">
               {draft.synthesisDone
                 ? 'feedback_synthesis kontrolü tamamlandı ama taslak kaydedilmemiş. Analizi yeniden çalıştırmak gerekebilir.'
                 : 'feedback_synthesis kontrolü henüz tamamlanmadı. Analiz kuyruğu bitince taslak burada görünecek.'}

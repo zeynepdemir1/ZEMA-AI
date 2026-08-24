@@ -27,6 +27,35 @@ kontrolünün sistematik bir eksiği yakaladığını gösteriyor. Referans rapo
 (ATMACA) yine de %85 ile `UYGUN` kalıyor. Raporları bu bölümle yeniden
 üretmek 54 model çağrısı demek; kota nedeniyle yapılmadı.
 
+## 🎨 Okunabilirlik kuralları (ölçülerek belirlendi)
+
+WCAG kontrast oranları hesaplandı, tahmin edilmedi. Ink Navy #1B2A4A metin,
+#FFFFFF ve #F7F7F5 zeminler üzerinde:
+
+| alfa | kontrast | sonuç |
+|---|---|---|
+| %50 | 2.98:1 | **AA başarısız** |
+| %65 | 4.51:1 | sınırda |
+| **%75** | **6.15:1** | AA geçer |
+| %85 | 8.41:1 | rahat geçer |
+
+**Kritik bulgu:** `text-gold` (#C98A3E) tam opaklıkta **2.92:1** — AA'yı ağır
+şekilde geçemiyor. `text-teal` (#4C8577) 4.26:1 ile sınırda. İkisi de metin
+rengi olarak kullanılıyordu. Artık:
+
+- metin için `text-gold-ink` (5.01:1) ve `text-teal-ink` (5.81:1)
+- gold/teal yalnızca kenarlık ve zemin olarak
+- Ink Navy metin en az **%75** alfa
+- gövde metni **14px / satır yüksekliği 1.6+**; 1.3-1.4 yalnızca başlıkta
+- paragraf yerine madde listesi
+
+Açık zeminli 17 dosyada uygulandı, kalan ihlal 0.
+
+**Kriter kartı tam üç görsel kat:** (1) AI değerlendirmesi — nötr zemin,
+(2) kanıt — sol teal kenarlık + hafif teal zemin (12.7:1), (3) hakem metni —
+gold kenarlıklı ayrı kart. "Beklenti" kat değil, başlık altında tek satır
+rubrik referansı.
+
 ## 📊 Karar eşikleri
 
 Sayısal skor üreten kontrollerin kararı artık `SCORE_THRESHOLDS`

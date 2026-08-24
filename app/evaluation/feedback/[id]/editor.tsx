@@ -5,7 +5,7 @@ import Link from 'next/link';
 import type { FeedbackContent, FeedbackDraft } from '@/lib/reports/queries';
 import { publishFeedback, saveFeedbackDraft, unpublishFeedback } from './actions';
 
-const LABEL = 'text-ink/60 mb-2 block font-mono text-[10.5px] tracking-[.12em]';
+const LABEL = 'text-ink/75 mb-2 block font-mono text-[10.5px] tracking-[.12em]';
 const AREA =
   'border-ink/[.18] text-ink w-full resize-y border bg-white px-3 py-2.5 font-sans text-[13.5px] leading-[1.6]';
 
@@ -44,7 +44,7 @@ export function FeedbackEditor({
     <div className="flex flex-col gap-5">
       {/* Yarışmacıya ne gideceğinin uyarısı */}
       <div className="border-ink/[.12] bg-ink/[.03] flex items-start gap-3 border px-[22px] py-4">
-        <span className="text-gold font-mono text-[13px]">◆</span>
+        <span className="text-gold-ink font-mono text-[13px]">◆</span>
         <span className="text-ink/[.72] text-[13px] leading-[1.6]">
           Bu metin <strong>yarışmacıya aynen gidecek</strong>. Ham AI analizi, puan ve sıralama
           bilgisi buraya girmemeli. Yayımlamadan önce okuyun.
@@ -117,7 +117,7 @@ export function FeedbackEditor({
             </div>
           ))}
           {(content.improvements ?? []).length === 0 && (
-            <div className="text-ink/50 text-[13px]">Madde yok.</div>
+            <div className="text-ink/75 text-[13px]">Madde yok.</div>
           )}
         </div>
 
@@ -145,7 +145,7 @@ export function FeedbackEditor({
       )}
 
       {!canPublish && (
-        <div className="border-ink/[.22] text-ink/70 border bg-[rgba(27,42,74,.03)] px-4 py-3 text-[13px] leading-[1.55]">
+        <div className="border-ink/[.22] text-ink/75 border bg-[rgba(27,42,74,.03)] px-4 py-3 text-[13px] leading-[1.55]">
           Bu ekranı görüntüleyebilirsiniz ancak geri bildirim yayımlama yetkisi
           <strong> Değerlendirme Yöneticisi</strong>&apos;ne aittir.
         </div>
@@ -154,7 +154,7 @@ export function FeedbackEditor({
       <div className="flex flex-wrap items-center gap-3">
         {!canPublish ? null : published ? (
           <>
-            <span className="text-gold border-gold border px-3 py-2 font-mono text-[10.5px] tracking-[.12em]">
+            <span className="text-gold-ink border-gold border px-3 py-2 font-mono text-[10.5px] tracking-[.12em]">
               ✓ YAYIMLANDI
               {draft.publishedAt &&
                 ` · ${new Date(draft.publishedAt).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}`}
@@ -162,7 +162,7 @@ export function FeedbackEditor({
             <button
               disabled={pending}
               onClick={() => run(() => unpublishFeedback(draft.report.id), 'Yayından kaldırıldı.')}
-              className="border-ink/[.22] text-ink/70 cursor-pointer border bg-transparent px-[18px] py-2.5 font-sans text-[13px] disabled:opacity-50"
+              className="border-ink/[.22] text-ink/75 cursor-pointer border bg-transparent px-[18px] py-2.5 font-sans text-[13px] disabled:opacity-50"
             >
               Yayından kaldır
             </button>
@@ -187,7 +187,7 @@ export function FeedbackEditor({
         )}
         <Link
           href={`/submissions/${draft.report.id}`}
-          className="text-teal ml-auto text-[13px] no-underline"
+          className="text-teal-ink ml-auto text-[13px] no-underline"
         >
           Yarışmacının göreceği hali →
         </Link>

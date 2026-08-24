@@ -29,7 +29,7 @@ export function SimilarityList({
   return (
     <div className="flex flex-col gap-4">
       {matches.map((m, i) => {
-        const tone = m.semanticScore >= 40 ? 'text-danger' : m.semanticScore >= 20 ? 'text-gold' : 'text-ink';
+        const tone = m.semanticScore >= 40 ? 'text-danger' : m.semanticScore >= 20 ? 'text-gold-ink' : 'text-ink';
         const bar = m.semanticScore >= 40 ? '#B4483F' : m.semanticScore >= 20 ? '#C98A3E' : '#1B2A4A';
         const set = (v: SimilarityMatch['verdict']) =>
           startTransition(async () => {
@@ -45,7 +45,7 @@ export function SimilarityList({
                 </span>
                 <div>
                   <h3 className="font-heading m-0 mb-[5px] text-[19px] font-semibold">{m.otherTeam}</h3>
-                  <div className="text-ink/50 font-mono text-[10.5px]">
+                  <div className="text-ink/75 font-mono text-[10.5px]">
                     {m.otherCode}
                     {m.lexicalScore !== null && ` · trigram ${m.lexicalScore}`}
                   </div>
@@ -73,7 +73,7 @@ export function SimilarityList({
             )}
 
             {m.passages.length === 0 ? (
-              <div className="border-ink/[.18] text-ink/60 mb-[14px] border border-dashed px-4 py-3 text-[13px]">
+              <div className="border-ink/[.18] text-ink/75 mb-[14px] border border-dashed px-4 py-3 text-[13px]">
                 AI benzerlik iddia etti ama eşleşen pasaj göstermedi — bu sonuç
                 <span className="font-mono"> insufficient_evidence </span>
                 olarak işaretlendi.
@@ -92,7 +92,7 @@ export function SimilarityList({
                             {side.label}
                           </div>
                           <div className="text-[13px] font-semibold">{side.team}</div>
-                          <div className="text-ink/50 mt-[3px] font-mono text-[9.5px]">
+                          <div className="text-ink/75 mt-[3px] font-mono text-[9.5px]">
                             {side.ref || '—'}
                           </div>
                         </div>
@@ -110,7 +110,7 @@ export function SimilarityList({
                     ))}
                   </div>
                   {p.note && (
-                    <div className="text-ink/50 mt-2 font-mono text-[10px] tracking-[.08em]">{p.note}</div>
+                    <div className="text-ink/75 mt-2 font-mono text-[10px] tracking-[.08em]">{p.note}</div>
                   )}
                 </div>
               ))
@@ -134,7 +134,7 @@ export function SimilarityList({
                 className={`cursor-pointer border px-4 py-[9px] font-sans text-[13px] font-semibold disabled:opacity-50 ${
                   m.verdict === 'false_positive'
                     ? 'border-ink bg-ink text-white'
-                    : 'border-ink/[.22] text-ink/70 bg-transparent'
+                    : 'border-ink/[.22] text-ink/75 bg-transparent'
                 }`}
               >
                 Yanlış Pozitif — Yoksay

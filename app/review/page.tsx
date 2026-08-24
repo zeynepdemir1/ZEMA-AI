@@ -6,8 +6,8 @@ import { loadAssignedReports } from '@/lib/reports/queries';
 export const dynamic = 'force-dynamic';
 
 const TONE: Record<string, string> = {
-  onaylandı: 'text-gold border-gold',
-  inceleniyor: 'text-teal border-teal',
+  onaylandı: 'text-gold-ink border-gold',
+  inceleniyor: 'text-teal-ink border-teal',
   bekliyor: 'text-ink/[.45] border-ink/[.45]',
   dikkat: 'text-danger border-danger',
 };
@@ -23,7 +23,7 @@ export default async function ReviewIndexPage() {
   return (
     <div className="flex-1 px-6 pt-11 pb-[72px] lg:px-10">
       <div className="mx-auto max-w-[860px]">
-        <div className="text-ink/50 mb-2 font-mono text-[10.5px] tracking-[.14em]">
+        <div className="text-ink/75 mb-2 font-mono text-[10.5px] tracking-[.14em]">
           HAKEM · {user.fullName ?? user.email}
         </div>
         <h1 className="font-heading m-0 mb-1.5 text-[28px] font-semibold">Atanan raporlar</h1>
@@ -34,7 +34,7 @@ export default async function ReviewIndexPage() {
         {reports.length === 0 ? (
           <div className="border-ink/[.22] border border-dashed bg-white p-10 text-center">
             <div className="font-heading mb-2 text-[18px] font-semibold">Atanmış rapor yok</div>
-            <div className="text-ink/60 mx-auto max-w-[480px] text-[13.5px] leading-[1.6]">
+            <div className="text-ink/75 mx-auto max-w-[480px] text-[13.5px] leading-[1.6]">
               Değerlendirme Yöneticisi size rapor atadığında burada görünecek. RLS gereği
               yalnızca atandığınız raporları görebilirsiniz.
             </div>
@@ -42,7 +42,7 @@ export default async function ReviewIndexPage() {
         ) : (
           categories.map((cat) => (
             <div key={cat} className="mb-6">
-              <div className="text-ink/50 mb-2.5 font-mono text-[10.5px] tracking-[.14em]">
+              <div className="text-ink/75 mb-2.5 font-mono text-[10.5px] tracking-[.14em]">
                 {cat.toLocaleUpperCase('tr-TR')}
               </div>
               <div className="flex flex-col gap-2">

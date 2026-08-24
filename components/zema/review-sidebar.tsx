@@ -6,8 +6,8 @@ import type { SidebarReport } from '@/lib/reports/queries';
 import { SignOutButton } from './sign-out-button';
 
 const TONE: Record<SidebarReport['status'], string> = {
-  onaylandı: 'text-gold border-gold',
-  inceleniyor: 'text-teal border-teal',
+  onaylandı: 'text-gold-ink border-gold',
+  inceleniyor: 'text-teal-ink border-teal',
   bekliyor: 'text-ink/[.45] border-ink/[.45]',
   dikkat: 'text-danger border-danger',
 };
@@ -35,14 +35,14 @@ export function ReviewSidebar({
   return (
     <div className="border-ink/10 flex flex-col border-r bg-white">
       <div className="border-ink/10 border-b px-5 pt-[18px] pb-[14px]">
-        <div className="text-ink/50 font-mono text-[10px] tracking-[.14em]">
+        <div className="text-ink/75 font-mono text-[10px] tracking-[.14em]">
           RAPORLAR · {reports.length}
         </div>
       </div>
 
       <div className="flex-1 overflow-auto px-2 pt-2 pb-4">
         {reports.length === 0 && (
-          <div className="text-ink/50 px-3 py-4 text-[12.5px]">Henüz rapor yüklenmedi.</div>
+          <div className="text-ink/75 px-3 py-4 text-[12.5px]">Henüz rapor yüklenmedi.</div>
         )}
         {categories.map((cat) => {
           const items = reports.filter((r) => r.category === cat);
@@ -53,7 +53,7 @@ export function ReviewSidebar({
                 onClick={() => setOpen((s) => ({ ...s, [cat]: !isOpen }))}
                 className="text-ink flex w-full cursor-pointer items-center gap-[9px] border-none bg-transparent px-2.5 py-[9px] text-left font-sans"
               >
-                <span className="text-ink/50 w-2.5 text-[10px]">{isOpen ? '▾' : '▸'}</span>
+                <span className="text-ink/75 w-2.5 text-[10px]">{isOpen ? '▾' : '▸'}</span>
                 <span className="flex-1 text-[13px] font-semibold">{cat}</span>
                 <span className="text-ink/[.42] font-mono text-[9.5px]">{items.length} RAPOR</span>
               </button>
@@ -104,7 +104,7 @@ export function ReviewSidebar({
         </div>
         <div className="min-w-0 flex-1">
           <div className="truncate text-[12.5px] font-semibold">{user.name}</div>
-          <div className="text-ink/50 font-mono text-[10px]">{user.roleLabel}</div>
+          <div className="text-ink/75 font-mono text-[10px]">{user.roleLabel}</div>
         </div>
         <SignOutButton />
       </div>

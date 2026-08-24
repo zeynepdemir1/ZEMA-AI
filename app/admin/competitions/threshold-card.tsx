@@ -19,15 +19,15 @@ export function ThresholdCard({
   const [msg, setMsg] = useState<string | null>(null);
 
   const level = value >= 70 ? 'GEVŞEK EŞİK' : value <= 40 ? 'SIKI EŞİK' : 'DENGELİ';
-  const tone = value >= 70 ? 'text-danger' : value <= 40 ? 'text-teal' : 'text-success';
+  const tone = value >= 70 ? 'text-danger' : value <= 40 ? 'text-teal-ink' : 'text-success';
   const dirty = value !== initial;
 
   return (
     <div className="border-ink/10 border bg-white p-[26px]">
-      <div className="text-ink/60 mb-1.5 font-mono text-[10.5px] tracking-[.12em]">
+      <div className="text-ink/75 mb-1.5 font-mono text-[10.5px] tracking-[.12em]">
         BENZERLİK EŞİĞİ
       </div>
-      <div className="text-ink/60 mb-5 text-[13px] leading-[1.55]">
+      <div className="text-ink/75 mb-5 text-[13px] leading-[1.55]">
         Bu yüzdenin üzerindeki raporlar hakeme &quot;dikkat çekici&quot; olarak işaretlenir.
         Değiştirmek yeniden analiz tetiklemez.
       </div>
@@ -50,7 +50,7 @@ export function ThresholdCard({
         <span>%0</span><span>%25</span><span>%50</span><span>%75</span><span>%100</span>
       </div>
 
-      <div className="border-ink/[.08] text-ink/60 mt-[18px] border-t pt-[14px] text-[12.5px] leading-[1.55]">
+      <div className="border-ink/[.08] text-ink/75 mt-[18px] border-t pt-[14px] text-[12.5px] leading-[1.55]">
         {reportCount > 0 ? (
           <>
             Yüklü <span className="text-ink font-mono">{reportCount}</span> raporun{' '}

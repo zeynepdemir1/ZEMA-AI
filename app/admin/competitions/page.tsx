@@ -20,7 +20,7 @@ export default async function CompetitionSetupPage() {
       <div className="flex-1 px-6 pt-[38px] pb-[72px] lg:px-10">
         <div className="border-ink/[.22] mx-auto max-w-[680px] border border-dashed bg-white p-10 text-center">
           <div className="font-heading mb-2 text-[18px] font-semibold">Tanımlı yarışma yok</div>
-          <div className="text-ink/60 text-[13.5px]">
+          <div className="text-ink/75 text-[13.5px]">
             <span className="font-mono">npm run seed</span> ile örnek yarışma, kategoriler ve rubrik
             oluşturulabilir.
           </div>
@@ -50,7 +50,7 @@ export default async function CompetitionSetupPage() {
               >
                 <span
                   className={`flex h-[22px] w-[22px] items-center justify-center border font-mono text-[11px] ${
-                    active ? 'border-ink bg-ink text-white' : 'border-ink/[.25] text-ink/50 bg-transparent'
+                    active ? 'border-ink bg-ink text-white' : 'border-ink/[.25] text-ink/75 bg-transparent'
                   }`}
                 >
                   {num}
@@ -69,16 +69,16 @@ export default async function CompetitionSetupPage() {
 
         <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[1.1fr_.9fr]">
           <div className="border-ink/10 border bg-white p-[26px]">
-            <div className="text-ink/60 mb-[7px] font-mono text-[10.5px] tracking-[.12em]">
+            <div className="text-ink/75 mb-[7px] font-mono text-[10.5px] tracking-[.12em]">
               YARIŞMA
             </div>
             <div className="border-ink/[.14] mb-[18px] border px-[14px] py-3 text-[14.5px]">
               {competition.name}
-              <span className="text-ink/50 ml-2 font-mono text-[11px]">{competition.year}</span>
+              <span className="text-ink/75 ml-2 font-mono text-[11px]">{competition.year}</span>
             </div>
 
             <div className="mb-2.5 flex items-center justify-between">
-              <span className="text-ink/60 font-mono text-[10.5px] tracking-[.12em]">
+              <span className="text-ink/75 font-mono text-[10.5px] tracking-[.12em]">
                 KATEGORİLER
               </span>
               <span className="text-ink/[.45] font-mono text-[11px]">{categories.length} ADET</span>
@@ -100,7 +100,7 @@ export default async function CompetitionSetupPage() {
               ))}
             </div>
 
-            <div className="text-ink/60 mb-[7px] font-mono text-[10.5px] tracking-[.12em]">
+            <div className="text-ink/75 mb-[7px] font-mono text-[10.5px] tracking-[.12em]">
               {(competition.template_spec.report_type ?? 'RAPOR').toLocaleUpperCase('tr-TR')} ŞABLONU
               {' — '}
               {(competition.template_spec.required_sections ?? []).length} ZORUNLU BÖLÜM
@@ -111,14 +111,14 @@ export default async function CompetitionSetupPage() {
                   {sections.map((s) => (
                     <span
                       key={s}
-                      className="border-ink/[.18] text-ink/70 border bg-white px-2 py-1 font-mono text-[10.5px]"
+                      className="border-ink/[.18] text-ink/75 border bg-white px-2 py-1 font-mono text-[10.5px]"
                     >
                       {s}
                     </span>
                   ))}
                 </div>
               ) : (
-                <div className="text-ink/50 text-[12.5px]">Şablon tanımlanmamış.</div>
+                <div className="text-ink/75 text-[12.5px]">Şablon tanımlanmamış.</div>
               )}
               <div className="text-ink/[.45] mt-3 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[10.5px]">
                 <span>{competition.template_spec.format?.font ?? '—'}</span>
@@ -136,7 +136,7 @@ export default async function CompetitionSetupPage() {
 
             {(competition.template_spec.content_rules ?? []).length > 0 && (
               <div className="border-ink/[.12] mb-5 border-l-2 pl-3">
-                <div className="text-ink/60 mb-1.5 font-mono text-[10px] tracking-[.12em]">
+                <div className="text-ink/75 mb-1.5 font-mono text-[10px] tracking-[.12em]">
                   İÇERİK KURALLARI
                 </div>
                 <ul className="text-ink/[.72] m-0 list-disc pl-4 text-[12.5px] leading-[1.6]">
@@ -148,7 +148,7 @@ export default async function CompetitionSetupPage() {
             )}
 
             <div className="mb-2.5 flex items-center justify-between">
-              <span className="text-ink/60 font-mono text-[10.5px] tracking-[.12em]">
+              <span className="text-ink/75 font-mono text-[10.5px] tracking-[.12em]">
                 DEĞERLENDİRME KRİTERLERİ
               </span>
               <span className="text-ink/[.45] font-mono text-[11px]">
@@ -188,7 +188,7 @@ export default async function CompetitionSetupPage() {
             </div>
 
             <div className="border-ink/[.12] bg-ink/[.03] border px-[22px] py-4">
-              <div className="text-ink/50 mb-1.5 font-mono text-[10px] tracking-[.12em]">
+              <div className="text-ink/75 mb-1.5 font-mono text-[10px] tracking-[.12em]">
                 SON BAŞVURU
               </div>
               <div className="font-mono text-[13px]">

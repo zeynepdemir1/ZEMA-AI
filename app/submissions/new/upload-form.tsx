@@ -72,7 +72,7 @@ export function UploadForm({ categories }: { categories: Array<{ id: string; nam
 
   return (
     <form onSubmit={onSubmit} className="border-ink/10 border bg-white p-7">
-      <label className="text-ink/60 mb-2 block font-mono text-[10.5px] tracking-[.12em]" htmlFor="title">
+      <label className="text-ink/75 mb-2 block font-mono text-[10.5px] tracking-[.12em]" htmlFor="title">
         RAPOR BAŞLIĞI
       </label>
       <input
@@ -84,7 +84,7 @@ export function UploadForm({ categories }: { categories: Array<{ id: string; nam
         className="border-ink/[.18] text-ink mb-5 w-full border bg-white px-[14px] py-3 font-sans text-[14.5px] disabled:opacity-60"
       />
 
-      <label className="text-ink/60 mb-2 block font-mono text-[10.5px] tracking-[.12em]" htmlFor="cat">
+      <label className="text-ink/75 mb-2 block font-mono text-[10.5px] tracking-[.12em]" htmlFor="cat">
         KATEGORİ
       </label>
       <select
@@ -102,7 +102,7 @@ export function UploadForm({ categories }: { categories: Array<{ id: string; nam
         Kategori seçiminiz AI tarafından içerikle karşılaştırılır; uyumsuzluk hakeme bildirilir.
       </div>
 
-      <label className="text-ink/60 mb-2 block font-mono text-[10.5px] tracking-[.12em]" htmlFor="file">
+      <label className="text-ink/75 mb-2 block font-mono text-[10.5px] tracking-[.12em]" htmlFor="file">
         RAPOR DOSYASI
       </label>
       <input
@@ -113,7 +113,7 @@ export function UploadForm({ categories }: { categories: Array<{ id: string; nam
         disabled={busy}
         className="border-ink/[.28] bg-ink/[.02] mb-2 w-full border border-dashed px-4 py-5 text-[13px] disabled:opacity-60"
       />
-      <div className="text-ink/50 mb-6 font-mono text-[11px]">
+      <div className="text-ink/75 mb-6 font-mono text-[11px]">
         PDF · MAKS. 20 MB · metin katmanı içermeli (taranmış görüntü kabul edilmiyor)
       </div>
 

@@ -32,7 +32,7 @@ export function AssignmentTable({
       {/* Hakem yükü + dengeli dağıt */}
       <div className="border-ink/10 mb-5 border bg-white px-6 py-5">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
-          <div className="text-ink/50 font-mono text-[10.5px] tracking-[.14em]">
+          <div className="text-ink/75 font-mono text-[10.5px] tracking-[.14em]">
             HAKEM YÜKÜ · {judges.length} HAKEM
           </div>
           <button
@@ -88,16 +88,16 @@ export function AssignmentTable({
 
       {/* Rapor → hakem tablosu */}
       <div className="border-ink/10 border bg-white px-6 pt-5 pb-6">
-        <div className="text-ink/50 mb-4 font-mono text-[10.5px] tracking-[.14em]">
+        <div className="text-ink/75 mb-4 font-mono text-[10.5px] tracking-[.14em]">
           RAPORLAR · {rows.length}
         </div>
 
         {rows.length === 0 ? (
-          <div className="text-ink/60 py-6 text-center text-[13.5px]">Henüz rapor yüklenmedi.</div>
+          <div className="text-ink/75 py-6 text-center text-[13.5px]">Henüz rapor yüklenmedi.</div>
         ) : (
           <div className="flex flex-col">
             <div
-              className="border-ink/[.12] text-ink/50 grid gap-4 border-b pb-2.5 font-mono text-[10px] tracking-[.1em]"
+              className="border-ink/[.12] text-ink/75 grid gap-4 border-b pb-2.5 font-mono text-[10px] tracking-[.1em]"
               style={{ gridTemplateColumns: '1.5fr 1fr 1.3fr .6fr' }}
             >
               <span>TAKIM / RAPOR</span><span>KATEGORİ</span><span>HAKEM</span><span>ANALİZ</span>
@@ -121,7 +121,7 @@ export function AssignmentTable({
                   </div>
                 </div>
 
-                <div className="text-ink/70 truncate text-[12.5px]">{r.category}</div>
+                <div className="text-ink/75 truncate text-[12.5px]">{r.category}</div>
 
                 <div className="flex items-center gap-2">
                   <select
@@ -143,7 +143,7 @@ export function AssignmentTable({
                     ))}
                   </select>
                   {busyRow === r.reportId && pending && (
-                    <span className="text-ink/40 font-mono text-[10px]">…</span>
+                    <span className="text-ink/75 font-mono text-[10px]">…</span>
                   )}
                 </div>
 

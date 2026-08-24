@@ -20,13 +20,13 @@ export default async function SimilarityPage({ params }: PageProps<'/review/[id]
   return (
     <div className="flex-1 px-6 pt-8 pb-[72px] lg:px-10">
       <div className="mx-auto max-w-[1000px]">
-        <Link href={`/review/${id}`} className="text-teal mb-[18px] inline-block text-[13px] no-underline">
+        <Link href={`/review/${id}`} className="text-teal-ink mb-[18px] inline-block text-[13px] no-underline">
           ← Hakem incelemesine dön
         </Link>
 
         <div className="border-ink/10 border-l-teal mb-5 flex flex-wrap items-center justify-between gap-8 border border-l-4 bg-white px-7 py-6">
           <div>
-            <div className="text-ink/50 mb-2.5 font-mono text-[10.5px] tracking-[.14em]">
+            <div className="text-ink/75 mb-2.5 font-mono text-[10.5px] tracking-[.14em]">
               BENZERLİK DETAYI · AI ANALİZİ
             </div>
             <h2 className="font-heading m-0 mb-1.5 text-[25px] font-semibold">
@@ -41,7 +41,7 @@ export default async function SimilarityPage({ params }: PageProps<'/review/[id]
             </div>
           </div>
           <div className="text-right whitespace-nowrap">
-            <div className="text-ink/50 mb-[5px] font-mono text-[10px] tracking-[.1em]">
+            <div className="text-ink/75 mb-[5px] font-mono text-[10px] tracking-[.1em]">
               EN YÜKSEK BENZERLİK
             </div>
             <div className={`font-mono text-[30px] ${over ? 'text-danger' : 'text-ink'}`}>%{maxPct}</div>
@@ -54,7 +54,7 @@ export default async function SimilarityPage({ params }: PageProps<'/review/[id]
             <div className="font-heading mb-2 text-[18px] font-semibold">
               Karşılaştırma kartı oluşturulmadı
             </div>
-            <div className="text-ink/60 text-[13.5px]">
+            <div className="text-ink/75 text-[13.5px]">
               Aynı yarışma ve kategoride karşılaştırılacak başka rapor bulunmuyor ya da trigram ön
               elemesi eşik üzerinde aday döndürmedi.
             </div>

@@ -157,24 +157,10 @@ export async function loadReview(reportId: string): Promise<ReviewData | null> {
 
   // category_fit payload'ında kategori UUID'si var; hakeme UUID göstermek
   // anlamsız — okunabilir adla zenginleştir.
-  const allCats = await db.from('categories').select('id, name');
-  const catNameById = new Map((allCats.data ?? []).map((c) => [c.id, c.name]));
-
   const checks: CheckResultView[] = CHECK_ORDER.flatMap((type) => {
     const r = (results ?? []).find((x) => x.check_type === type);
     if (!r) return [];
-    let payload = (r.payload ?? {}) as Record<string, unknown>;
-    if (type === 'category_fit' && Array.isArray(payload.ranked_categories)) {
-      payload = {
-        ...payload,
-        ranked_categories: (payload.ranked_categories as Array<Record<string, unknown>>).map(
-          (rc) => ({
-            ...rc,
-            category_name: catNameById.get(String(rc.category_id)) ?? String(rc.category_id).slice(0, 8),
-          }),
-        ),
-      };
-    }
+    const payload = (r.payload ?? {}) as Record<string, unknown>;
     // Karar OKUMA anında da eşikten türetiliyor: eşik değiştiğinde ya da
     // eski satırlar farklı mantıkla yazılmışken ekran tutarsız kalmasın.
     const scoring = CHECK_SCORING[type as CheckType] ?? 'judgment';

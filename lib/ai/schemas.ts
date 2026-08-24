@@ -61,19 +61,26 @@ export const TitleContentSchema = z.object({
 });
 
 // §4.3 — Kategori uygunluğu
+/**
+ * Takım ZATEN bir kategoride yarışıyor; bu bilgi sabittir. Kontrol tek bir
+ * soruya cevap verir: rapor içeriği o kategoriyle ÇELİŞİYOR mu?
+ *
+ * Önceki şemada "en olası kategoriler" listesi vardı (ranked_categories,
+ * declared_category_confidence). Kaldırıldı: hakemin diğer kategorilerin
+ * yüzdesini görmesi karar vermesine yardımcı olmuyor, ekranı dolduruyor ve
+ * "takım yanlış kategoride" izlenimi yaratıyor. Tek gereken şey çelişki
+ * olup olmadığı ve varsa kanıtı.
+ */
 export const CategoryFitSchema = z.object({
-  ranked_categories: z
-    .array(
-      z.object({
-        category_id: z.string(),
-        confidence: z.number().min(0).max(1),
-        rationale: z.string(),
-      }),
-    )
-    .max(3),
-  declared_category_confidence: z.number().min(0).max(1),
-  is_mismatch: z.boolean(),
-  recommendation: z.string(),
+  /** Rapor içeriği beyan edilen kategoriyle uyumlu mu? */
+  is_consistent: z.boolean(),
+  /**
+   * Çelişki varsa rapordan BİREBİR alıntı; yoksa boş dize.
+   * Kanıt doğrulaması bu alana da uygulanır — uydurulmuş alıntı yakalanır.
+   */
+  conflicting_quote: z.string(),
+  /** Tek cümlelik gerekçe. Uyumluysa neden uyumlu, değilse neden değil. */
+  reason: z.string(),
 });
 
 // §4.4 — Benzerlik / özgünlük (ikili karşılaştırma başına bir sonuç)

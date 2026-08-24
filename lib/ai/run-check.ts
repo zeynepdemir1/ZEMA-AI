@@ -58,9 +58,10 @@ export async function runCheck(reportId: string, checkType: CheckType): Promise<
 
   if (checkType === 'category_fit') {
     const declared = (categories ?? []).find((c) => c.id === report.category_id);
+    // Şema artık kategori UUID'si taşımıyor; modele yalnızca ADI veriliyor.
     instruction +=
       '\n\nBEYAN EDİLEN KATEGORİ: ' +
-      (declared ? `[${declared.id}] ${declared.name}` : '(yarışmacı kategori beyan etmemiş)');
+      (declared ? `"${declared.name}"` : '(yarışmacı kategori beyan etmemiş)');
   }
 
   if (checkType === 'similarity') {

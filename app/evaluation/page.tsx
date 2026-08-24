@@ -6,8 +6,8 @@ import { requireRole } from '@/lib/supabase/server';
 export const dynamic = 'force-dynamic';
 
 const BADGE: Record<string, string> = {
-  gold: 'text-gold border-gold',
-  teal: 'text-teal border-teal',
+  gold: 'text-gold-ink border-gold',
+  teal: 'text-teal-ink border-teal',
   muted: 'text-ink/[.45] border-ink/[.45]',
   danger: 'text-danger border-danger',
 };
@@ -27,7 +27,7 @@ export default async function EvaluationDashboard() {
       <div className="flex-1 px-6 pt-[38px] pb-[72px] lg:px-10">
         <div className="border-ink/[.22] mx-auto max-w-[680px] border border-dashed bg-white p-10 text-center">
           <div className="font-heading mb-2 text-[18px] font-semibold">Tanımlı yarışma yok</div>
-          <div className="text-ink/60 text-[13.5px]">
+          <div className="text-ink/75 text-[13.5px]">
             <span className="font-mono">npm run seed</span> çalıştırılmalı.
           </div>
         </div>
@@ -38,8 +38,8 @@ export default async function EvaluationDashboard() {
   const { competition, stats, queue, workload, updatedAt } = data;
   const cards = [
     { label: 'TOPLAM RAPOR', value: stats.totalReports, tone: 'text-ink', note: `${queue.length} kayıt` },
-    { label: 'AI ANALİZİ TAMAM', value: stats.analyzed, tone: 'text-teal', note: `${stats.totalReports - stats.analyzed} rapor kuyrukta` },
-    { label: 'HAKEM ONAYI BEKLEYEN', value: stats.awaitingApproval, tone: 'text-gold', note: 'Kriter onayı eksik' },
+    { label: 'AI ANALİZİ TAMAM', value: stats.analyzed, tone: 'text-teal-ink', note: `${stats.totalReports - stats.analyzed} rapor kuyrukta` },
+    { label: 'HAKEM ONAYI BEKLEYEN', value: stats.awaitingApproval, tone: 'text-gold-ink', note: 'Kriter onayı eksik' },
     { label: 'YAYINLANAN SONUÇ', value: stats.published, tone: 'text-success', note: 'Yarışmacılara iletildi' },
   ];
 
@@ -48,7 +48,7 @@ export default async function EvaluationDashboard() {
       <div className="mx-auto max-w-[1180px]">
         <div className="mb-[26px] flex flex-wrap items-end justify-between gap-4">
           <div>
-            <div className="text-ink/50 mb-2 font-mono text-[10.5px] tracking-[.14em]">
+            <div className="text-ink/75 mb-2 font-mono text-[10.5px] tracking-[.14em]">
               DEĞERLENDİRME YÖNETİCİSİ
             </div>
             <h2 className="font-heading m-0 text-[28px] font-semibold">
@@ -62,7 +62,7 @@ export default async function EvaluationDashboard() {
             >
               Hakem ataması →
             </Link>
-            <div className="text-ink/50 font-mono text-[11px]">
+            <div className="text-ink/75 font-mono text-[11px]">
             {updatedAt
               ? `SON HAREKET ${new Date(updatedAt).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}`
               : 'HAREKET YOK'}
@@ -73,7 +73,7 @@ export default async function EvaluationDashboard() {
         <div className="mb-[22px] grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {cards.map((s) => (
             <div key={s.label} className="border-ink/10 border bg-white px-[22px] pt-[22px] pb-6">
-              <div className="text-ink/50 mb-[14px] font-mono text-[10px] tracking-[.12em]">
+              <div className="text-ink/75 mb-[14px] font-mono text-[10px] tracking-[.12em]">
                 {s.label}
               </div>
               <div className={`font-mono text-[34px] leading-none ${s.tone}`}>{s.value}</div>
@@ -84,18 +84,18 @@ export default async function EvaluationDashboard() {
 
         <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[1.4fr_.6fr]">
           <div className="border-ink/10 border bg-white px-[26px] pt-6 pb-[26px]">
-            <div className="text-ink/50 mb-[18px] font-mono text-[10.5px] tracking-[.14em]">
+            <div className="text-ink/75 mb-[18px] font-mono text-[10.5px] tracking-[.14em]">
               İŞ KUYRUĞU
             </div>
 
             {queue.length === 0 ? (
-              <div className="text-ink/60 py-6 text-center text-[13.5px]">
+              <div className="text-ink/75 py-6 text-center text-[13.5px]">
                 Henüz rapor yüklenmedi.
               </div>
             ) : (
               <div className="flex flex-col gap-0.5">
                 <div
-                  className="border-ink/[.12] text-ink/50 grid gap-4 border-b pb-2.5 font-mono text-[10px] tracking-[.1em]"
+                  className="border-ink/[.12] text-ink/75 grid gap-4 border-b pb-2.5 font-mono text-[10px] tracking-[.1em]"
                   style={{ gridTemplateColumns: '1.6fr .9fr 1.2fr .7fr' }}
                 >
                   <span>TAKIM</span><span>HAKEM</span><span>KONTROL</span><span>DURUM</span>
@@ -115,7 +115,7 @@ export default async function EvaluationDashboard() {
                       </Link>
                       <div className="text-ink/[.45] mt-0.5 font-mono text-[10.5px]">{q.code}</div>
                     </div>
-                    <div className={`text-[13px] ${q.judge === 'Atanmadı' ? 'text-danger' : 'text-ink/70'}`}>
+                    <div className={`text-[13px] ${q.judge === 'Atanmadı' ? 'text-danger' : 'text-ink/75'}`}>
                       {q.judge}
                     </div>
                     <div>
@@ -140,7 +140,7 @@ export default async function EvaluationDashboard() {
                       </span>
                       <Link
                         href={`/evaluation/feedback/${q.reportId}`}
-                        className="text-teal text-[11.5px] no-underline hover:underline"
+                        className="text-teal-ink text-[11.5px] no-underline hover:underline"
                       >
                         geri bildirim →
                       </Link>
@@ -152,18 +152,18 @@ export default async function EvaluationDashboard() {
           </div>
 
           <div className="border-ink/10 border bg-white px-[26px] pt-6 pb-[26px]">
-            <div className="text-ink/50 mb-[18px] font-mono text-[10.5px] tracking-[.14em]">
+            <div className="text-ink/75 mb-[18px] font-mono text-[10.5px] tracking-[.14em]">
               HAKEM İŞ YÜKÜ
             </div>
             {workload.length === 0 ? (
-              <div className="text-ink/60 text-[13px]">Kayıtlı hakem yok.</div>
+              <div className="text-ink/75 text-[13px]">Kayıtlı hakem yok.</div>
             ) : (
               <div className="flex flex-col gap-4">
                 {workload.map((w) => (
                   <div key={w.name}>
                     <div className="mb-[7px] flex items-baseline justify-between">
                       <span className="text-[13.5px]">{w.name}</span>
-                      <span className="text-ink/60 font-mono text-[11.5px]">
+                      <span className="text-ink/75 font-mono text-[11.5px]">
                         {w.assigned} / {w.capacity}
                       </span>
                     </div>

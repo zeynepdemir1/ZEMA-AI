@@ -148,10 +148,9 @@ export function deriveVerdict(
 
     case 'category_fit': {
       const p = payload as PayloadFor<'category_fit'>;
-      // Model hiç kategori sıralayamadıysa sınıflandırma yapamamış demektir.
-      if (p.ranked_categories.length === 0) return 'insufficient_evidence';
-      if (p.is_mismatch) return 'fail';
-      return p.declared_category_confidence >= 0.7 ? 'pass' : 'warn';
+      if (p.is_consistent) return 'pass';
+      // Çelişki İDDİA edip alıntı göstermiyorsa kanıt yok (§1).
+      return p.conflicting_quote.trim() ? 'fail' : 'insufficient_evidence';
     }
 
     case 'similarity': {

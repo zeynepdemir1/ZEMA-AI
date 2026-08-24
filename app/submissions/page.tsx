@@ -7,11 +7,11 @@ export const dynamic = 'force-dynamic';
 
 const STATUS_LABEL: Record<string, { text: string; tone: string }> = {
   draft: { text: 'TASLAK', tone: 'text-ink/[.45] border-ink/[.45]' },
-  submitted: { text: 'GÖNDERİLDİ', tone: 'text-teal border-teal' },
-  analyzing: { text: 'ANALİZ EDİLİYOR', tone: 'text-teal border-teal' },
-  analyzed: { text: 'ANALİZ TAMAM', tone: 'text-teal border-teal' },
-  under_review: { text: 'HAKEM İNCELEMESİNDE', tone: 'text-gold border-gold' },
-  completed: { text: 'TAMAMLANDI', tone: 'text-gold border-gold' },
+  submitted: { text: 'GÖNDERİLDİ', tone: 'text-teal-ink border-teal' },
+  analyzing: { text: 'ANALİZ EDİLİYOR', tone: 'text-teal-ink border-teal' },
+  analyzed: { text: 'ANALİZ TAMAM', tone: 'text-teal-ink border-teal' },
+  under_review: { text: 'HAKEM İNCELEMESİNDE', tone: 'text-gold-ink border-gold' },
+  completed: { text: 'TAMAMLANDI', tone: 'text-gold-ink border-gold' },
 };
 
 export default async function SubmissionsPage() {
@@ -23,7 +23,7 @@ export default async function SubmissionsPage() {
       <div className="flex-1 px-6 pt-11 pb-[72px] lg:px-10">
         <div className="border-ink/[.22] mx-auto max-w-[620px] border border-dashed bg-white p-10 text-center">
           <div className="font-heading mb-2 text-[18px] font-semibold">Takım bulunamadı</div>
-          <div className="text-ink/60 text-[13.5px]">
+          <div className="text-ink/75 text-[13.5px]">
             <span className="font-mono">npm run seed</span> çalıştırılmalı.
           </div>
         </div>
@@ -38,7 +38,7 @@ export default async function SubmissionsPage() {
       <div className="mx-auto max-w-[860px]">
         <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <div className="text-ink/50 mb-2 font-mono text-[10.5px] tracking-[.14em]">
+            <div className="text-ink/75 mb-2 font-mono text-[10.5px] tracking-[.14em]">
               {data.team.name} · {data.competitor}
             </div>
             <h1 className="font-heading m-0 text-[28px] font-semibold">Raporlarım</h1>
@@ -62,7 +62,7 @@ export default async function SubmissionsPage() {
         {data.reports.length === 0 ? (
           <div className="border-ink/[.22] border border-dashed bg-white p-10 text-center">
             <div className="font-heading mb-2 text-[18px] font-semibold">Henüz rapor yüklemediniz</div>
-            <div className="text-ink/60 mx-auto max-w-[440px] text-[13.5px] leading-[1.6]">
+            <div className="text-ink/75 mx-auto max-w-[440px] text-[13.5px] leading-[1.6]">
               PDF raporunuzu yükleyin; altı AI kontrolü otomatik çalışacak ve sonuç hakem
               incelemesine gidecek.
             </div>

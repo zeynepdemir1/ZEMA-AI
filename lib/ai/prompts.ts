@@ -136,16 +136,28 @@ export const CHECK_INSTRUCTIONS: Record<CheckType, string> = {
 5. alignment_score: 0-100. Başlık ve içerik farklı konulardaysa düşük olmalı.
 6. Başlık veya gövde metni yoksa 'insufficient_evidence'.`,
 
-  category_fit: `GÖREV: Raporun kategori uygunluğunu denetle.
+  category_fit: `GÖREV: Raporun BEYAN EDİLEN kategoriyle çelişip çelişmediğini denetle.
 
-1. KATEGORİLER listesindeki açıklamalara bakarak raporu sınıflandır.
-   En uygun 3 kategoriyi güven değeriyle (0-1) sırala. category_id alanına
-   köşeli parantez içinde verilen UUID'yi birebir yaz.
-2. declared_category_confidence: yarışmacının BEYAN ETTİĞİ kategorinin ne
-   kadar uygun olduğu (beyan edilen kategori talimatın sonunda verilir).
-3. is_mismatch: beyan edilen kategori açıkça yanlışsa true.
-4. recommendation: hakeme tek cümlelik öneri.
-Raporun konusu anlaşılamıyorsa ranked_categories'i boş bırak.`,
+Takım zaten bir kategoride yarışıyor; bu bilgi sabittir ve DEĞİŞTİRİLEMEZ.
+Senin görevin başka bir kategori ÖNERMEK DEĞİL. Tek soruya cevap ver:
+
+  "Bu raporun içeriği, beyan edilen kategoriyle çelişiyor mu?"
+
+is_consistent = true  → içerik kategoriyle uyumlu.
+  conflicting_quote: BOŞ DİZE bırak.
+  reason: tek cümlede neden uyumlu olduğunu yaz.
+
+is_consistent = false → içerik kategoriyle açıkça çelişiyor.
+  conflicting_quote: çelişkiyi GÖSTEREN, rapordan BİREBİR kopyalanmış tek
+    bir alıntı. Harf harf aynı olmalı — doğrulanıyor.
+  reason: tek cümlede bu alıntının kategoriyle NEDEN uyuşmadığını yaz.
+
+Yalnızca AÇIK çelişkilerde false ver. Aracın alt türü veya yaklaşımı
+farklıysa bu çelişki DEĞİLDİR; çelişki, raporun konusunun kategorinin
+tanımladığı alandan tamamen başka olmasıdır.
+
+Kanıt gösteremiyorsan is_consistent = true ver. Çelişki iddia edip alıntı
+verememek kabul edilmez.`,
 
   similarity: `GÖREV: İki raporu benzerlik açısından karşılaştır.
 
