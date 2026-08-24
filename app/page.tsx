@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import { ZemaMark, ZemaWordmark, GridTexture } from '@/components/zema/brand';
 import { DemoVideoDialog } from './demo-video-dialog';
@@ -59,9 +60,21 @@ export default function LandingPage() {
         <GridTexture />
 
         <div className="relative mx-auto flex max-w-[1180px] items-center justify-between border-b border-white/[.12] px-10 py-[22px]">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <ZemaMark />
             <ZemaWordmark />
+            {/* T3 Vakfı aidiyeti: Creathon'un düzenleyen kurumu, koyu
+                zeminde beyaz resmi logo, ince ayraçla ZEMA markasından
+                ayrılıyor. Kaynak: t3vakfi.org resmi basın kiti. */}
+            <span className="h-6 w-px bg-white/[.18]" aria-hidden />
+            <Image
+              src="/t3-vakfi-logo-white.png"
+              alt="T3 Vakfı"
+              width={640}
+              height={246}
+              className="h-6 w-auto opacity-90"
+              priority
+            />
           </div>
           <div className="flex items-center gap-7 text-[13.5px]">
             {/* Tasarımda bu üçü düz <span>'di, yani tıklanamıyordu.
@@ -204,8 +217,17 @@ export default function LandingPage() {
           </div>
           <DemoVideoDialog />
         </div>
-        <div className="border-ink/10 text-ink/[.45] mt-[34px] flex flex-wrap justify-between gap-4 border-t pt-5 font-mono text-[11px] tracking-[.1em]">
-          <span>ZEMA · T3 VAKFI CREATHON</span>
+        <div className="border-ink/10 text-ink/[.45] mt-[34px] flex flex-wrap items-center justify-between gap-4 border-t pt-5 font-mono text-[11px] tracking-[.1em]">
+          <div className="flex items-center gap-3">
+            <span>ZEMA · T3 VAKFI CREATHON</span>
+            <Image
+              src="/t3-vakfi-logo.png"
+              alt="T3 Vakfı"
+              width={640}
+              height={246}
+              className="h-5 w-auto opacity-80"
+            />
+          </div>
           {/* Eski metin "VERİLER TÜRKİYE'DE İŞLENİR" idi ve KVKK aydınlatma
               metniyle ÇELİŞİYORDU: rapor içeriği analiz için Google Gemini'ye,
               yani yurt dışına aktarılıyor. Gerçekle uyumlu ifadeye çevrildi. */}
