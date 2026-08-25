@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 const BADGE: Record<string, string> = {
   gold: 'text-gold-ink border-gold',
   teal: 'text-teal-ink border-teal',
-  muted: 'text-ink/[.45] border-ink/[.45]',
+  muted: 'text-ink/75 border-ink/[.45]',
   danger: 'text-danger border-danger',
 };
 const BAR: Record<string, string> = {
@@ -77,7 +77,7 @@ export default async function EvaluationDashboard() {
                 {s.label}
               </div>
               <div className={`font-mono text-[34px] leading-none ${s.tone}`}>{s.value}</div>
-              <div className="text-ink/[.58] mt-2.5 text-[12.5px]">{s.note}</div>
+              <div className="text-ink/75 mt-2.5 text-[12.5px]">{s.note}</div>
             </div>
           ))}
         </div>
@@ -113,7 +113,7 @@ export default async function EvaluationDashboard() {
                       >
                         {q.team}
                       </Link>
-                      <div className="text-ink/[.45] mt-0.5 font-mono text-[10.5px]">{q.code}</div>
+                      <div className="text-ink/75 mt-0.5 font-mono text-[10.5px]">{q.code}</div>
                     </div>
                     <div className={`text-[13px] ${q.judge === 'Atanmadı' ? 'text-danger' : 'text-ink/75'}`}>
                       {q.judge}
@@ -128,7 +128,7 @@ export default async function EvaluationDashboard() {
                           }}
                         />
                       </div>
-                      <div className="text-ink/[.55] font-mono text-[10.5px]">
+                      <div className="text-ink/75 font-mono text-[10.5px]">
                         {q.checksDone}/{q.checksTotal} KONTROL · {q.approved}/{q.total || 6} ONAY
                       </div>
                     </div>
@@ -140,7 +140,7 @@ export default async function EvaluationDashboard() {
                       </span>
                       <Link
                         href={`/evaluation/feedback/${q.reportId}`}
-                        className="text-teal-ink text-[11.5px] no-underline hover:underline"
+                        className="text-t3-blue-ink text-[11.5px] no-underline hover:underline"
                       >
                         geri bildirim →
                       </Link>
@@ -177,7 +177,7 @@ export default async function EvaluationDashboard() {
                 ))}
               </div>
             )}
-            <div className="border-ink/[.08] text-ink/[.62] mt-[22px] border-t pt-4 text-[12.5px] leading-[1.6]">
+            <div className="border-ink/[.08] text-ink/75 mt-[22px] border-t pt-4 text-[12.5px] leading-[1.6]">
               {workload.every((w) => w.assigned === 0) ? (
                 <>
                   <span className="text-danger">Hiçbir rapor hakeme atanmadı.</span> Atama ekranı

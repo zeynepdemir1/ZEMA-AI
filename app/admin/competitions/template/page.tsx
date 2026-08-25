@@ -60,7 +60,7 @@ export default async function TemplateSetupPage({
         <AdminTabs active={2} comp={competition.id} />
 
         <h2 className="font-heading m-0 mb-1.5 text-[28px] font-semibold">Şablon ve kriterler</h2>
-        <p className="text-ink/[.62] m-0 mb-7 text-[14.5px]">
+        <p className="text-ink/75 m-0 mb-7 text-[14.5px]">
           AI&apos;nin analiz sırasında kullandığı referans burası — bu sayfadaki değerler doğrudan
           prompt&apos;a giriyor.
         </p>
@@ -125,7 +125,7 @@ export default async function TemplateSetupPage({
                       </span>
                     ))}
                   </div>
-                  <div className="text-ink/[.55] mt-1.5 text-[12px] leading-[1.5]">
+                  <div className="text-ink/75 mt-1.5 text-[12px] leading-[1.5]">
                     Bu alanlar şablonda bulunamadığı için boş bırakıldı — model uydurmadı.
                   </div>
                 </div>
@@ -136,7 +136,7 @@ export default async function TemplateSetupPage({
           {(spec.content_rules ?? []).length > 0 && (
             <div className="border-ink/10 border bg-white p-[26px]">
               <div className={`${SECTION} mb-2.5`}>İÇERİK KURALLARI</div>
-              <ul className="text-ink/[.72] m-0 list-disc pl-4 text-[13px] leading-[1.65]">
+              <ul className="text-ink/75 m-0 list-disc pl-4 text-[13px] leading-[1.65]">
                 {(spec.content_rules ?? []).map((r) => (
                   <li key={r}>{r}</li>
                 ))}

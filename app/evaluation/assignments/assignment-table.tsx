@@ -42,7 +42,7 @@ export function AssignmentTable({
                 n === 0 ? 'Atanmamış rapor yok.' : `${n} rapor dengeli dağıtıldı.`,
               )
             }
-            className="bg-ink cursor-pointer border-none px-5 py-2.5 font-sans text-[13px] font-semibold text-white disabled:opacity-40"
+            className="bg-t3-blue cursor-pointer border-none px-5 py-2.5 font-sans text-[13px] font-semibold text-white disabled:opacity-40"
           >
             {pending ? 'Dağıtılıyor…' : `Dengeli dağıt (${unassignedCount} atanmamış)`}
           </button>
@@ -57,7 +57,7 @@ export function AssignmentTable({
             {judges.map((j) => (
               <div key={j.id} className="border-ink/[.12] border px-3 py-2.5">
                 <div className="truncate text-[13px] font-medium">{j.name}</div>
-                <div className="text-ink/[.55] mt-1 font-mono text-[11px]">
+                <div className="text-ink/75 mt-1 font-mono text-[11px]">
                   {j.assigned} rapor
                 </div>
                 <div className="bg-ink/[.09] mt-2 h-[4px]">
@@ -116,7 +116,7 @@ export function AssignmentTable({
                   >
                     {r.team}
                   </Link>
-                  <div className="text-ink/[.45] mt-0.5 truncate font-mono text-[10.5px]">
+                  <div className="text-ink/75 mt-0.5 truncate font-mono text-[10.5px]">
                     {r.code} · {r.title}
                   </div>
                 </div>
@@ -147,7 +147,7 @@ export function AssignmentTable({
                   )}
                 </div>
 
-                <div className="text-ink/[.55] font-mono text-[10.5px]">
+                <div className="text-ink/75 font-mono text-[10.5px]">
                   {r.checksTotal ? `${r.checksDone}/${r.checksTotal}` : '—'}
                 </div>
               </div>

@@ -40,7 +40,7 @@ export function SimilarityList({
           <div key={m.pairId} className="border-ink/10 border bg-white px-[26px] pt-6 pb-[22px]">
             <div className="mb-4 flex flex-wrap items-start justify-between gap-7">
               <div className="flex items-start gap-[14px]">
-                <span className="text-ink/[.35] pt-[5px] font-mono text-[11px]">
+                <span className="text-ink/75 pt-[5px] font-mono text-[11px]">
                   {String(i + 1).padStart(2, '0')}
                 </span>
                 <div>
@@ -88,7 +88,7 @@ export function SimilarityList({
                     ].map((side) => (
                       <div key={side.label} className="border-ink/[.14] bg-canvas flex flex-col border">
                         <div className="border-ink/10 border-b px-[14px] py-2.5">
-                          <div className="text-ink/[.45] mb-1 font-mono text-[9.5px] tracking-[.1em]">
+                          <div className="text-ink/75 mb-1 font-mono text-[9.5px] tracking-[.1em]">
                             {side.label}
                           </div>
                           <div className="text-[13px] font-semibold">{side.team}</div>
@@ -133,7 +133,7 @@ export function SimilarityList({
                 onClick={() => set('false_positive')}
                 className={`cursor-pointer border px-4 py-[9px] font-sans text-[13px] font-semibold disabled:opacity-50 ${
                   m.verdict === 'false_positive'
-                    ? 'border-ink bg-ink text-white'
+                    ? 'border-t3-blue bg-t3-blue text-white'
                     : 'border-ink/[.22] text-ink/75 bg-transparent'
                 }`}
               >
@@ -142,7 +142,7 @@ export function SimilarityList({
               {m.verdict !== 'pending' && (
                 <span
                   className={`border px-[9px] py-1 font-mono text-[10px] tracking-[.12em] ${
-                    m.verdict === 'confirmed' ? 'text-danger border-danger' : 'text-ink/[.45] border-ink/[.45]'
+                    m.verdict === 'confirmed' ? 'text-danger border-danger' : 'text-ink/75 border-ink/[.45]'
                   }`}
                 >
                   {m.verdict === 'confirmed'

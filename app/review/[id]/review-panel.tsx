@@ -144,7 +144,7 @@ export function ReviewPanel({ data }: { data: ReviewData }) {
           <button
             disabled={pending || cards.length === 0}
             onClick={() => run(() => approveAllCriteria(report.id))}
-            className="bg-ink cursor-pointer border-none px-5 py-3 font-sans text-[14px] font-semibold text-white disabled:opacity-50"
+            className="bg-t3-blue cursor-pointer border-none px-5 py-3 font-sans text-[14px] font-semibold text-white disabled:opacity-50"
           >
             {pending ? 'Kaydediliyor…' : 'Onayla ve Gönder'}
           </button>

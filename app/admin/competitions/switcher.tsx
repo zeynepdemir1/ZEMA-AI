@@ -104,7 +104,7 @@ export function CompetitionSwitcher({
             type="button"
             disabled={pending || !name.trim()}
             onClick={onCreate}
-            className="bg-ink cursor-pointer border-none px-3 py-1.5 font-mono text-[11px] text-white disabled:opacity-50"
+            className="bg-t3-blue cursor-pointer border-none px-3 py-1.5 font-mono text-[11px] text-white disabled:opacity-50"
           >
             {pending ? '…' : 'OLUŞTUR'}
           </button>

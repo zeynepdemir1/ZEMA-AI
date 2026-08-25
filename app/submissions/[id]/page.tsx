@@ -127,7 +127,7 @@ export default async function SubmissionPage({ params }: PageProps<'/submissions
 
             <div className="border-ink/[.12] bg-ink/[.03] mt-[22px] flex items-center gap-[14px] border px-[22px] py-[18px]">
               <span className="text-gold-ink font-mono text-[13px]">◆</span>
-              <span className="text-ink/[.72] text-[13.5px] leading-[1.6]">
+              <span className="text-ink/75 text-[13.5px] leading-[1.6]">
                 Bu geri bildirim hakem tarafından incelenmiş ve onaylanmıştır. Sorularınız için
                 yarışma sekretaryası ile iletişime geçebilirsiniz.
               </span>

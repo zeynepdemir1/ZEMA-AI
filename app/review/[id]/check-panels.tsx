@@ -15,10 +15,12 @@ import { saveCheckNote, submitFeedbackDraft } from './actions';
  * 1. Gövde metni 14px / satır yüksekliği 1.7. Küçük punto yok.
  * 2. Ink Navy metin en az %75 alfa. Ölçüm: %50 → 2.98:1 (AA başarısız),
  *    %65 → 4.51:1 (sınırda), %75 → 6.15:1 (rahat geçer). Gri-üstü-gri yok.
- * 3. `text-gold-ink` METİN OLARAK KULLANILMAZ — tam opaklıkta 2.92:1, AA'yı
- *    geçemiyor. Metin için `text-gold-ink` (5.01:1). Aynı şekilde `text-teal-ink`
- *    4.26:1 sınırda kaldığı için metinde `text-teal-ink` (5.81:1).
- *    Gold/teal yalnızca KENARLIK ve zemin olarak kullanılıyor.
+ * 3. Ham `text-gold` METİN OLARAK KULLANILMAZ — tam opaklıkta 2.92:1, AA'yı
+ *    geçemiyor. Metin için `text-gold-ink` (5.01:1). Aynı şekilde ham
+ *    `text-teal` 4.26:1 ile sınırda kaldığı için metinde `text-teal-ink`
+ *    (5.81:1). Ham gold/teal yalnızca KENARLIK ve zemin olarak kullanılıyor.
+ *    (Bu madde bir toplu değiştirmede bozulmuştu: "gold-ink kullanılmaz,
+ *    yerine gold-ink kullan" diyordu. 25 Ağustos'ta düzeltildi.)
  * 4. Paragraf yerine madde listesi. Uzun blok metin okunmuyor.
  * 5. Kart içinde en fazla iki görsel kat: AI analizi (nötr) ve kanıt
  *    (sol teal kenarlık + hafif zemin, 12.7:1 kontrast). Hakemin
@@ -567,7 +569,7 @@ function CheckDetail({
         {passages.length > 0 && (
           <Link
             href={`/review/${reportId}/similarity`}
-            className="text-teal-ink text-[14px] no-underline"
+            className="text-t3-blue-ink text-[14px] no-underline"
           >
             Yan yana karşılaştırmayı aç →
           </Link>
@@ -770,7 +772,7 @@ function FeedbackCompiler({
         </button>
         <Link
           href={`/submissions/${reportId}`}
-          className="text-teal-ink text-[14px] no-underline"
+          className="text-t3-blue-ink text-[14px] no-underline"
         >
           Yarışmacının göreceği hali →
         </Link>

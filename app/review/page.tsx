@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 const TONE: Record<string, string> = {
   onaylandı: 'text-gold-ink border-gold',
   inceleniyor: 'text-teal-ink border-teal',
-  bekliyor: 'text-ink/[.45] border-ink/[.45]',
+  bekliyor: 'text-ink/75 border-ink/[.45]',
   dikkat: 'text-danger border-danger',
 };
 
@@ -27,7 +27,7 @@ export default async function ReviewIndexPage() {
           HAKEM · {user.fullName ?? user.email}
         </div>
         <h1 className="font-heading m-0 mb-1.5 text-[28px] font-semibold">Atanan raporlar</h1>
-        <p className="text-ink/[.62] m-0 mb-7 text-[14px]">
+        <p className="text-ink/75 m-0 mb-7 text-[14px]">
           {reports.length} rapor incelemenizi bekliyor.
         </p>
 
@@ -60,8 +60,8 @@ export default async function ReviewIndexPage() {
                         {r.status.toLocaleUpperCase('tr-TR')}
                       </span>
                       <span className="text-ink text-[15px] font-semibold">{r.team}</span>
-                      <span className="text-ink/[.45] font-mono text-[10.5px]">{r.code}</span>
-                      <span className="text-ink/[.45] ml-auto font-mono text-[10.5px]">
+                      <span className="text-ink/75 font-mono text-[10.5px]">{r.code}</span>
+                      <span className="text-ink/75 ml-auto font-mono text-[10.5px]">
                         {r.approved}/{r.total || 6} ONAY
                       </span>
                     </Link>

@@ -118,7 +118,7 @@ export function InfoCard({
           type="button"
           disabled={pending}
           onClick={onSave}
-          className="bg-ink w-full cursor-pointer border-none py-2.5 font-sans text-[13px] font-semibold text-white disabled:opacity-50"
+          className="bg-t3-blue w-full cursor-pointer border-none py-2.5 font-sans text-[13px] font-semibold text-white disabled:opacity-50"
         >
           {pending ? 'Kaydediliyor…' : 'Değişiklikleri kaydet'}
         </button>

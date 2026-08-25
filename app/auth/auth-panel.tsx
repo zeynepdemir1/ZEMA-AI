@@ -5,21 +5,21 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { checkRegistrationCode, signIn, signUp, type CodeCheck } from './actions';
 
-const LABEL = 'text-ink/60 mb-[7px] block font-mono text-[10.5px] tracking-[.12em]';
+const LABEL = 'text-ink/75 mb-[7px] block font-mono text-[10.5px] tracking-[.12em]';
 /**
  * placeholder:text-ink/40 — Tailwind v4 preflight placeholder'ı currentColor'ın
  * %50'si yapıyor; Ink Navy üzerinde bu fazla koyu kalıyor ve ipucu metni dolu
  * bir DEĞER gibi okunuyordu ("Zeynep Demir" örneği). Açıkça soluklaştırıldı.
  */
 const INPUT =
-  'border-ink/[.18] text-ink placeholder:text-ink/40 mb-[18px] w-full border bg-white px-[14px] py-3 font-sans text-[14.5px]';
+  'border-ink/[.18] text-ink placeholder:text-ink/75 mb-[18px] w-full border bg-white px-[14px] py-3 font-sans text-[14.5px]';
 
 export function AuthPanel() {
   const [tab, setTab] = useState<'login' | 'register'>('login');
 
   const tabClass = (on: boolean) =>
     `cursor-pointer border-none p-[13px] font-sans text-[14px] font-semibold ${
-      on ? 'bg-ink text-white' : 'text-ink/60 bg-transparent'
+      on ? 'bg-t3-blue text-white' : 'text-ink/75 bg-transparent'
     }`;
 
   return (
@@ -59,7 +59,7 @@ function LoginForm() {
   return (
     <form onSubmit={onSubmit}>
       <h3 className="font-heading m-0 mb-1.5 text-[23px] font-semibold">Tekrar hoş geldiniz</h3>
-      <p className="text-ink/60 m-0 mb-[26px] text-[13.5px]">
+      <p className="text-ink/75 m-0 mb-[26px] text-[13.5px]">
         Giriş yaptığınızda hesabınızın rolüne göre yönlendirilirsiniz.
       </p>
 
@@ -78,7 +78,7 @@ function LoginForm() {
       <button
         type="submit"
         disabled={pending}
-        className="bg-ink w-full cursor-pointer border-none p-[14px] font-sans text-[15px] font-semibold text-white disabled:opacity-50"
+        className="bg-t3-blue w-full cursor-pointer border-none p-[14px] font-sans text-[15px] font-semibold text-white disabled:opacity-50"
       >
         {pending ? 'Giriş yapılıyor…' : 'Giriş Yap'}
       </button>
@@ -135,7 +135,7 @@ function RegisterForm() {
       }}
     >
       <h3 className="font-heading m-0 mb-1.5 text-[23px] font-semibold">Hesap oluşturun</h3>
-      <p className="text-ink/60 m-0 mb-[26px] text-[13.5px]">
+      <p className="text-ink/75 m-0 mb-[26px] text-[13.5px]">
         Kod girmezseniz Yarışmacı olarak kaydolursunuz.
       </p>
 
@@ -167,7 +167,7 @@ function RegisterForm() {
           <button
             type="button"
             onClick={() => setCodeOpen(true)}
-            className="text-teal inline-flex cursor-pointer items-center gap-[7px] border-none bg-transparent p-0 text-[13px]"
+            className="text-t3-blue-ink inline-flex cursor-pointer items-center gap-[7px] border-none bg-transparent p-0 text-[13px]"
           >
             <span className="font-mono text-[13px]">＋</span>
             Hakem veya yöneticiyseniz kayıt kodunuzu girin
@@ -186,7 +186,7 @@ function RegisterForm() {
                 setCodeVal('');
                 setChecked(null);
               }}
-              className="text-ink/50 cursor-pointer border-none bg-transparent p-0 text-[12px]"
+              className="text-ink/75 cursor-pointer border-none bg-transparent p-0 text-[12px]"
             >
               Gizle
             </button>
@@ -198,7 +198,7 @@ function RegisterForm() {
             name="code"
             placeholder="ZEMA-XXXX-0000"
             aria-label="Kayıt kodu"
-            className={`text-ink placeholder:text-ink/40 w-full border ${borderColor} bg-white px-[13px] py-[11px] font-mono text-[13.5px] tracking-[.06em]`}
+            className={`text-ink placeholder:text-ink/75 w-full border ${borderColor} bg-white px-[13px] py-[11px] font-mono text-[13.5px] tracking-[.06em]`}
           />
 
           {check.state === 'invalid' && (
@@ -212,7 +212,7 @@ function RegisterForm() {
             </div>
           )}
 
-          <div className="text-ink/[.55] mt-2.5 text-[12px] leading-[1.55]">
+          <div className="text-ink/75 mt-2.5 text-[12px] leading-[1.55]">
             Kod, yarışma yönetimi tarafından e-posta ile iletilir. Boş bırakırsanız Yarışmacı olarak
             kaydolursunuz.
           </div>
@@ -226,9 +226,9 @@ function RegisterForm() {
           required
           className="accent-ink mt-0.5 h-[15px] w-[15px]"
         />
-        <span className="text-ink/70 text-[12.5px] leading-[1.55]">
+        <span className="text-ink/75 text-[12.5px] leading-[1.55]">
           Kişisel verilerimin işlenmesine izin veriyorum.{' '}
-          <Link href="/gizlilik" className="text-teal">
+          <Link href="/gizlilik" className="text-t3-blue-ink">
             KVKK Aydınlatma Metni
           </Link>
         </span>
@@ -243,7 +243,7 @@ function RegisterForm() {
       <button
         type="submit"
         disabled={pending}
-        className="bg-ink w-full cursor-pointer border-none p-[14px] font-sans text-[15px] font-semibold text-white disabled:opacity-50"
+        className="bg-t3-blue w-full cursor-pointer border-none p-[14px] font-sans text-[15px] font-semibold text-white disabled:opacity-50"
       >
         {pending ? 'Hesap oluşturuluyor…' : 'Kayıt Ol'}
       </button>

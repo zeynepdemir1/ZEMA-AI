@@ -68,7 +68,7 @@ export function SectionsCard({
     <div className="border-ink/10 border bg-white p-[26px]">
       <div className="mb-2.5 flex items-center justify-between">
         <span className={SECTION}>ZORUNLU BÖLÜM BAŞLIKLARI</span>
-        <span className="text-ink/[.45] font-mono text-[11px]">{sections.length} BÖLÜM</span>
+        <span className="text-ink/75 font-mono text-[11px]">{sections.length} BÖLÜM</span>
       </div>
 
       {sections.length === 0 ? (
@@ -79,7 +79,7 @@ export function SectionsCard({
         <div className="mb-2 flex flex-col gap-1.5">
           {sections.map((s, i) => (
             <div key={i} className="flex items-center gap-2">
-              <span className="text-ink/[.4] w-5 shrink-0 font-mono text-[11px]">{i + 1}.</span>
+              <span className="text-ink/75 w-5 shrink-0 font-mono text-[11px]">{i + 1}.</span>
               <input
                 value={s}
                 onChange={(e) => updateAt(i, e.target.value)}
@@ -129,7 +129,7 @@ export function SectionsCard({
           type="button"
           disabled={pending}
           onClick={onSave}
-          className="bg-ink mt-4 w-full cursor-pointer border-none py-2.5 font-sans text-[13px] font-semibold text-white disabled:opacity-50"
+          className="bg-t3-blue mt-4 w-full cursor-pointer border-none py-2.5 font-sans text-[13px] font-semibold text-white disabled:opacity-50"
         >
           {pending ? 'Kaydediliyor…' : 'Değişiklikleri kaydet'}
         </button>
@@ -139,7 +139,7 @@ export function SectionsCard({
       {(format.font || format.page || format.alignment || format.max_pages || format.footer || citationFormat) && (
         <div className="border-ink/[.1] mt-5 border-t pt-4">
           <div className={`${SECTION} mb-2`}>BİÇİM KURALLARI</div>
-          <div className="text-ink/[.72] flex flex-wrap gap-x-4 gap-y-1 font-mono text-[10.5px]">
+          <div className="text-ink/75 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[10.5px]">
             {format.font && <span>{format.font}</span>}
             {format.page && <span>{format.page}</span>}
             {format.alignment && <span>{format.alignment}</span>}

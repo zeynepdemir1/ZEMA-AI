@@ -28,7 +28,7 @@ export default async function AssignmentsPage() {
   return (
     <div className="flex-1 px-6 pt-[38px] pb-[72px] lg:px-10">
       <div className="mx-auto max-w-[1080px]">
-        <Link href="/evaluation" className="text-teal-ink mb-[18px] inline-block text-[13px] no-underline">
+        <Link href="/evaluation" className="text-t3-blue-ink mb-[18px] inline-block text-[13px] no-underline">
           ← Değerlendirme panosuna dön
         </Link>
 
@@ -37,7 +37,7 @@ export default async function AssignmentsPage() {
             HAKEM ATAMASI · {data.competition.name}
           </div>
           <h1 className="font-heading m-0 mb-1.5 text-[28px] font-semibold">Atamalar</h1>
-          <p className="text-ink/[.62] m-0 text-[14px] leading-[1.6]">
+          <p className="text-ink/75 m-0 text-[14px] leading-[1.6]">
             {assigned}/{data.rows.length} rapor atandı. Hakem yalnızca kendisine atanan raporu
             görebilir — atanmamış rapor hiçbir hakemin ekranında çıkmaz.
           </p>

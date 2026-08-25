@@ -32,13 +32,13 @@ export function DemoVideoDialog() {
             className="border-ink/[.14] m-auto w-full max-w-[860px] border bg-white"
           >
             <div className="border-ink/10 flex items-center justify-between border-b px-[22px] py-4">
-              <span className="text-ink/[.55] font-mono text-[10.5px] tracking-[.14em]">
+              <span className="text-ink/75 font-mono text-[10.5px] tracking-[.14em]">
                 ZEMA · ÜRÜN DEMOSU
               </span>
               <button
                 onClick={() => setOpen(false)}
                 aria-label="Kapat"
-                className="text-ink/50 cursor-pointer border-none bg-transparent text-base leading-none"
+                className="text-ink/75 cursor-pointer border-none bg-transparent text-base leading-none"
               >
                 ✕
               </button>
@@ -53,19 +53,19 @@ export function DemoVideoDialog() {
                 <div className="font-heading mb-1.5 text-[19px] font-semibold text-white">
                   Demo videosu yakında
                 </div>
-                <div className="font-mono text-[11px] tracking-[.12em] text-white/50">
+                <div className="font-mono text-[11px] tracking-[.12em] text-white/[.62]">
                   HAKEM İNCELEME AKIŞI · ~2 DK
                 </div>
               </div>
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-6 px-[22px] py-4">
-              <span className="text-ink/60 text-[13px]">
+              <span className="text-ink/75 text-[13px]">
                 Video hazır olduğunda bu alanda oynatılacak.
               </span>
               <button
                 onClick={() => setOpen(false)}
-                className="bg-ink cursor-pointer border-none px-[22px] py-[11px] text-[13.5px] font-semibold text-white"
+                className="bg-t3-blue cursor-pointer border-none px-[22px] py-[11px] text-[13.5px] font-semibold text-white"
               >
                 Kapat
               </button>

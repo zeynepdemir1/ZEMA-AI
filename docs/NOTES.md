@@ -1,6 +1,95 @@
 # ZEMA — Yapılacaklar / Bilinen Eksikler
 
-## 🟠 T3 Vakfı görsel entegrasyonu (25 Ağustos)
+## 🟠 T3 Vakfı entegrasyonu — 2. tur (25 Ağustos)
+
+### Ortak `<Header />` — mimari düzeltme
+
+T3 logosu yalnızca `app/page.tsx`'e eklenmişti, yani **kullanıcı giriş
+yaptıktan sonra gördüğü hiçbir ekranda T3 aidiyeti yoktu**: hakem inceleme,
+yarışma kurulumu, değerlendirme panosu hepsi markasızdı. İç sayfaların hiç
+üst çubuğu yoktu, doğrudan `<div className="flex-1">` ile başlıyorlardı.
+
+`components/zema/header.tsx` **kök layout'a** bağlandı — sayfa başına
+kopyalanmıyor, dolayısıyla marka bloğu her yerde zorunlu olarak birebir
+aynı. Ölçüler tek kaynakta sabit: `MARK_PX=28`, `WORDMARK_PX=20`,
+`T3_LOGO_H=40`.
+
+Doğrulandı — 11 sayfada `height:40px` birebir aynı: Ana Sayfa, Giriş/Kayıt,
+Gizlilik, Yarışmacı liste, Yükleme, Hakem liste, Hakem İnceleme, Benzerlik
+Detayı, Değerlendirme Panosu, Atamalar, Yarışma Kurulumu. `/demo` normal bir
+sayfa; tek 404 sebebi `NEXT_PUBLIC_DEMO_MODE` koruması, açıldığında
+header'ı kök layout'tan otomatik alıyor.
+
+İki sayfa kendi üst çubuğunu bıraktı: landing'in hero içindeki çubuğu ve
+auth'un sağ panelindeki marka bloğu kaldırıldı. Auth `h-screen` yerine
+`flex-1` kullanıyor — header üstte yer kapladığı için `h-screen` sayfayı
+taşırıyordu.
+
+### Logo %67 büyüdü
+
+T3 logosu 24 px → **40 px** yükseklik (62 px → 104 px genişlik). ZEMA
+bloğu (28 px işaret + 20 px kelime ≈ 100 px) ile yan yana dengeli.
+"BURSİYER PROGRAMI" etiketi tamamen kaldırıldı.
+
+### T3 renkleri uygulamanın geneline yayıldı
+
+**Rol dağılımı — ZEMA'nın anlam kodlaması korunarak:**
+
+| renk | rol | neden |
+|---|---|---|
+| teal | AI üretimi / onaylanmamış | değişmedi |
+| gold | hakem onaylı | değişmedi |
+| **T3 mavisi** | **birincil eylem** (buton, link) | ZEMA'da mavi boştu, hiçbir anlamla çakışmıyor |
+| **T3 kırmızısı** | hata / "uygun değil" | `danger` T3 kırmızısına hizalandı |
+| **T3 turuncusu** | koyu zeminde vurgu | header rol etiketi, hero etiketi |
+
+**T3 kırmızısı bilinçli olarak birincil butona KONMADI.** Bir hakem
+ekranında "kaydet" butonu ile "uygun değil" rozeti aynı renk olurdu — bir
+değerlendirme aracında bu gerçek bir karışıklık. Kırmızı yerine `danger`
+tokeni T3 kırmızısına çevrildi (`#B4483F` → `#CB241A`); böylece kırmızı da
+gerçekten T3 kırmızısı oldu, anlamı bozulmadan. Kontrastı da daha iyi
+(canvas 4.97 → 5.14).
+
+Uygulanan: **18 birincil buton** 14 dosyada `bg-ink` → `bg-t3-blue`,
+**12 gezinme linki** `text-teal(-ink)` → `text-t3-blue-ink`. Zemin/yüzey
+olarak kullanılan `bg-ink` (hero, avatar, ilerleme çubuğu) dokunulmadı.
+
+### Ölçülen renk kısıtları
+
+| kullanım | zemin | oran | karar |
+|---|---|---|---|
+| T3 Mavi + beyaz metin | buton | 4.52 ✓ | buton zemini olur |
+| T3 Mavi metin | canvas | 4.21 ✗ | link için `t3-blue-ink` (#0370A0, 5.11) |
+| T3 Kırmızı + beyaz | buton | 5.52 ✓ | |
+| T3 Turuncu metin | Ink Navy | 7.54 ✓ | yalnızca koyu zemin |
+| T3 Turuncu metin | beyaz | 1.89 ✗ | açık zeminde metin OLARAK KULLANMA |
+
+### WCAG AA taraması — `scripts/aa-scan.py`
+
+Tarama tekrar edilebilir bir betiğe dönüştürüldü (`python3
+scripts/aa-scan.py`, çıkış kodu 0/1). Kaynaktaki her `text-*` sınıfı
+gerçek sRGB kontrast oranıyla ölçülüyor; zemin, aynı öğedeki `bg-*`
+sınıfından, çok satırlı ternary'lerde komşu satırlardan, yoksa bölge
+varsayılanından belirleniyor.
+
+**Sonuç: 755 ölçüm, 0 ihlal.** Yol boyunca bulunup düzeltilenler:
+
+- **69 satırda** `text-ink` alfası %75'in altındaydı (en kötüsü %35 →
+  2.05:1). Hepsi %75'e (6.15:1) çıkarıldı.
+- **5 satırda** koyu zeminde `text-white` alfası %55'in altındaydı
+  (%32 → 2.78:1). %62'ye (6.38:1) çıkarıldı.
+- **2 satırda** beyaz metin `bg-gold` üstündeydi (2.92:1) → `bg-gold-ink`
+  (5.01:1). `/demo` TONE haritası da aynı sebeple düzeltildi.
+- `check-panels.tsx`'teki okunabilirlik yorumu bir toplu değiştirmede
+  bozulmuştu: *"`text-gold-ink` metin olarak kullanılmaz, metin için
+  `text-gold-ink` kullan"* diyordu. Düzeltildi.
+
+Tarayıcının yanlış pozitif ürettiği üç desen ayrıştırıldı: `bg-transparent`
+taşıyan ternary dalları, 3 px'lik renk kodu çizgileri, ve nesne
+haritalarındaki ayrı `text`/`dot` alanları. Zemini bir değişkenden gelen
+iki beyaz metin elle ölçülüp doğrulanmış listeye alındı.
+
+## 🟠 T3 Vakfı görsel entegrasyonu — 1. tur (25 Ağustos)
 
 ZEMA'nın marka sistemi (Ink Navy / Slate Teal / Seal Gold) DEĞİŞMEDİ. T3
 aidiyeti ikincil bir katman olarak eklendi.

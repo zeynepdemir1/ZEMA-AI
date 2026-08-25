@@ -47,7 +47,7 @@ function EditRow({
           type="button"
           disabled={pending}
           onClick={onSave}
-          className="bg-ink cursor-pointer border-none px-3 py-1.5 font-mono text-[11px] text-white disabled:opacity-50"
+          className="bg-t3-blue cursor-pointer border-none px-3 py-1.5 font-mono text-[11px] text-white disabled:opacity-50"
         >
           {pending ? 'KAYDEDİLİYOR…' : 'KAYDET'}
         </button>
@@ -104,7 +104,7 @@ function AddRow({ competitionId, onDone }: { competitionId: string; onDone: () =
         type="button"
         disabled={pending || !name.trim() || !description.trim()}
         onClick={onAdd}
-        className="bg-ink cursor-pointer border-none px-3 py-1.5 font-mono text-[11px] text-white disabled:opacity-50"
+        className="bg-t3-blue cursor-pointer border-none px-3 py-1.5 font-mono text-[11px] text-white disabled:opacity-50"
       >
         {pending ? 'EKLENİYOR…' : '+ KATEGORİ EKLE'}
       </button>
@@ -144,7 +144,7 @@ export function CategoriesCard({
     <div className="border-ink/10 border bg-white p-[26px]">
       <div className="mb-2.5 flex items-center justify-between">
         <span className="text-ink/75 font-mono text-[10.5px] tracking-[.12em]">KATEGORİLER</span>
-        <span className="text-ink/[.45] font-mono text-[11px]">{categories.length} ADET</span>
+        <span className="text-ink/75 font-mono text-[11px]">{categories.length} ADET</span>
       </div>
 
       <div className="flex flex-col gap-1.5">
@@ -159,7 +159,7 @@ export function CategoriesCard({
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-[13.5px] font-medium">{c.name}</span>
                   <div className="flex shrink-0 items-center gap-2">
-                    <span className="text-ink/[.45] font-mono text-[10.5px]">{c.reportCount} RAPOR</span>
+                    <span className="text-ink/75 font-mono text-[10.5px]">{c.reportCount} RAPOR</span>
                     <button
                       type="button"
                       onClick={() => setEditingId(c.id)}
@@ -193,7 +193,7 @@ export function CategoriesCard({
           <button
             type="button"
             onClick={() => setAdding(true)}
-            className="border-ink/[.22] text-ink/75 hover:bg-ink/[.02] w-full cursor-pointer border border-dashed bg-white py-2.5 font-mono text-[11px] tracking-[.08em]"
+            className="border-ink/[.22] text-ink/75 hover:bg-t3-blue/[.02] w-full cursor-pointer border border-dashed bg-white py-2.5 font-mono text-[11px] tracking-[.08em]"
           >
             + YENİ KATEGORİ EKLE
           </button>

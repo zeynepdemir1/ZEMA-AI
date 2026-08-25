@@ -8,7 +8,7 @@ import { SignOutButton } from './sign-out-button';
 const TONE: Record<SidebarReport['status'], string> = {
   onaylandı: 'text-gold-ink border-gold',
   inceleniyor: 'text-teal-ink border-teal',
-  bekliyor: 'text-ink/[.45] border-ink/[.45]',
+  bekliyor: 'text-ink/75 border-ink/[.45]',
   dikkat: 'text-danger border-danger',
 };
 const DOT: Record<SidebarReport['status'], string> = {
@@ -55,7 +55,7 @@ export function ReviewSidebar({
               >
                 <span className="text-ink/75 w-2.5 text-[10px]">{isOpen ? '▾' : '▸'}</span>
                 <span className="flex-1 text-[13px] font-semibold">{cat}</span>
-                <span className="text-ink/[.42] font-mono text-[9.5px]">{items.length} RAPOR</span>
+                <span className="text-ink/75 font-mono text-[9.5px]">{items.length} RAPOR</span>
               </button>
 
               {isOpen && (
@@ -81,7 +81,7 @@ export function ReviewSidebar({
                       <div className="text-ink text-[13.5px] leading-[1.3] font-semibold">
                         {r.team}
                       </div>
-                      <div className="text-ink/[.38] mt-1 font-mono text-[9.5px]">
+                      <div className="text-ink/75 mt-1 font-mono text-[9.5px]">
                         {r.code} · {r.approved}/{r.total || 6} ONAY
                       </div>
                     </Link>

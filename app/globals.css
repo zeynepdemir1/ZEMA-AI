@@ -18,28 +18,36 @@
   --color-gold-ink: #96652A;     /* gold üzerine okunur metin */
   --color-gold-pale: #E0B375;    /* koyu zemin üzerinde gold */
   --color-success: #3F7D5C;
-  --color-danger: #B4483F;
+  --color-danger: #CB241A;       /* T3 kırmızısı. Eski #B4483F'ten kontrastı da daha iyi (canvas 4.97 → 5.14) */
   --color-canvas: #F7F7F5;       /* sayfa zemini */
 
-  /* ─── T3 Vakfı aidiyet aksanı ───
-     ZEMA'nın marka sistemi (Ink Navy / Slate Teal / Seal Gold) DEĞİŞMİYOR.
-     T3 KYS'nin dört kurumsal renginden yalnızca turuncu alındı, çünkü
-     ölçümde ZEMA zeminleriyle çalışan tek renk o:
+  /* ─── T3 Vakfı renk katmanı ───
+     ZEMA'nın YAPISI (kart düzeni, boşluk, tipografi) değişmiyor; renk
+     paleti T3'e yaklaştırıldı. Her değer canlı ölçümle seçildi:
 
-       renk          Ink Navy   beyaz kart
-       T3 Kırmızı      2.58        5.52
-       T3 Mavi         3.15        4.52
-       T3 Turuncu      7.54        1.89
-       T3 Koyu Gri     1.44        9.87
+       kullanım                    zemin        oran
+       T3 Mavi + beyaz metin       buton        4.52  ✓ (buton zemini)
+       T3 Mavi metin               canvas       4.21  ✗ → blue-ink kullan
+       T3 Blue Ink metin           canvas       5.11  ✓ (link/vurgu)
+       T3 Kırmızı + beyaz metin    buton        5.52  ✓
+       T3 Kırmızı metin            canvas       5.14  ✓
+       T3 Turuncu metin            Ink Navy     7.54  ✓
+       T3 Turuncu metin            beyaz        1.89  ✗ KOYU ZEMİNDE KAL
 
-     ⚠️ YALNIZCA KOYU ZEMİNDE METİN OLARAK KULLAN. Beyaz/canvas üzerinde
-     1.89:1 — AA'nın çok altında. Açık zeminde ancak kenarlık/ayraç gibi
-     dekoratif öğe olarak kullanılabilir, metin rengi olarak ASLA.
+     ROL DAĞILIMI — ZEMA'nın anlam kodlaması korunuyor:
+       teal  = AI üretimi / onaylanmamış     (değişmedi)
+       gold  = hakem onaylı                  (değişmedi)
+       mavi  = BİRİNCİL EYLEM (buton, link)  ← T3, ZEMA'da boştu
+       kırmızı = hata / "uygun değil"        ← T3 kırmızısına hizalandı
 
-     Kırmızı ve mavi bilinçli olarak ALINMADI: ZEMA'nın renkleri anlam
-     taşıyor (teal = AI üretimi, gold = hakem onaylı, danger = uygun değil).
-     Yeni bir kırmızı/mavi bu kodlamayı bulanıklaştırırdı. */
-  --color-t3-amber: #F4B106;
+     Mavi bilinçli olarak birincil eylem rengi: ZEMA'da hiçbir anlamı yoktu,
+     yani hiçbir kodlamayla çakışmıyor. Kırmızıyı birincil butona koymak
+     "kaydet" ile "uygun değil"i aynı renge sokardı — bir değerlendirme
+     aracında bu gerçek bir karışıklık olurdu. */
+  --color-t3-red: #CB241A;        /* danger ile aynı — aşağıya bak */
+  --color-t3-blue: #037EB4;       /* buton ZEMİNİ, beyaz metinle */
+  --color-t3-blue-ink: #0370A0;   /* açık zeminde METİN/link */
+  --color-t3-amber: #F4B106;      /* YALNIZCA koyu zeminde */
 
   --font-sans: var(--font-plex-sans), system-ui, sans-serif;
   --font-mono: var(--font-plex-mono), ui-monospace, monospace;

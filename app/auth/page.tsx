@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { ZemaMark, ZemaWordmark, GridTexture } from '@/components/zema/brand';
+import { GridTexture } from '@/components/zema/brand';
 import { AuthPanel } from './auth-panel';
 
 // AuthPanel `next` parametresini okuyor (useSearchParams) → statik üretim
@@ -7,11 +7,14 @@ import { AuthPanel } from './auth-panel';
 export const dynamic = 'force-dynamic';
 
 export default function AuthPage() {
+  // Yükseklik artık h-screen DEĞİL: ortak header üstte yer kaplıyor ve
+  // h-screen sayfayı taşırırdı. body flex sütun olduğu için flex-1 kalan
+  // alanı tam dolduruyor.
   return (
-    <div className="grid min-h-[calc(100vh-0px)] grid-cols-1 lg:h-screen lg:grid-cols-[1.05fr_.95fr] lg:overflow-hidden">
+    <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[1.05fr_.95fr] lg:overflow-hidden">
       {/* ─── Sol: form ─── */}
       <div className="flex min-h-0 min-w-0 flex-col items-center justify-start gap-[34px] overflow-auto px-8 py-12 lg:px-16">
-        <Suspense fallback={<div className="text-ink/40 text-[13px]">Yükleniyor…</div>}>
+        <Suspense fallback={<div className="text-ink/75 text-[13px]">Yükleniyor…</div>}>
           <AuthPanel />
         </Suspense>
       </div>
@@ -19,11 +22,6 @@ export default function AuthPage() {
       {/* ─── Sağ: "rolünüzü seçmenize gerek yok" anlatısı ─── */}
       <div className="bg-ink relative flex h-full flex-col justify-between overflow-hidden px-8 py-12 text-white lg:px-[52px]">
         <GridTexture cell={56} />
-
-        <div className="relative flex items-center gap-3">
-          <ZemaMark />
-          <ZemaWordmark />
-        </div>
 
         <div className="relative flex min-h-0 flex-1 items-center justify-center py-5">
           <svg
@@ -85,7 +83,7 @@ export default function AuthPage() {
             kaydedilirsiniz. Hakem ve yönetici hesapları yalnızca T3 Vakfı&apos;nın verdiği kayıt
             koduyla açılır.
           </p>
-          <div className="font-mono text-[10.5px] leading-[1.9] tracking-[.12em] text-white/[.42]">
+          <div className="font-mono text-[10.5px] leading-[1.9] tracking-[.12em] text-white/[.62]">
             <div>4 ROL · TEK KAYIT AKIŞI</div>
             <div>KVKK AYDINLATMA METNİ ONAYI ZORUNLU</div>
           </div>

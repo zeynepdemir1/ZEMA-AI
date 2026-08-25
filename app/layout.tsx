@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Space_Grotesk, IBM_Plex_Sans, IBM_Plex_Mono } from 'next/font/google';
 import './globals.css';
+import { Header } from '@/components/zema/header';
 
 /**
  * PLAN.md §6.1 — Space Grotesk (başlık, seyrek), IBM Plex Sans (gövde),
@@ -40,7 +41,12 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
       lang="tr"
       className={`${grotesk.variable} ${plexSans.variable} ${plexMono.variable} h-full antialiased`}
     >
-      <body className="bg-canvas text-ink flex min-h-full flex-col">{children}</body>
+      <body className="bg-canvas text-ink flex min-h-full flex-col">
+        {/* Ortak üst çubuk — TÜM sayfalarda, tek yerden. Marka bloğunun
+            piksel değerleri header.tsx'te sabit, sayfa başına farklılaşmıyor. */}
+        <Header />
+        {children}
+      </body>
     </html>
   );
 }

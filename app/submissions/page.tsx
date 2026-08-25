@@ -6,7 +6,7 @@ import { requireRole } from '@/lib/supabase/server';
 export const dynamic = 'force-dynamic';
 
 const STATUS_LABEL: Record<string, { text: string; tone: string }> = {
-  draft: { text: 'TASLAK', tone: 'text-ink/[.45] border-ink/[.45]' },
+  draft: { text: 'TASLAK', tone: 'text-ink/75 border-ink/[.45]' },
   submitted: { text: 'GÖNDERİLDİ', tone: 'text-teal-ink border-teal' },
   analyzing: { text: 'ANALİZ EDİLİYOR', tone: 'text-teal-ink border-teal' },
   analyzed: { text: 'ANALİZ TAMAM', tone: 'text-teal-ink border-teal' },
@@ -43,7 +43,7 @@ export default async function SubmissionsPage() {
             </div>
             <h1 className="font-heading m-0 text-[28px] font-semibold">Raporlarım</h1>
             {deadline && (
-              <div className="text-ink/[.55] mt-1.5 text-[13px]">
+              <div className="text-ink/75 mt-1.5 text-[13px]">
                 Son başvuru:{' '}
                 <span className="font-mono">
                   {new Date(deadline).toLocaleString('tr-TR', { dateStyle: 'long', timeStyle: 'short' })}
@@ -53,7 +53,7 @@ export default async function SubmissionsPage() {
           </div>
           <Link
             href="/submissions/new"
-            className="bg-ink cursor-pointer px-6 py-3 font-sans text-[14px] font-semibold text-white no-underline"
+            className="bg-t3-blue cursor-pointer px-6 py-3 font-sans text-[14px] font-semibold text-white no-underline"
           >
             Yeni rapor yükle
           </Link>
@@ -70,7 +70,7 @@ export default async function SubmissionsPage() {
         ) : (
           <div className="flex flex-col gap-3">
             {data.reports.map((r) => {
-              const st = STATUS_LABEL[r.status] ?? { text: r.status.toUpperCase(), tone: 'text-ink/[.45] border-ink/[.45]' };
+              const st = STATUS_LABEL[r.status] ?? { text: r.status.toUpperCase(), tone: 'text-ink/75 border-ink/[.45]' };
               return (
                 <Link
                   key={r.id}
@@ -80,18 +80,18 @@ export default async function SubmissionsPage() {
                   }`}
                 >
                   <div className="mb-2 flex flex-wrap items-center gap-3">
-                    <span className="text-ink/[.45] font-mono text-[11px]">{r.code}</span>
+                    <span className="text-ink/75 font-mono text-[11px]">{r.code}</span>
                     <span className={`border px-2 py-[3px] font-mono text-[10px] tracking-[.1em] ${st.tone}`}>
                       {st.text}
                     </span>
                     {r.feedbackPublished && (
-                      <span className="bg-gold px-2 py-[3px] font-mono text-[10px] tracking-[.1em] text-white">
+                      <span className="bg-gold-ink px-2 py-[3px] font-mono text-[10px] tracking-[.1em] text-white">
                         ✓ GERİ BİLDİRİM HAZIR
                       </span>
                     )}
                   </div>
                   <div className="text-ink text-[16px] font-semibold">{r.title}</div>
-                  <div className="text-ink/[.55] mt-1 text-[13px]">
+                  <div className="text-ink/75 mt-1 text-[13px]">
                     {r.team} · {r.category}
                   </div>
                 </Link>

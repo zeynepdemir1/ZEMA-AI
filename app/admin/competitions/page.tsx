@@ -50,7 +50,7 @@ export default async function CompetitionInfoPage({
         <AdminTabs active={1} comp={competition.id} />
 
         <h2 className="font-heading m-0 mb-1.5 text-[28px] font-semibold">{competition.name}</h2>
-        <p className="text-ink/[.62] m-0 mb-7 text-[14.5px]">
+        <p className="text-ink/75 m-0 mb-7 text-[14.5px]">
           Yarışmanın temel bilgileri. Şablon, kriterler ve benzerlik eşiği için{' '}
           <span className="font-medium">Şablon ve kriterler</span> sekmesine geçin.
         </p>

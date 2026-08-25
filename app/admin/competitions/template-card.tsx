@@ -130,7 +130,7 @@ export function TemplateCard({
           type="button"
           onClick={onUpload}
           disabled={busy}
-          className="bg-ink px-4 py-2.5 font-mono text-[11px] tracking-[.1em] text-white disabled:opacity-50"
+          className="bg-t3-blue px-4 py-2.5 font-mono text-[11px] tracking-[.1em] text-white disabled:opacity-50"
         >
           {phase === 'uploading' ? 'YÜKLENİYOR…' : phase === 'reading' ? 'ŞABLON OKUNUYOR…' : 'YÜKLE VE ÇÖZÜMLE'}
         </button>

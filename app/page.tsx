@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { ZemaMark, ZemaWordmark, GridTexture } from '@/components/zema/brand';
+import { GridTexture } from '@/components/zema/brand';
 import { DemoVideoDialog } from './demo-video-dialog';
 
 const STEPS = [
@@ -59,54 +59,11 @@ export default function LandingPage() {
       <div className="bg-ink relative overflow-hidden text-white">
         <GridTexture />
 
-        <div className="relative mx-auto flex max-w-[1180px] items-center justify-between border-b border-white/[.12] px-10 py-[22px]">
-          <div className="flex items-center gap-4">
-            <ZemaMark />
-            <ZemaWordmark />
-            {/* T3 Vakfı aidiyeti: Creathon'un düzenleyen kurumu, koyu
-                zeminde beyaz resmi logo, ince ayraçla ZEMA markasından
-                ayrılıyor. Kaynak: t3vakfi.org resmi basın kiti. */}
-            <span className="h-6 w-px bg-white/[.18]" aria-hidden />
-            <div className="flex items-center gap-2.5">
-              <Image
-                src="/t3-vakfi-logo-white.png"
-                alt="T3 Vakfı"
-                width={640}
-                height={246}
-                className="h-6 w-auto opacity-90"
-                priority
-              />
-              {/* Aidiyet etiketi. Logo zaten "T3 Vakfı" diyor, o yüzden
-                  etiket yalnızca programı adlandırıyor — tekrar yok.
-                  Turuncu burada güvenli: Ink Navy üzerinde 7.54:1.
-                  Dar ekranda gizleniyor, ZEMA markasını sıkıştırmasın. */}
-              <span className="text-t3-amber hidden font-mono text-[10px] tracking-[.14em] sm:inline">
-                BURSİYER PROGRAMI
-              </span>
-            </div>
-          </div>
-          <div className="flex items-center gap-7 text-[13.5px]">
-            {/* Tasarımda bu üçü düz <span>'di, yani tıklanamıyordu.
-                İkisi sayfa içi bölüme bağlandı; "İletişim" kaldırıldı —
-                verilecek bir iletişim bilgisi yok ve ölü link kötü görünür. */}
-            <a href="#nasil-calisir" className="text-white/[.62] no-underline hover:text-white">
-              Nasıl Çalışır
-            </a>
-            <a href="#roller" className="text-white/[.62] no-underline hover:text-white">
-              Roller
-            </a>
-            <Link
-              href="/auth"
-              className="cursor-pointer border border-white/[.35] px-4 py-2 text-[13px] font-semibold text-white no-underline"
-            >
-              Giriş Yap
-            </Link>
-          </div>
-        </div>
-
         <div className="relative mx-auto grid max-w-[1180px] grid-cols-1 items-center gap-16 px-10 pt-[76px] pb-[84px] lg:grid-cols-[1.15fr_.85fr]">
           <div>
-            <div className="text-gold mb-[22px] font-mono text-[11.5px] tracking-[.18em]">
+            {/* Turuncu koyu zeminde 7.54:1 — gold'dan (4.87) daha güçlü
+                ve T3 aidiyetini burada belirgin kılıyor. */}
+            <div className="text-t3-amber mb-[22px] font-mono text-[11.5px] tracking-[.18em]">
               T3 VAKFI · TEKNOFEST DEĞERLENDİRME ALTYAPISI
             </div>
             <h1 className="font-heading m-0 mb-[22px] text-[52px] leading-[1.08] font-bold tracking-[-.01em] text-pretty">
@@ -128,7 +85,7 @@ export default function LandingPage() {
               >
                 Kullanmaya Başla
               </Link>
-              <span className="font-mono text-[11.5px] tracking-[.06em] text-white/50">
+              <span className="font-mono text-[11.5px] tracking-[.06em] text-white/[.62]">
                 KAYIT KODU OLANLAR ROLÜNE OTOMATİK ATANIR
               </span>
             </div>
@@ -136,7 +93,7 @@ export default function LandingPage() {
 
           {/* AI taslağı → hakem onayı dönüşümü: ürünün tek cümlelik özeti */}
           <div className="border border-white/[.16] bg-white/[.04] p-6">
-            <div className="mb-[18px] font-mono text-[10.5px] tracking-[.16em] text-white/50">
+            <div className="mb-[18px] font-mono text-[10.5px] tracking-[.16em] text-white/[.62]">
               K-04 · TEST VE DOĞRULAMA
             </div>
             <div className="border-teal mb-3 border-l-[3px] bg-[rgba(76,133,119,.10)] px-[14px] py-3">
@@ -147,7 +104,7 @@ export default function LandingPage() {
                 Bölüm 4&apos;te test senaryoları listelenmiş ancak başarı ölçütü tanımlanmamış.
               </div>
             </div>
-            <div className="mx-0 mt-1 mb-2 flex justify-center text-base text-white/[.32]">↓</div>
+            <div className="mx-0 mt-1 mb-2 flex justify-center text-base text-white/[.62]">↓</div>
             <div className="border-gold border-l-[3px] bg-[rgba(201,138,62,.12)] px-[14px] py-3">
               <div className="text-gold-pale mb-[7px] font-mono text-[10px] tracking-[.12em]">
                 HAKEM ONAYLI · YAYINLANDI
@@ -175,9 +132,9 @@ export default function LandingPage() {
               key={s.n}
               className={`border-ink/10 ${s.accent} border border-t-[3px] bg-white px-6 pt-[26px] pb-7`}
             >
-              <div className="text-ink/55 mb-[14px] font-mono text-[26px]">{s.n}</div>
+              <div className="text-ink/75 mb-[14px] font-mono text-[26px]">{s.n}</div>
               <h3 className="font-heading m-0 mb-[10px] text-[19px] font-semibold">{s.title}</h3>
-              <p className="text-ink/[.68] m-0 text-[14.5px] leading-[1.62]">{s.body}</p>
+              <p className="text-ink/75 m-0 text-[14.5px] leading-[1.62]">{s.body}</p>
             </div>
           ))}
         </div>
@@ -189,7 +146,7 @@ export default function LandingPage() {
         <h2 className="font-heading m-0 mb-3 text-[30px] font-semibold tracking-[-.01em]">
           Dört rol, tek kayıt akışı
         </h2>
-        <p className="text-ink/[.68] m-0 mb-[30px] max-w-[620px] text-[14.5px] leading-[1.62]">
+        <p className="text-ink/75 m-0 mb-[30px] max-w-[620px] text-[14.5px] leading-[1.62]">
           Kayıt ekranında rol seçilmez. Yarışmacılar doğrudan kaydolur; hakem ve yönetici
           hesapları yalnızca yarışma yönetiminin verdiği kayıt koduyla açılır.
         </p>
@@ -200,7 +157,7 @@ export default function LandingPage() {
               className={`border-ink/10 ${r.accent} border border-l-[3px] bg-white px-5 pt-5 pb-6`}
             >
               <div className="font-heading mb-2 text-[16px] font-semibold">{r.name}</div>
-              <p className="text-ink/[.68] m-0 mb-3 text-[13.5px] leading-[1.6]">{r.body}</p>
+              <p className="text-ink/75 m-0 mb-3 text-[13.5px] leading-[1.6]">{r.body}</p>
               <div
                 className={`font-mono text-[10px] tracking-[.12em] ${
                   r.code ? 'text-gold-ink' : 'text-teal-ink'

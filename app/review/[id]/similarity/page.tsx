@@ -20,7 +20,7 @@ export default async function SimilarityPage({ params }: PageProps<'/review/[id]
   return (
     <div className="flex-1 px-6 pt-8 pb-[72px] lg:px-10">
       <div className="mx-auto max-w-[1000px]">
-        <Link href={`/review/${id}`} className="text-teal-ink mb-[18px] inline-block text-[13px] no-underline">
+        <Link href={`/review/${id}`} className="text-t3-blue-ink mb-[18px] inline-block text-[13px] no-underline">
           ← Hakem incelemesine dön
         </Link>
 
@@ -34,7 +34,7 @@ export default async function SimilarityPage({ params }: PageProps<'/review/[id]
                 ? `${data.report.team} — ${data.matches.length} raporda benzerlik tespit edildi`
                 : `${data.report.team} — eşik üzerinde benzerlik tespit edilmedi`}
             </h2>
-            <div className="text-ink/[.62] text-[13.5px]">
+            <div className="text-ink/75 text-[13.5px]">
               {data.matches.length
                 ? `Her eşleşmeyi ayrı ayrı değerlendirin. ${undecided} eşleşme karar bekliyor.`
                 : 'AI taraması bu raporda eşik değerinin üzerinde bir örtüşme bulmadı.'}
@@ -45,7 +45,7 @@ export default async function SimilarityPage({ params }: PageProps<'/review/[id]
               EN YÜKSEK BENZERLİK
             </div>
             <div className={`font-mono text-[30px] ${over ? 'text-danger' : 'text-ink'}`}>%{maxPct}</div>
-            <div className="text-ink/[.45] mt-1 font-mono text-[10px]">EŞİK %{data.threshold}</div>
+            <div className="text-ink/75 mt-1 font-mono text-[10px]">EŞİK %{data.threshold}</div>
           </div>
         </div>
 

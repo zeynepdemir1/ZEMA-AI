@@ -46,7 +46,7 @@ export function ThresholdCard({
         aria-label="Benzerlik eşiği"
         className="h-1 w-full cursor-pointer"
       />
-      <div className="text-ink/[.45] mt-2.5 flex justify-between font-mono text-[10.5px]">
+      <div className="text-ink/75 mt-2.5 flex justify-between font-mono text-[10.5px]">
         <span>%0</span><span>%25</span><span>%50</span><span>%75</span><span>%100</span>
       </div>
 
@@ -71,7 +71,7 @@ export function ThresholdCard({
               setMsg(r.ok ? 'Kaydedildi.' : (r.error ?? 'Hata'));
             })
           }
-          className="bg-ink mt-4 w-full cursor-pointer border-none py-2.5 font-sans text-[13px] font-semibold text-white disabled:opacity-50"
+          className="bg-t3-blue mt-4 w-full cursor-pointer border-none py-2.5 font-sans text-[13px] font-semibold text-white disabled:opacity-50"
         >
           {pending ? 'Kaydediliyor…' : `Eşiği %${value} olarak kaydet`}
         </button>

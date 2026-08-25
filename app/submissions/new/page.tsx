@@ -26,14 +26,14 @@ export default async function NewSubmissionPage() {
   return (
     <div className="flex-1 px-6 pt-11 pb-[72px] lg:px-10">
       <div className="mx-auto max-w-[620px]">
-        <Link href="/submissions" className="text-teal-ink mb-[18px] inline-block text-[13px] no-underline">
+        <Link href="/submissions" className="text-t3-blue-ink mb-[18px] inline-block text-[13px] no-underline">
           ← Raporlarıma dön
         </Link>
         <div className="text-ink/75 mb-2.5 font-mono text-[10.5px] tracking-[.14em]">
           {data.team.name} · {data.competition.name}
         </div>
         <h1 className="font-heading m-0 mb-1.5 text-[28px] font-semibold">Yeni rapor yükle</h1>
-        <p className="text-ink/[.62] m-0 mb-7 text-[14px] leading-[1.6]">
+        <p className="text-ink/75 m-0 mb-7 text-[14px] leading-[1.6]">
           Yükledikten sonra altı AI kontrolü otomatik çalışır. Sonuçlar önce hakeme gider;
           size yalnızca hakemin onayladığı geri bildirim ulaşır.
         </p>

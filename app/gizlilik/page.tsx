@@ -107,11 +107,11 @@ export default function PrivacyPage() {
   return (
     <div className="flex-1 px-6 pt-11 pb-[72px] lg:px-10">
       <div className="mx-auto max-w-[760px]">
-        <Link href="/auth" className="text-teal mb-[18px] inline-block text-[13px] no-underline">
+        <Link href="/auth" className="text-t3-blue-ink mb-[18px] inline-block text-[13px] no-underline">
           ← Kayıt ekranına dön
         </Link>
 
-        <div className="text-ink/50 mb-2.5 font-mono text-[10.5px] tracking-[.14em]">
+        <div className="text-ink/75 mb-2.5 font-mono text-[10.5px] tracking-[.14em]">
           KVKK · AYDINLATMA METNİ
         </div>
         <h1 className="font-heading m-0 mb-7 text-[32px] font-semibold tracking-[-.01em]">
@@ -122,14 +122,14 @@ export default function PrivacyPage() {
           {SECTIONS.map((s) => (
             <div key={s.title} className="border-ink/[.15] border-l-2 pl-4">
               <h2 className="font-heading m-0 mb-2 text-[17px] font-semibold">{s.title}</h2>
-              <p className="text-ink/[.72] m-0 text-[14px] leading-[1.7]">{s.body}</p>
+              <p className="text-ink/75 m-0 text-[14px] leading-[1.7]">{s.body}</p>
             </div>
           ))}
         </div>
 
         <div className="border-ink/[.12] bg-ink/[.03] mt-5 flex items-center gap-[14px] border px-[22px] py-[18px]">
-          <span className="text-gold font-mono text-[13px]">◆</span>
-          <span className="text-ink/[.72] text-[13.5px] leading-[1.6]">
+          <span className="text-gold-ink font-mono text-[13px]">◆</span>
+          <span className="text-ink/75 text-[13.5px] leading-[1.6]">
             Kayıt formundaki onay kutusu işaretlenmeden hesap oluşturulamaz; bu onay
             aynı zamanda rapor içeriğinizin analiz amacıyla yurt dışına aktarılmasına
             verdiğiniz açık rızayı kapsar.

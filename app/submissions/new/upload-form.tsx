@@ -187,7 +187,7 @@ export function UploadForm({ categories }: { categories: Array<{ id: string; nam
           <option key={c.id} value={c.id}>{c.name}</option>
         ))}
       </select>
-      <div className="text-ink/[.55] mb-5 -mt-3 text-[12px] leading-[1.5]">
+      <div className="text-ink/75 mb-5 -mt-3 text-[12px] leading-[1.5]">
         Kategori seçiminiz AI tarafından içerikle karşılaştırılır; uyumsuzluk hakeme bildirilir.
       </div>
 
@@ -222,7 +222,7 @@ export function UploadForm({ categories }: { categories: Array<{ id: string; nam
       <button
         type="submit"
         disabled={busy || phase === 'done'}
-        className="bg-ink w-full cursor-pointer border-none py-[14px] font-sans text-[15px] font-semibold text-white disabled:opacity-50"
+        className="bg-t3-blue w-full cursor-pointer border-none py-[14px] font-sans text-[15px] font-semibold text-white disabled:opacity-50"
       >
         {phase === 'uploading' ? 'Yükleniyor…' : phase === 'done' ? 'Alındı ✓' : 'Raporu Yükle ve Analiz Et'}
       </button>

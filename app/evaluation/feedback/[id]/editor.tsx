@@ -45,7 +45,7 @@ export function FeedbackEditor({
       {/* Yarışmacıya ne gideceğinin uyarısı */}
       <div className="border-ink/[.12] bg-ink/[.03] flex items-start gap-3 border px-[22px] py-4">
         <span className="text-gold-ink font-mono text-[13px]">◆</span>
-        <span className="text-ink/[.72] text-[13px] leading-[1.6]">
+        <span className="text-ink/75 text-[13px] leading-[1.6]">
           Bu metin <strong>yarışmacıya aynen gidecek</strong>. Ham AI analizi, puan ve sıralama
           bilgisi buraya girmemeli. Yayımlamadan önce okuyun.
         </span>
@@ -172,7 +172,7 @@ export function FeedbackEditor({
             <button
               disabled={pending}
               onClick={() => run(() => publishFeedback(draft.report.id, content), 'Yayımlandı — yarışmacı artık görebilir.')}
-              className="bg-gold cursor-pointer border-none px-6 py-3 font-sans text-[14px] font-semibold text-white disabled:opacity-50"
+              className="bg-gold-ink cursor-pointer border-none px-6 py-3 font-sans text-[14px] font-semibold text-white disabled:opacity-50"
             >
               {pending ? 'İşleniyor…' : 'Yarışmacıya Yayımla'}
             </button>
@@ -187,7 +187,7 @@ export function FeedbackEditor({
         )}
         <Link
           href={`/submissions/${draft.report.id}`}
-          className="text-teal-ink ml-auto text-[13px] no-underline"
+          className="text-t3-blue-ink ml-auto text-[13px] no-underline"
         >
           Yarışmacının göreceği hali →
         </Link>

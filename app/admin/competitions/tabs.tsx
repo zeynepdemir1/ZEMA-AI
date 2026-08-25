@@ -27,11 +27,11 @@ export function AdminTabs({ active, comp }: { active: 1 | 2; comp: string }) {
             href={`${t.href}?comp=${comp}`}
             className={`border-ink/[.12] flex flex-1 cursor-pointer items-center gap-2.5 border px-5 py-3 no-underline ${
               i > 0 ? 'border-l-0' : ''
-            } ${isActive ? 'text-ink bg-white' : 'text-ink/[.55] bg-transparent hover:bg-white'}`}
+            } ${isActive ? 'text-ink bg-white' : 'text-ink/75 bg-transparent hover:bg-white'}`}
           >
             <span
               className={`flex h-[22px] w-[22px] items-center justify-center border font-mono text-[11px] ${
-                isActive ? 'border-ink bg-ink text-white' : 'border-ink/[.25] text-ink/75 bg-transparent'
+                isActive ? 'border-t3-blue bg-t3-blue text-white' : 'border-ink/[.25] text-ink/75 bg-transparent'
               }`}
             >
               {t.num}

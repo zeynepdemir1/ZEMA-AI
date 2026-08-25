@@ -3,7 +3,9 @@ import { notFound } from 'next/navigation';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { reportCode } from '@/lib/reports/queries';
 
-const TONE = { teal: 'bg-teal', ink: 'bg-ink', gold: 'bg-gold', success: 'bg-success' } as const;
+// Bu zeminlerin üstünde BEYAZ baş harfler var: ham teal (4.26) ve gold
+// (2.92) AA'yı geçmiyor, -ink varyantları geçiyor (5.81 / 5.01).
+const TONE = { teal: 'bg-teal-ink', ink: 'bg-ink', gold: 'bg-gold-ink', success: 'bg-success' } as const;
 
 /**
  * PLAN.md §6 — Demo Modu. Ana navigasyonda LİNKLENMEZ.
@@ -32,16 +34,16 @@ export default async function DemoPage() {
 
   return (
     <div className="relative flex flex-1 items-center justify-center px-6 py-12 lg:px-10">
-      <div className="text-ink/40 border-ink/[.18] absolute top-5 right-[26px] border px-[9px] py-1 font-mono text-[10px] tracking-[.18em]">
+      <div className="text-ink/75 border-ink/[.18] absolute top-5 right-[26px] border px-[9px] py-1 font-mono text-[10px] tracking-[.18em]">
         DEMO
       </div>
 
       <div className="w-full max-w-[560px]">
-        <div className="text-ink/50 mb-2.5 font-mono text-[10.5px] tracking-[.14em]">
+        <div className="text-ink/75 mb-2.5 font-mono text-[10.5px] tracking-[.14em]">
           HIZLI ROL GEÇİŞİ
         </div>
         <h2 className="font-heading m-0 mb-1.5 text-[25px] font-semibold">Ekran seç</h2>
-        <p className="text-ink/60 m-0 mb-6 text-[13.5px]">
+        <p className="text-ink/75 m-0 mb-6 text-[13.5px]">
           Kimlik doğrulama henüz bağlı değil — giriş yapılmıyor, ekranlar sabit test hesabının
           verisiyle açılıyor. Bu ekran ürün navigasyonunda yer almaz.
         </p>
@@ -59,9 +61,9 @@ export default async function DemoPage() {
                 </span>
                 <span className="flex-1">
                   <span className="text-ink block text-[14px] font-semibold">{d.label}</span>
-                  <span className="text-ink/50 mt-[3px] block font-mono text-[10.5px]">{d.sub}</span>
+                  <span className="text-ink/75 mt-[3px] block font-mono text-[10.5px]">{d.sub}</span>
                 </span>
-                <span className="text-ink/[.35] text-[13px]">→</span>
+                <span className="text-ink/75 text-[13px]">→</span>
               </Link>
             ) : (
               <div
@@ -73,16 +75,16 @@ export default async function DemoPage() {
                 </span>
                 <span className="flex-1">
                   <span className="text-ink block text-[14px] font-semibold">{d.label}</span>
-                  <span className="text-ink/50 mt-[3px] block font-mono text-[10.5px]">{d.sub}</span>
+                  <span className="text-ink/75 mt-[3px] block font-mono text-[10.5px]">{d.sub}</span>
                 </span>
               </div>
             ),
           )}
         </div>
 
-        <div className="text-ink/[.55] mt-5 flex flex-wrap items-center justify-between gap-2 text-[12.5px]">
+        <div className="text-ink/75 mt-5 flex flex-wrap items-center justify-between gap-2 text-[12.5px]">
           <span>Tüm ekranlar aynı seed verisini kullanır.</span>
-          <Link href="/" className="text-teal no-underline">
+          <Link href="/" className="text-t3-blue-ink no-underline">
             Ana sayfaya dön
           </Link>
         </div>
