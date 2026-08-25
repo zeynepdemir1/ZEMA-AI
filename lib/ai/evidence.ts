@@ -133,6 +133,11 @@ export function deriveVerdict(
   payload: unknown,
   /** criteria_scoring için: doğrulanmış alıntı sayıları */
   evidence?: { totalQuotes: number; exactQuotes: number },
+  /**
+   * category_fit için rapor metni — `conflicting_quote` BUNA KARŞI doğrulanır.
+   * Verilmezse doğrulama atlanır (eski davranış, geriye dönük uyumluluk).
+   */
+  reportText?: string,
 ): Verdict {
   switch (checkType) {
     case 'language_template':
@@ -149,8 +154,30 @@ export function deriveVerdict(
     case 'category_fit': {
       const p = payload as PayloadFor<'category_fit'>;
       if (p.is_consistent) return 'pass';
+      const quote = p.conflicting_quote.trim();
       // Çelişki İDDİA edip alıntı göstermiyorsa kanıt yok (§1).
-      return p.conflicting_quote.trim() ? 'fail' : 'insufficient_evidence';
+      if (!quote) return 'insufficient_evidence';
+
+      /**
+       * ALINTI GERÇEKTEN RAPORDA VAR MI?
+       *
+       * Şema yorumu "kanıt doğrulaması bu alana da uygulanır" diyordu ama
+       * UYGULANMIYORDU — yalnızca alıntının BOŞ OLMADIĞINA bakılıyordu.
+       * Yani model uydurma (veya bozuk) bir alıntıyla 'fail' verdirebiliyordu.
+       *
+       * Sahada yakalandı: R-798F26'nın category_fit çıktısında Türkçe
+       * karakterler bozuktu ("10.T\u0092RKSAT ... Yarıœması") — modelin
+       * kendi çıktı hatası; rapor metni tamamen sağlamdı. Doğrulama olsaydı
+       * bu alıntı bulunamaz ve sonuç `insufficient_evidence` olurdu.
+       *
+       * makeVerifier diyakritik toleransı da sağlıyor (§4.5): birebir
+       * bulunmasa da yalnızca şapka/nokta farkıysa kabul edilir.
+       */
+      if (reportText) {
+        const match = makeVerifier(reportText)(quote);
+        if (match === 'none') return 'insufficient_evidence';
+      }
+      return 'fail';
     }
 
     case 'similarity': {

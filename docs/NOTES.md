@@ -1,5 +1,60 @@
 # ZEMA — Yapılacaklar / Bilinen Eksikler
 
+## ✅ R-798F26 tam tutarlı (25 Ağustos) — ve iki hata daha
+
+`feedback_synthesis` yenilendi; altı kontrolün hepsi şablon düzeltmesinden
+sonraki veriye dayanıyor.
+
+| kontrol | karar | skor | üretim |
+|---|---|---|---|
+| language_template | fail | 35 | 13:26 |
+| criteria_scoring | fail | 33 | 13:28 |
+| similarity | pass | 0 | 13:28 (aday yok) |
+| category_fit | **insufficient_evidence** | — | 13:29 |
+| title_content | fail | 25 | 14:04 |
+| feedback_synthesis | pass | — | 17:51 |
+
+`feedback_synthesis` çıktısı diğerleriyle tutarlı — özet raporun Model Uydu
+içeriği taşımasını ve zorunlu bölüm eksikliğini birlikte anlatıyor, beş
+geliştirme maddesinin üçü `high`. Tutarlılık testleri 6/6:
+puan/skor sızdırmıyor (§4.6), her maddede somut adım var, kategori
+çelişkisine değiniyor, title_content'ten sonra üretilmiş.
+
+### Hata 1 — model çıktısında bozuk Türkçe
+
+`category_fit` payload'ında sistematik karakter ikamesi vardı:
+`ç→'`, `ğ→ę`, `ö→&`, `ş→œ`, `Ü→U+0092`.
+
+**Kaynağı boru hattı DEĞİL.** `extracted_text` tamamen sağlam: 1263 Türkçe
+glif, sıfır bozuk karakter, metin kusursuz okunuyor ("MARMARA ÜNİVERSİTESİ
+10.TÜRKSAT Model Uydu Yarışması 2025…"). On raporun onunda da bozulma yok.
+Yani girdi temiz, **modelin o tek yanıtı** bozuk çıktı.
+
+### Hata 2 — kanıt doğrulaması category_fit'e UYGULANMIYORDU
+
+Şema yorumu *"kanıt doğrulaması bu alana da uygulanır — uydurulmuş alıntı
+yakalanır"* diyordu. Uygulanmıyordu: `deriveVerdict` yalnızca alıntının
+BOŞ OLMADIĞINA bakıyordu. Yani model uydurma veya bozuk bir alıntıyla
+`fail` verdirebiliyordu — halüsinasyon kalkanındaki gerçek bir delik.
+
+Düzeltme: `deriveVerdict` artık rapor metnini alıyor ve `conflicting_quote`'u
+`makeVerifier` ile doğruluyor (diyakritik toleranslı, §4.5). Bulunamazsa
+karar `fail` değil `insufficient_evidence`.
+
+Kanıt: bozuk alıntı → doğrulama `none` → `insufficient_evidence`.
+Rapordan alınmış gerçek bir alıntı → `exact` → `fail`. Yani kural sıkı
+ama fazla sıkı değil.
+
+Mevcut satır model çağrısı YAPILMADAN yeniden hesaplandı (9 category_fit
+satırının 1'i değişti). Bu yüzden R-798F26'nın category_fit kararı artık
+`insufficient_evidence` — bozuk alıntı doğrulanamadığı için dürüst olan bu.
+
+**Açık kalan:** payload'daki bozuk metin hâlâ orada ve hakem ekranında
+görünür. `category_fit`'i yeniden çalıştırmak (1 API çağrısı) temiz metin ve
+muhtemelen doğrulanabilir bir alıntı getirir — asıl bulgu (Model Uydu raporu
+İHA yarışmasında) zaten doğru ve `title_content` ile `feedback_synthesis`
+tarafından da söyleniyor.
+
 ## 🔒 0009 uygulandı — kısıt canlı doğrulandı (25 Ağustos)
 
 ### Dosyadaki iki hata düzeltildi

@@ -98,7 +98,9 @@ export const CategoryFitSchema = z.object({
   is_consistent: z.boolean(),
   /**
    * Çelişki varsa rapordan BİREBİR alıntı; yoksa boş dize.
-   * Kanıt doğrulaması bu alana da uygulanır — uydurulmuş alıntı yakalanır.
+   * Kanıt doğrulaması bu alana UYGULANIR: alıntı rapor metninde
+   * bulunamazsa karar `fail` değil `insufficient_evidence` olur
+   * (deriveVerdict → makeVerifier, diyakritik toleranslı).
    */
   conflicting_quote: z.string(),
   /** Tek cümlelik gerekçe. Uyumluysa neden uyumlu, değilse neden değil. */

@@ -367,7 +367,13 @@ async function writeResult(
     const total = processed.criteria.reduce((a, c) => a + c.score, 0);
     score = processed.criteria.length ? Math.round((total / processed.criteria.length) * 10) : null;
   } else {
-    verdict = deriveVerdict(checkType, payload);
+    // category_fit'in conflicting_quote'u rapor metnine karşı doğrulanıyor;
+    // diğer kontroller reportText'i kullanmıyor ama geçmek zararsız.
+    const { data: forQuote } =
+      checkType === 'category_fit'
+        ? await db.from('reports').select('extracted_text').eq('id', reportId).single()
+        : { data: null };
+    verdict = deriveVerdict(checkType, payload, undefined, forQuote?.extracted_text ?? undefined);
     const p = payload as Record<string, unknown>;
     if (typeof p.compliance_score === 'number') score = p.compliance_score;
     else if (typeof p.alignment_score === 'number') score = p.alignment_score;

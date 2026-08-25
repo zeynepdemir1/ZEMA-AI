@@ -269,7 +269,20 @@ export async function callModel<S extends z.ZodType = z.ZodType<unknown>>(
         { retryable, cause: lastError },
       );
     }
-    throw new CheckCallError(`callModel(${label}): ağ hatası — ${where}`, {
+    /**
+     * ApiError DEĞİLSE altta yatan mesajı MUTLAKA taşı.
+     *
+     * Önceki sürüm yalnızca "ağ hatası" yazıyordu ve gerçek sebep (DNS,
+     * TLS, soket zaman aşımı, SDK serileştirme hatası…) kayboluyordu.
+     * Sahada bu yüzden 12 denemenin neden başarısız olduğu anlaşılamadı;
+     * istem boyutu ölçülene kadar "belki çok büyük" diye zaman harcandı.
+     */
+    const detail =
+      lastError instanceof Error
+        ? `${lastError.name}: ${lastError.message}` +
+          (lastError.cause instanceof Error ? ` ← ${lastError.cause.message}` : '')
+        : String(lastError);
+    throw new CheckCallError(`callModel(${label}): ağ hatası — ${where}. Sebep: ${detail}`, {
       retryable: true,
       cause: lastError,
     });
