@@ -30,6 +30,9 @@ export async function setPairVerdict(
     .update({ judge_verdict: verdict })
     .eq('id', pairId);
   if (error) return { ok: false, error: error.message };
+  // Karşılaştırma artık AYRICA ana hakem sayfasında (AI KONTROLLERİ →
+  // Benzerlik) inline gösteriliyor — ikisi de tazelenmeli.
   revalidatePath(`/review/${reportId}/similarity`);
+  revalidatePath(`/review/${reportId}`);
   return { ok: true };
 }

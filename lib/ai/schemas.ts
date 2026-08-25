@@ -46,10 +46,13 @@ export const FormatCheckSchema = z.object({
   page: z.number().int(),
 });
 
-// §4.1 — Dil ve şablon kontrolü
-export const LanguageTemplateSchema = z.object({
-  language_detected: z.string(),
-  is_expected_language: z.boolean(),
+// §4.1 — Dil ve şablon kontrolü ÜÇE BÖLÜNDÜ (26 Ağustos, hakem geri bildirimi):
+// tek bir "Dil ve Şablon Uyumu" kontrolü hem başlık varlığını, hem şablonun
+// içerik beklentisini, hem de dil kalitesini karıştırıyordu. Artık üç ayrı
+// kontrol — her biri kendi başlığı ve kendi hakem notu kutusuyla.
+
+/** Zorunlu bölüm başlıklarının VARLIĞI — içerik derinliği burada değerlendirilmez. */
+export const RequiredSectionsSchema = z.object({
   sections: z.array(
     z.object({
       name: z.string(),
@@ -59,10 +62,45 @@ export const LanguageTemplateSchema = z.object({
       note: z.string(),
     }),
   ),
-  language_issues: z.array(
+  compliance_score: z.number().min(0).max(100),
+  verdict: VerdictSchema,
+});
+
+/**
+ * Raporun İÇERİĞİNİN şablonun her bölüm için istediğiyle karşılaştırılması.
+ *
+ * NEDEN AYRI: yalnızca başlığın var olup olmadığını kontrol etmek yetersizdi
+ * — şablon PDF'i çoğu zaman her başlığın altında "burada şunlar yer almalı"
+ * diye ayrıntılı talimat verir, ama bu talimat `required_sections` (yalnızca
+ * başlık adları) çıkarımında kaybolur. Bu kontrol run-check.ts'te şablonun
+ * kendi metnini (varsa) referans olarak alıp raporla karşılaştırır.
+ */
+export const TemplateComplianceSchema = z.object({
+  section_reviews: z.array(
+    z.object({
+      section: z.string(),
+      /** Şablonun bu başlık altında ne istediğinin KISA özeti (şablon metninden okunan). */
+      expected: z.string(),
+      meets_expectation: z.boolean(),
+      /** Karşılıyorsa raporu destekleyen BİREBİR alıntı; karşılamıyorsa boş dize. */
+      quote: z.string(),
+      note: z.string(),
+    }),
+  ),
+  compliance_score: z.number().min(0).max(100),
+  verdict: VerdictSchema,
+});
+
+/** Dil tespiti + Türkçe dil kalitesi — biçim ve içerik kontrolünden ayrı. */
+export const LanguageCheckSchema = z.object({
+  language_detected: z.string(),
+  is_expected_language: z.boolean(),
+  issues: z.array(
     z.object({
       /** Rapordan BİREBİR alıntı — kanıt doğrulaması buna bakar (§4.5). */
       quote: z.string(),
+      /** Hatanın geçtiği PDF sayfa numarası; belirlenemiyorsa 0. */
+      page: z.number().int(),
       issue_type: z.enum(['imla', 'anlatim', 'terminoloji', 'ton', 'tutarlilik']),
       severity: z.enum(['low', 'medium', 'high']),
       suggestion: z.string(),
@@ -200,7 +238,9 @@ export const FeedbackSchema = z.object({
 
 /** check_type → şema. Job runner bunu kullanarak doğru şemayı seçer. */
 export const SCHEMAS = {
-  language_template: LanguageTemplateSchema,
+  required_sections: RequiredSectionsSchema,
+  template_compliance: TemplateComplianceSchema,
+  language_check: LanguageCheckSchema,
   title_content: TitleContentSchema,
   category_fit: CategoryFitSchema,
   similarity: SimilarityPairSchema,

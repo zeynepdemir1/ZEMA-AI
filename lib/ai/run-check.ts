@@ -4,6 +4,7 @@ import { CHECK_INSTRUCTIONS, buildCompetitionContext } from './prompts';
 import { SCHEMAS, type CriteriaScoringPayload } from './schemas';
 import { deriveVerdict, processCriteriaScoring } from './evidence';
 import { measureFormat, type FormatFinding } from '@/lib/reports/format-check';
+import { extractPdfText } from '@/lib/reports/pdf';
 import {
   INLINE_PDF_MAX_BYTES,
   MULTIMODAL_CHECKS,
@@ -178,7 +179,9 @@ export async function runCheck(reportId: string, checkType: CheckType): Promise<
 
     const done = new Set((prior ?? []).map((r) => r.check_type));
     const needed: CheckType[] = [
-      'language_template',
+      'required_sections',
+      'template_compliance',
+      'language_check',
       'title_content',
       'category_fit',
       'similarity',
@@ -212,13 +215,45 @@ export async function runCheck(reportId: string, checkType: CheckType): Promise<
     }
   }
 
+  // ── ŞABLON METNİ: template_compliance'a referans olarak ver ──
+  // required_sections yalnızca BAŞLIK ADLARINI taşıyor — şablon PDF'inin
+  // her başlık altında "burada şunlar yazılmalı" diye verdiği ayrıntılı
+  // talimat, çıkarım sırasında bir başlık listesine indirgenirken kaybolur.
+  // Bu kontrol raporu şablona göre değerlendirebilsin diye şablonun kendi
+  // metni (varsa) yeniden okunup talimata ekleniyor — ayrı bir yapılandırılmış
+  // alan TUTMUYORUZ, çünkü kaynak zaten PDF'in kendisi ve o değişebilir
+  // (şablon yeniden yüklenebilir); ikinci bir kopyayı senkron tutmak yerine
+  // her seferinde taze okunuyor.
+  if (checkType === 'template_compliance') {
+    const spec = stage.template_spec as {
+      source?: { file_path?: string };
+      sources?: { sablon?: { file_path?: string } };
+    };
+    const templatePath = spec.sources?.sablon?.file_path ?? spec.source?.file_path ?? null;
+    if (templatePath) {
+      const { data: blob } = await db.storage.from('reports').download(templatePath);
+      if (blob) {
+        try {
+          const { text: templateText } = await extractPdfText(new Uint8Array(await blob.arrayBuffer()));
+          instruction +=
+            '\n\nŞABLON METNİ (referans — her zorunlu başlığın altında bunu karşılayıp ' +
+            'karşılamadığını değerlendir):\n<sablon_metni>\n' +
+            templateText +
+            '\n</sablon_metni>';
+        } catch (e) {
+          console.warn(`[zema:ai] şablon metni okunamadı: ${e instanceof Error ? e.message : e}`);
+        }
+      }
+    }
+  }
+
   // ── BİÇİM KURALLARI: ölç, sorma ──
   // Model çok-modlu denemede iki tarafa yaslı bir belgeyi "sola hizalı"
   // diye raporladı. Yazı tipi/hizalama piksel ölçümü isteyen özellikler;
   // yanlış bir "kurala uymuyor" bulgusu yarışmacıyı haksız cezalandırır.
   // Ölçüm MOCK_AI'dan BAĞIMSIZ — mock modda bile bu bulgular gerçek.
   let formatFindings: FormatFinding[] = [];
-  if (checkType === 'language_template') {
+  if (checkType === 'template_compliance') {
     const spec = (stage.template_spec ?? {}) as { format?: Record<string, unknown> };
     const fmt = spec.format ?? {};
     const own = pdfs.find((f) => f.label === 'rapor');

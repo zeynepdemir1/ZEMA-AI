@@ -10,9 +10,21 @@ import { ThinkingLevel } from '@google/genai';
  * sabiti ileride geri dönmek üzere korundu ama HİÇBİR YERDE KULLANILMIYOR.
  */
 
-/** PLAN.md §3: check_type enum'u ile birebir aynı sırada ve isimde. */
+/**
+ * check_type enum'u ile birebir aynı sırada ve isimde.
+ *
+ * 26 Ağustos: eski `language_template` üçe bölündü — hakem geri bildirimi
+ * tek kontrolün başlık varlığı, şablon içerik uyumu ve dil kalitesini
+ * karıştırdığını gösterdi. Enum'a `required_sections`, `template_compliance`,
+ * `language_check` EKLENDİ (bkz. 0012_check_type_values.sql); `language_template`
+ * DEĞERİ Postgres'te KALDIRILAMAZ (enum'dan değer silinemez) ama
+ * enqueue_report_checks() artık onu kullanmıyor — eski analiz sonuçları
+ * (varsa) donmuş tarihsel kayıt olarak durur, bu listede YOK.
+ */
 export const CHECK_TYPES = [
-  'language_template',
+  'required_sections',
+  'template_compliance',
+  'language_check',
   'title_content',
   'category_fit',
   'similarity',
@@ -111,7 +123,11 @@ export const THINKING_LEVEL: Record<Effort, ThinkingLevel> = {
 };
 
 export const EFFORT: Record<CheckType, Effort> = {
-  language_template: 'low',
+  required_sections: 'low',
+  // Şablon metniyle içerik karşılaştırması diğerlerinden daha ağır bir
+  // okuma-anlama işi — low'da yüzeysel kalıyordu.
+  template_compliance: 'medium',
+  language_check: 'low',
   title_content: 'low',
   category_fit: 'low',
   similarity: 'medium',
@@ -128,7 +144,10 @@ export const EFFORT: Record<CheckType, Effort> = {
  * → analysis_results.prompt_version
  */
 export const PROMPT_VERSIONS: Record<CheckType, string> = {
-  language_template: 'v3', // v3: PDF görsel olarak gönderiliyor → biçim kuralları kontrol edilebiliyor
+  // v1: language_template'in üçe bölünmesiyle doğdu (26 Ağustos).
+  required_sections: 'v1',
+  template_compliance: 'v1',
+  language_check: 'v1',
   title_content: 'v2', // v2: çok-modlu (tablo/şekil içeriği de görülüyor)
   category_fit: 'v1',
   similarity: 'v2', // v2: tablo/görsel örtüşmesi kapsama girdi
@@ -182,7 +201,9 @@ export function verdictFromScore(score: number): ScoreVerdict {
  *                yüzdesi gerçek bir ölçüm, "uyum skoru" değil.)
  */
 export const CHECK_SCORING: Record<CheckType, 'numeric' | 'judgment'> = {
-  language_template: 'numeric',
+  required_sections: 'numeric',
+  template_compliance: 'numeric',
+  language_check: 'numeric',
   title_content: 'numeric',
   criteria_scoring: 'numeric',
   category_fit: 'judgment',
@@ -241,7 +262,9 @@ export const MULTIMODAL_PDF = process.env.MULTIMODAL_PDF !== 'false';
  *   · feedback_synthesis — girdisi diğer kontrollerin ÇIKTISI, rapor değil
  */
 export const MULTIMODAL_CHECKS: ReadonlySet<CheckType> = new Set<CheckType>([
-  'language_template',
+  'required_sections',
+  'template_compliance',
+  'language_check',
   'title_content',
   'similarity',
   'criteria_scoring',

@@ -190,8 +190,15 @@ export async function loadReview(reportId: string): Promise<ReviewData | null> {
     };
   });
 
+  // 26 Ağustos: eski "Dil ve Şablon Uyumu" üçe bölündü (hakem geri bildirimi
+  // — tek kontrol başlık varlığını, şablon içerik uyumunu ve dil kalitesini
+  // karıştırıyordu). `language_template` KASITLI OLARAK burada YOK: eski
+  // analiz sonuçları (varsa) bu listeden hiç okunmuyor, donmuş tarihsel
+  // kayıt olarak DB'de kalıyor.
   const CHECK_LABELS: Record<string, string> = {
-    language_template: 'Dil ve Şablon Uyumu',
+    required_sections: 'Zorunlu Başlıklar',
+    template_compliance: 'Şablona Uygunluk',
+    language_check: 'Rapor Dili Kontrolü',
     title_content: 'Başlık-İçerik Tutarlılığı',
     category_fit: 'Kategori Uygunluğu',
     similarity: 'Benzerlik / Özgünlük',
@@ -285,17 +292,28 @@ function suggestNote(
 ): string {
   if (verdict === 'pass') return NO_ISSUE;
 
-  if (type === 'language_template') {
+  if (type === 'required_sections') {
     const secs = (p.sections ?? []) as Array<{ name: string; present: boolean; substantive: boolean }>;
     const missing = secs.filter((s) => !s.present).map((s) => s.name);
     const empty = secs.filter((s) => s.present && !s.substantive).map((s) => s.name);
-    const issues = (p.language_issues ?? []) as Array<{ issue_type: string }>;
-    const spelling = issues.filter((i) => i.issue_type === 'imla').length;
     const parts: string[] = [];
     if (missing.length) parts.push(`Şu zorunlu bölümler eksik: ${missing.join(', ')}.`);
     if (empty.length) parts.push(`Şu bölümlerin başlığı var ama içeriği yetersiz: ${empty.join(', ')}.`);
-    if (spelling) parts.push(`Raporda ${spelling} yazım hatası tespit edildi; metni bir kez daha gözden geçirin.`);
     return parts.join(' ') || NO_ISSUE;
+  }
+
+  if (type === 'template_compliance') {
+    const reviews = (p.section_reviews ?? []) as Array<{ section: string; meets_expectation: boolean }>;
+    const unmet = reviews.filter((r) => !r.meets_expectation).map((r) => r.section);
+    if (!unmet.length) return NO_ISSUE;
+    return `Şablonun beklediği içeriği karşılamayan bölümler: ${unmet.join(', ')}.`;
+  }
+
+  if (type === 'language_check') {
+    const issues = (p.issues ?? []) as Array<{ issue_type: string }>;
+    const spelling = issues.filter((i) => i.issue_type === 'imla').length;
+    if (!spelling) return NO_ISSUE;
+    return `Raporda ${spelling} yazım hatası tespit edildi; metni bir kez daha gözden geçirin.`;
   }
 
   if (type === 'title_content') {

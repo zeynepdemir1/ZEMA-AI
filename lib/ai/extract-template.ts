@@ -25,13 +25,13 @@ export type TemplateExtraction = {
  * callModel kullanılıyor — aksi halde geliştirme sırasında sessizce kota
  * harcanırdı.
  *
- * Model zinciri language_template ile aynı: ikisi de şablon kuralları
+ * Model zinciri template_compliance ile aynı: ikisi de şablon kuralları
  * üzerinde çalışıyor, ayrı bir zincir tutmanın faydası yok.
  */
 export async function extractTemplateSpec(templateText: string): Promise<TemplateExtraction> {
   const r = await callModel({
     label: 'template_spec',
-    models: modelChainFor('language_template'),
+    models: modelChainFor('template_compliance'),
     systemInstruction: TEMPLATE_EXTRACTION_ROLE,
     parts: [
       { text: `<sablon>\n${templateText}\n</sablon>` },

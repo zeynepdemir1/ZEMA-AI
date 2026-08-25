@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import type { CriterionCardData, ReviewData } from '@/lib/reports/queries';
+import type { CriterionCardData, ReviewData, SimilarityMatch } from '@/lib/reports/queries';
 import {
   approveAllCriteria,
   resumeAnalysis,
@@ -96,7 +95,14 @@ const STATUS_META = {
   missing: { label: 'YAPILMADI', tone: 'text-danger border-danger' },
 } as const;
 
-export function ReviewPanel({ data }: { data: ReviewData }) {
+export function ReviewPanel({
+  data,
+  similarityMatches,
+}: {
+  data: ReviewData;
+  /** Benzerlik karşılaştırması artık ayrı sayfaya gitmiyor, CheckPanels içinde açılıyor. */
+  similarityMatches: SimilarityMatch[];
+}) {
   const { report, cards, similarity, progress } = data;
   const [pending, startTransition] = useTransition();
   const [editing, setEditing] = useState<string | null>(null);
@@ -138,19 +144,18 @@ export function ReviewPanel({ data }: { data: ReviewData }) {
         </div>
 
         <div className="flex flex-wrap items-center gap-[26px]">
-          <Link
-            href={`/review/${report.id}/similarity`}
-            className="hover:bg-ink/[.06] hover:border-ink/[.18] block border border-transparent px-2.5 py-1.5 text-right no-underline transition-colors"
-          >
+          {/* Karşılaştırma artık ayrı sayfaya gitmiyor — AI KONTROLLERİ
+              listesindeki "Benzerlik" satırı açılınca aşağıda görünüyor. */}
+          <div className="block px-2.5 py-1.5 text-right">
             <div className="text-ink/75 mb-1 font-mono text-[11px] tracking-[.1em]">
               EN YÜKSEK BENZERLİK · {similarity.matchCount} EŞLEŞME
             </div>
             <div
               className={`font-mono text-[19px] ${similarity.maxPct >= similarity.threshold ? 'text-danger' : 'text-ink'}`}
             >
-              %{similarity.maxPct} →
+              %{similarity.maxPct}
             </div>
-          </Link>
+          </div>
 
           <div className="text-right">
             <div className="text-ink/75 mb-1 font-mono text-[11px] tracking-[.1em]">
@@ -196,6 +201,8 @@ export function ReviewPanel({ data }: { data: ReviewData }) {
           checks={data.checks}
           reportId={report.id}
           cards={cards}
+          similarityMatches={similarityMatches}
+          reportTeam={report.team}
           renderCards={() =>
             cards.length === 0 ? (
               <div className="border-ink/30 text-ink/75 border border-dashed bg-white px-6 py-6 text-center text-[14px]">

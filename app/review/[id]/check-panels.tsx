@@ -4,11 +4,14 @@ import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { THRESHOLD_NOTE } from '@/lib/ai/config';
 import { compileFeedback } from '@/lib/reports/compile-feedback';
-import type { CheckResultView, CriterionCardData } from '@/lib/reports/queries';
+import type { CheckResultView, CriterionCardData, SimilarityMatch } from '@/lib/reports/queries';
 import { saveCheckNote, submitFeedbackDraft } from './actions';
+import { SimilarityList } from './similarity/similarity-list';
 
 /**
- * Altı AI kontrolünün hakem ekranındaki gösterimi (PLAN.md §6).
+ * Sekiz AI kontrolünün hakem ekranındaki gösterimi (PLAN.md §6) — yedisi
+ * akordeonda, sekizincisi (feedback_synthesis) ayrı "AI Değerlendirme
+ * Özeti" kutusunda.
  *
  * OKUNABİLİRLİK KURALLARI — ölçülerek belirlendi, tahminle değil:
  *
@@ -43,8 +46,6 @@ const VERDICT: Record<
   },
 };
 
-/** feedback_synthesis bir kapı değil — "uygun" demek yanlış olur. */
-const VERDICT_OVERRIDE: Record<string, string> = { feedback_synthesis: 'HAZIR' };
 
 /** Bölüm etiketi: 11px, %75 alfa (6.15:1). 9px + %42 idi, okunmuyordu. */
 const SECTION = 'font-mono text-[11px] tracking-[.1em] text-ink/75';
@@ -111,9 +112,11 @@ function Block({ title, children }: { title: string; children: React.ReactNode }
   );
 }
 
-/** Hakem metin kutusu eklenen dört kontrol. */
+/** Hakem metin kutusu eklenen kontroller — feedback_synthesis'in girdisi bunlardan derlenir. */
 const NOTE_CHECKS = new Set([
-  'language_template',
+  'required_sections',
+  'template_compliance',
+  'language_check',
   'title_content',
   'category_fit',
   'similarity',
@@ -126,7 +129,7 @@ const TONE = {
   neutral: { text: 'text-ink/75', border: 'border-ink/30' },
 } as const;
 
-/** Hakemin düzenlediği geri bildirim metni — dört kontrol için. */
+/** Hakemin düzenlediği geri bildirim metni — not kutusu olan kontroller için. */
 function JudgeNote({
   reportId,
   checkType,
@@ -181,22 +184,33 @@ function JudgeNote({
   );
 }
 
+/** feedback_synthesis "AI kontrolü" değil, SENTEZ — kendi ayrı kutusu var, akordeon sayısına girmez. */
+const TOTAL_ANALYTICAL_CHECKS = 7;
+
 export function CheckPanels({
   checks,
   reportId,
   cards,
   renderCards,
+  similarityMatches,
+  reportTeam,
 }: {
   checks: CheckResultView[];
   reportId: string;
   cards: CriterionCardData[];
   /** Kriter kartları burada, "Kriter Bazlı Değerlendirme" panelinin içinde render edilir. */
   renderCards: () => React.ReactNode;
+  /** Benzerlik karşılaştırması artık AYRI SAYFAYA gitmiyor, burada açılıyor. */
+  similarityMatches: SimilarityMatch[];
+  reportTeam: string;
 }) {
+  const analyticalChecks = checks.filter((c) => c.type !== 'feedback_synthesis');
+  const feedbackCheck = checks.find((c) => c.type === 'feedback_synthesis');
+
   const firstProblem =
-    checks.find((c) => c.verdict === 'fail')?.type ??
-    checks.find((c) => c.verdict === 'warn')?.type ??
-    checks.find((c) => c.verdict === 'insufficient_evidence')?.type ??
+    analyticalChecks.find((c) => c.verdict === 'fail')?.type ??
+    analyticalChecks.find((c) => c.verdict === 'warn')?.type ??
+    analyticalChecks.find((c) => c.verdict === 'insufficient_evidence')?.type ??
     null;
   const [open, setOpen] = useState<string | null>(firstProblem);
 
@@ -209,15 +223,18 @@ export function CheckPanels({
   }
 
   return (
+    <>
     <div className="border-ink/15 border bg-white">
       <div className="border-ink/15 flex flex-wrap items-center justify-between gap-3 border-b px-7 py-4">
-        <h3 className={`${SECTION} m-0`}>AI KONTROLLERİ · {checks.length}/6</h3>
+        <h3 className={`${SECTION} m-0`}>
+          AI KONTROLLERİ · {analyticalChecks.length}/{TOTAL_ANALYTICAL_CHECKS}
+        </h3>
         <span className="text-ink/75 font-mono text-[11px]">{THRESHOLD_NOTE}</span>
       </div>
 
-      {checks.map((c) => {
+      {analyticalChecks.map((c) => {
         const v = VERDICT[c.verdict] ?? VERDICT.insufficient_evidence;
-        const badge = VERDICT_OVERRIDE[c.type] ?? v.label;
+        const badge = v.label;
         const isOpen = open === c.type;
         const why =
           c.scoring === 'numeric'
@@ -259,7 +276,8 @@ export function CheckPanels({
                     reportId={reportId}
                     cards={cards}
                     renderCards={renderCards}
-                    allChecks={checks}
+                    similarityMatches={similarityMatches}
+                    reportTeam={reportTeam}
                   />
                   {NOTE_CHECKS.has(c.type) && (
                     <JudgeNote
@@ -280,6 +298,23 @@ export function CheckPanels({
         );
       })}
     </div>
+
+    {/* AI DEĞERLENDİRME ÖZETİ — akordeonun dışında, her zaman açık.
+        feedback_synthesis bir "kontrol" değil bir SENTEZ; hakem geri
+        bildirimi burada derlenir/düzenlenir ve yarışmacıya bu hâliyle
+        gider (bkz. FeedbackCompiler, submitFeedbackDraft). */}
+    {feedbackCheck && (
+      <div className="border-ink/15 mt-4 flex flex-col gap-5 border bg-white px-7 py-6">
+        <h3 className={`${SECTION} m-0`}>AI DEĞERLENDİRME ÖZETİ</h3>
+        <FeedbackCompiler
+          reportId={reportId}
+          checks={checks}
+          cards={cards}
+          synthesis={feedbackCheck.payload}
+        />
+      </div>
+    )}
+    </>
   );
 }
 
@@ -288,62 +323,69 @@ function CheckDetail({
   reportId,
   cards,
   renderCards,
-  allChecks,
+  similarityMatches,
+  reportTeam,
 }: {
   check: CheckResultView;
   reportId: string;
   cards: CriterionCardData[];
   renderCards: () => React.ReactNode;
-  allChecks: CheckResultView[];
+  similarityMatches: SimilarityMatch[];
+  reportTeam: string;
 }) {
   const p = check.payload;
 
-  // ── Dil ve şablon ──
-  if (check.type === 'language_template') {
+  // ── Zorunlu başlıklar — YALNIZCA varlık, içerik derinliği burada yok ──
+  if (check.type === 'required_sections') {
     const sections = (p.sections ?? []) as Array<{
       name: string;
       present: boolean;
       substantive: boolean;
       note: string;
     }>;
-    const issues = (p.language_issues ?? []) as Array<{
-      quote: string;
-      issue_type: string;
-      severity: string;
-      suggestion: string;
-    }>;
+    const missing = sections.filter((s) => !s.present);
+    const empty = sections.filter((s) => s.present && !s.substantive);
+
+    return (
+      <Block title={`ZORUNLU BÖLÜMLER · ${sections.length - missing.length}/${sections.length} TAM`}>
+        <div>
+          {sections.map((s) => (
+            <StateRow
+              key={s.name}
+              label={s.present && s.substantive ? 'TAM' : s.present ? 'BOŞ' : 'YOK'}
+              tone={s.present && s.substantive ? TONE.ok : s.present ? TONE.warn : TONE.bad}
+              name={s.name}
+            />
+          ))}
+        </div>
+        {(missing.length > 0 || empty.length > 0) && (
+          <div className={MUTED}>
+            {missing.length > 0 && `Eksik: ${missing.map((s) => s.name).join(', ')}. `}
+            {empty.length > 0 && `Başlığı var ama içi boş: ${empty.map((s) => s.name).join(', ')}.`}
+          </div>
+        )}
+      </Block>
+    );
+  }
+
+  // ── Şablona uygunluk — biçim ÖLÇÜMÜ + her bölümün içerik değerlendirmesi ──
+  if (check.type === 'template_compliance') {
     const formatChecks = (p.format_checks ?? []) as Array<{
       rule: string;
       status: 'uygun' | 'uygun_degil' | 'degerlendirilemedi';
       evidence: string;
       page: number;
     }>;
-    const spelling = issues.filter((i) => i.issue_type === 'imla');
-    const other = issues.filter((i) => i.issue_type !== 'imla');
-    const missing = sections.filter((s) => !s.present);
-    const empty = sections.filter((s) => s.present && !s.substantive);
+    const reviews = (p.section_reviews ?? []) as Array<{
+      section: string;
+      expected: string;
+      meets_expectation: boolean;
+      quote: string;
+      note: string;
+    }>;
 
     return (
       <>
-        <Block title={`ZORUNLU BÖLÜMLER · ${sections.length - missing.length}/${sections.length} TAM`}>
-          <div>
-            {sections.map((s) => (
-              <StateRow
-                key={s.name}
-                label={s.present && s.substantive ? 'TAM' : s.present ? 'BOŞ' : 'YOK'}
-                tone={s.present && s.substantive ? TONE.ok : s.present ? TONE.warn : TONE.bad}
-                name={s.name}
-              />
-            ))}
-          </div>
-          {(missing.length > 0 || empty.length > 0) && (
-            <div className={MUTED}>
-              {missing.length > 0 && `Eksik: ${missing.map((s) => s.name).join(', ')}. `}
-              {empty.length > 0 && `Başlığı var ama içi boş: ${empty.map((s) => s.name).join(', ')}.`}
-            </div>
-          )}
-        </Block>
-
         {formatChecks.length > 0 && (
           <Block
             title={`BİÇİM KURALLARI · ${
@@ -375,13 +417,74 @@ function CheckDetail({
           </Block>
         )}
 
+        {reviews.length > 0 ? (
+          <Block
+            title={`BÖLÜM İÇERİK DEĞERLENDİRMESİ · ${
+              reviews.filter((r) => r.meets_expectation).length
+            }/${reviews.length} KARŞILIYOR`}
+          >
+            <div className="flex flex-col gap-4">
+              {reviews.map((r, k) => (
+                <div key={k} className="flex flex-col gap-1.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span
+                      className={`border px-1.5 py-0.5 font-mono text-[10px] tracking-[.08em] ${
+                        r.meets_expectation ? TONE.ok.text + ' ' + TONE.ok.border : TONE.bad.text + ' ' + TONE.bad.border
+                      }`}
+                    >
+                      {r.meets_expectation ? 'KARŞILIYOR' : 'KARŞILAMIYOR'}
+                    </span>
+                    <span className="text-ink text-[14px] font-medium">{r.section}</span>
+                  </div>
+                  {r.expected && (
+                    <div className={MUTED}>
+                      <span className="font-mono text-[11px] tracking-[.08em]">ŞABLON BEKLENTİSİ:</span>{' '}
+                      {r.expected}
+                    </div>
+                  )}
+                  {r.quote ? <Quote note={r.note}>{r.quote}</Quote> : r.note && <div className={BODY}>{r.note}</div>}
+                </div>
+              ))}
+            </div>
+          </Block>
+        ) : (
+          <div className={BODY}>
+            Şablonun kendi metni bulunamadığı için bölüm içerik karşılaştırması yapılamadı;
+            değerlendirme yalnızca biçim ölçümüne dayanıyor.
+          </div>
+        )}
+      </>
+    );
+  }
+
+  // ── Rapor dili — yazım hataları YAN YANA/TOPLU, sayfa referanslı ──
+  if (check.type === 'language_check') {
+    const issues = (p.issues ?? []) as Array<{
+      quote: string;
+      page: number;
+      issue_type: string;
+      severity: string;
+      suggestion: string;
+    }>;
+    const spelling = issues.filter((i) => i.issue_type === 'imla');
+    const other = issues.filter((i) => i.issue_type !== 'imla');
+
+    return (
+      <>
         {spelling.length > 0 && (
           <Block title={`YAZIM HATALARI · ${spelling.length}`}>
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap gap-2">
               {spelling.map((i, k) => (
-                <Quote key={k} note={i.suggestion}>
-                  {i.quote}
-                </Quote>
+                <span
+                  key={k}
+                  className="border-ink/[.18] inline-flex items-center gap-1.5 border bg-white px-2.5 py-1.5 text-[13px]"
+                >
+                  <span className="text-ink/75 font-mono text-[10px]">
+                    s.{i.page > 0 ? i.page : '—'}
+                  </span>
+                  <span className="text-ink">{i.quote}</span>
+                  {i.suggestion && <span className="text-teal-ink">→ {i.suggestion}</span>}
+                </span>
               ))}
             </div>
           </Block>
@@ -394,6 +497,7 @@ function CheckDetail({
                 <div key={k} className="flex flex-col gap-1.5">
                   <div className={`${SECTION} normal-case`}>
                     {i.issue_type.toLocaleUpperCase('tr-TR')} · {i.severity}
+                    {i.page > 0 && ` · s. ${i.page}`}
                   </div>
                   <Quote note={i.suggestion}>{i.quote}</Quote>
                 </div>
@@ -566,13 +670,12 @@ function CheckDetail({
           </Block>
         ) : null}
 
-        {passages.length > 0 && (
-          <Link
-            href={`/review/${reportId}/similarity`}
-            className="text-t3-blue-ink text-[14px] no-underline"
-          >
-            Yan yana karşılaştırmayı aç →
-          </Link>
+        {/* Yan yana karşılaştırma artık AYRI SAYFAYA gitmiyor, burada
+            açılıyor (hakem geri bildirimi, 26 Ağustos). */}
+        {similarityMatches.length > 0 && (
+          <Block title={`BENZERLİK KARŞILAŞTIRMASI · ${similarityMatches.length} EŞLEŞME`}>
+            <SimilarityList reportId={reportId} reportTeam={reportTeam} matches={similarityMatches} />
+          </Block>
         )}
       </>
     );
@@ -659,11 +762,6 @@ function CheckDetail({
     );
   }
 
-  // ── Yarışmacı geri bildirimi: derle → düzenle → yayıma gönder ──
-  if (check.type === 'feedback_synthesis') {
-    return <FeedbackCompiler reportId={reportId} checks={allChecks} cards={cards} synthesis={p} />;
-  }
-
   return <div className={BODY}>Bu kontrol için ayrıntılı gösterim tanımlanmadı.</div>;
 }
 
@@ -698,7 +796,7 @@ function DraftField({
 }
 
 /**
- * Yarışmacı geri bildirimi — dört kontrolün hakem metinleri + kriter
+ * Yarışmacı geri bildirimi — hakem notu olan kontrollerin metinleri + kriter
  * kartlarının onaylanan metinlerinden otomatik derlenir, hakem düzenler.
  *
  * ⚠️ ROL AYRIMI: Hakem YAYIMLAMIYOR. §3.1 matrisi feedback için
@@ -755,7 +853,7 @@ function FeedbackCompiler({
     <>
       <div className="border-l-gold border-ink/10 border border-l-[3px] bg-[rgba(201,138,62,.07)] px-4 py-3">
         <div className="text-ink text-[14px] leading-[1.7]">
-          Aşağıdaki taslak, dört kontrol için yazdığınız metinler ve kriter kartlarından
+          Aşağıdaki taslak, kontroller için yazdığınız metinler ve kriter kartlarından
           <strong> otomatik derlendi</strong>. Son hâlini düzenleyip yayıma gönderin.
           Yayımlama yetkisi Değerlendirme Yöneticisindedir.
         </div>

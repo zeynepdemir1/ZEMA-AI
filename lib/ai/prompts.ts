@@ -133,15 +133,56 @@ export function buildCompetitionContext(input: CompetitionContextInput): string 
 
 /** §5.1 katman 3 — kontrole özel, DEĞİŞKEN, en sonda gönderilir. */
 export const CHECK_INSTRUCTIONS: Record<CheckType, string> = {
-  language_template: `GÖREV: Dil ve şablon uyumunu denetle.
+  required_sections: `GÖREV: Zorunlu bölüm başlıklarının VARLIĞINI denetle.
+
+ŞABLON KURALLARI'ndaki required_sections listesindeki her başlık için:
+- present: başlık raporda var mı?
+- substantive: başlığın ALTI gerçekten dolu mu? Başlık var ama içerik boş
+  veya tek cümleyse present=true, substantive=false yaz. Bu ayrım kritik.
+- note: kısa gerekçe.
+
+BU KONTROL YALNIZCA BAŞLIKLARIN VARLIĞINI değerlendirir. Başlık altındaki
+içeriğin şablonun beklediğiyle NE KADAR uyumlu olduğu ayrı bir kontrolün
+(Şablona Uygunluk) işidir — burada o değerlendirmeyi yapma, sadece
+var/yok ve dolu/boş ayrımını yap.
+
+compliance_score: eksik/boş bölümlerin sayısı ve ağırlığına göre 0-100.
+verdict: değerlendirecek kadar metin çıkarılamamışsa 'insufficient_evidence'.`,
+
+  template_compliance: `GÖREV: Raporun İÇERİĞİNİ şablonun her bölüm için istediğiyle karşılaştır.
+
+Talimatın sonunda (verildiyse) "ŞABLON METNİ" başlığı altında şablon PDF'inin
+kendi metni bulunur — her başlığın altında ne yazılması gerektiğini anlatan
+orijinal talimat. Zorunlu bölüm başlıklarının SADECE VARLIĞI ayrı bir
+kontrolün işi; SEN her başlığın ALTINA şablonun istediği İÇERİĞİN gerçekten
+yazılıp yazılmadığını değerlendiriyorsun.
+
+ŞABLON METNİ verilmediyse yalnızca ŞABLON KURALLARI'ndaki format ve içerik
+kurallarına (content_rules) göre değerlendir.
+
+ŞABLON KURALLARI'ndaki required_sections'taki HER başlık için section_reviews'a
+bir kayıt ekle:
+- section: bölüm adı.
+- expected: şablonun bu başlık altında ne istediğinin KISA özeti (şablon
+  metninden okunan; şablon metni yoksa content_rules'tan çıkarılabilecek kadarı).
+- meets_expectation: rapor bunu karşılıyor mu?
+- quote: karşılıyorsa raporu destekleyen BİREBİR alıntı; karşılamıyorsa boş dize.
+- note: kısa gerekçe — karşılamıyorsa NEYİN eksik olduğunu yaz.
+
+BİÇİM KURALLARI:
+Yazı tipi, sayfa boyutu, hizalama, altbilgi ve sayfa sayısı SANA ÖLÇÜM
+OLARAK VERİLİR (talimatın sonunda "ÖLÇÜLEN BİÇİM BULGULARI" başlığı altında).
+Bunlar PDF'ten doğrudan ölçülmüştür; yeniden değerlendirmeye ÇALIŞMA ve
+onlarla çelişen bir şey söyleme. Yalnızca compliance_score'u belirlerken hesaba kat.
+
+compliance_score: 0-100, bölüm içerik uyumu + biçim uyumunun ortak ölçüsü.
+verdict: değerlendirecek kadar metin/şablon çıkarılamamışsa 'insufficient_evidence'.`,
+
+  language_check: `GÖREV: Raporun dilini ve Türkçe dil kalitesini denetle.
 
 1. Raporun dilini tespit et ve beklenen dille (yarışma dili) karşılaştır.
-2. ŞABLON KURALLARI'ndaki zorunlu bölümlerin her biri için:
-   - present: başlık var mı?
-   - substantive: başlığın ALTI gerçekten dolu mu? Başlık var ama içerik boş
-     veya tek cümleyse present=true, substantive=false yaz. Bu ayrım kritik.
-3. Türkçe dil kalitesi sorunlarını listele. Her biri için rapordan BİREBİR
-   alıntı ver ve issue_type alanını şu şekilde kullan:
+2. Dil kalitesi sorunlarını listele. Her biri için rapordan BİREBİR alıntı,
+   HANGİ PDF SAYFASINDA geçtiği (page) ve issue_type ver:
 
    - 'imla' → GERÇEK YAZIM HATALARI. Bunları özellikle ara, en sık atlanan
      kategori bu. Şunların hepsi imla hatasıdır:
@@ -159,19 +200,10 @@ export const CHECK_INSTRUCTIONS: Record<CheckType, string> = {
    - 'tutarlilik'   → rapor içinde çelişen ifadeler
 
    suggestion alanına düzeltilmiş hâli yaz ("ilaclama → ilaçlama" gibi).
-4. compliance_score: şablon uyumunun 0-100 arası ölçüsü. Eksik veya içi boş
-   zorunlu bölümler ile dil sorunlarının sayısı ve ağırlığı bu skoru düşürür.
-   İçerik kurallarına (özgün yenilik vurgusu, tekrarlayan cümle) uyulmaması
-   da skora yansır.
-5. verdict: kanıtla desteklenen genel sonuç. Şablonu değerlendirecek kadar
-   metin çıkarılamamışsa 'insufficient_evidence'.
-
-BİÇİM KURALLARI:
-Yazı tipi, sayfa boyutu, hizalama, altbilgi ve sayfa sayısı SANA ÖLÇÜM
-OLARAK VERİLİR (talimatın sonunda "ÖLÇÜLEN BİÇİM BULGULARI" başlığı altında).
-Bunlar PDF'ten doğrudan ölçülmüştür; yeniden değerlendirmeye ÇALIŞMA ve
-onlarla çelişen bir şey söyleme. Yalnızca compliance_score'u belirlerken
-hesaba kat.`,
+   page: hatanın geçtiği PDF sayfa numarası; belirleyemiyorsan 0.
+3. compliance_score: dil kalitesinin 0-100 arası ölçüsü. Sorunların sayısı ve
+   ağırlığı bu skoru düşürür.
+4. verdict: değerlendirecek kadar metin çıkarılamamışsa 'insufficient_evidence'.`,
 
   title_content: `GÖREV: Başlık ile içerik tutarlılığını denetle.
 

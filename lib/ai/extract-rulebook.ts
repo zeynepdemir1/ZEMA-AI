@@ -31,7 +31,7 @@ export async function extractRulebookSpec(rulebookText: string): Promise<Ruleboo
   const r = await callModel({
     label: 'rulebook_spec',
     // Şablon çıkarımıyla aynı zincir: ikisi de kural belgesi okuyor.
-    models: modelChainFor('language_template'),
+    models: modelChainFor('template_compliance'),
     systemInstruction: RULEBOOK_EXTRACTION_ROLE,
     parts: [
       { text: `<sartname>\n${rulebookText}\n</sartname>` },

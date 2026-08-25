@@ -140,7 +140,9 @@ export function deriveVerdict(
   reportText?: string,
 ): Verdict {
   switch (checkType) {
-    case 'language_template':
+    case 'required_sections':
+    case 'template_compliance':
+    case 'language_check':
     case 'title_content': {
       // Modelin kendi verdict'i BİLGİ olarak kullanılıyor ama kararı o
       // vermiyor: 'insufficient_evidence' ise saygı gösterilir, aksi hâlde

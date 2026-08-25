@@ -1,5 +1,65 @@
 # ZEMA — Yapılacaklar / Bilinen Eksikler
 
+## 🔎 Hakem ekranı: kontroller ayrıştırıldı, benzerlik + özet inline (26 Ağustos)
+
+**İstek:** Gerçek bir rapor analizini inceleyen hakem geri bildirimi, beş
+maddede özetlenebilir:
+
+1. "Dil ve Şablon Uyumu" başlık kontrolünü kendi başına ayrı bir kontrole
+   ("Zorunlu Başlıklar") çıkar.
+2. Kalanı ikiye böl: "Şablona Uygunluk" (raporun içeriği şablonun her bölüm
+   için istediğini karşılıyor mu) ve "Rapor Dili Kontrolü" (dil/yazım,
+   sayfa numarasıyla, TDK-sözlüğü gibi alt alta değil yan yana/toplu).
+3. "Kategori Uygunluğu" aynen kalsın.
+4. Benzerlik karşılaştırması ayrı bir sayfaya gitmesin, AI kontrolleri
+   listesinin altında inline açılsın; en üstteki "en yüksek benzerlik %"
+   özeti kalsın.
+5. Sayfanın en altına, tüm kontrollerin özetini yazan, hakemin
+   düzenleyebildiği ve yarışmacıya giden bir "AI Değerlendirme Özeti" kutusu.
+
+**Kod tarafı, madde madde:**
+
+- **check_type ENUM ÜÇE BÖLÜNDÜ.** Postgres enum'undan değer SİLİNEMEZ, bu
+  yüzden `language_template` DB'de kalıcı olarak duruyor ama artık hiçbir
+  kod yolu onu üretmiyor/okumuyor (`lib/ai/config.ts` CHECK_TYPES'ta yok).
+  Yeni değerler `required_sections`, `template_compliance`, `language_check`
+  — `0012_check_type_values.sql` ile eklendi. `enqueue_report_checks()`
+  şimdiye kadar `enum_range(null::check_type)` ile enum'daki HER değeri
+  kuyruğa açıyordu; bu, enum'a eklenen her yeni değerin ESKİSİYLE BİRLİKTE
+  sonsuza dek kuyruğa girmesi demekti. `0013_check_types_split.sql` bunu
+  açık bir listeye çevirdi. **İKİ AYRI "Run" gerekiyor** — Postgres yeni
+  enum değerini aynı transaction'da kullanmaya izin vermiyor.
+- **`template_compliance` şablonun KENDİ METNİNİ okuyor.** `required_sections`
+  yalnızca başlık ADLARINI taşıyordu; şablon PDF'inin her başlık altında
+  verdiği ayrıntılı talimat çıkarım sırasında kayboluyordu. Bu kontrol artık
+  run-check.ts'te şablonun kayıtlı `file_path`'inden metni TAZE okuyup
+  talimata ekliyor — ayrı bir yapılandırılmış alan tutulmuyor, kaynak PDF'in
+  kendisi (şablon yeniden yüklenirse otomatik güncel kalır).
+- **Biçim ölçümü (`measureFormat`) `template_compliance`'a taşındı** — eskiden
+  `language_template`'in işiydi, mantıken şablon uyumuna ait.
+- **Benzerlik artık inline.** `/review/[id]/similarity/similarity-list.tsx`
+  aynen korunup `check-panels.tsx`'e import edildi; ayrı sayfa hâlâ var
+  (silinmedi) ama akıştan çıkarıldı.
+- **"AI Değerlendirme Özeti" aslında `feedback_synthesis`.** Bu kontrol zaten
+  vardı ve zaten hakem tarafından düzenlenip yarışmacıya gidiyordu — tek
+  değişiklik, akordeonun N/6'sından çıkarılıp sayfanın altına SABİT, her
+  zaman açık bir kutu olarak taşınması.
+- **Mock fixture'lar:** `required_sections.json`, `template_compliance.json`,
+  `language_check.json` eklendi (eski `language_template.json` silindi).
+  Zod ile doğrulandı — üçü de geçiyor.
+
+**⚠️ Bulunan ama BU İŞİN KAPSAMI DIŞINDA bırakılan hata:**
+`lib/ai/fixtures/category_fit.json` eski bir şema sürümünden kalma
+(`ranked_categories`/`is_mismatch` — CategoryFitSchema artık
+`is_consistent`/`conflicting_quote`/`reason` istiyor). MOCK_AI=true iken
+category_fit çalıştırılırsa Zod doğrulaması PATLAR. Bu, benim bu turda
+yaptığım bir değişiklik DEĞİL — dokunmadım, mevcut haliyle bozuk bulundu.
+
+**Doğrulama:** tsc/lint/build temiz. Üç yeni fixture Zod şemasına karşı
+doğrulandı (gerçek API çağrısı yok). Migration'lar Supabase'de HENÜZ
+ÇALIŞTIRILMADI — kullanıcı SQL Editor'den elle çalıştıracak, 0012 sonra
+0013, bu sırayla.
+
 ## 🧬 Çok aşamalı rapor desteği tamamlandı (26 Ağustos)
 
 **İstek:** TEKNOFEST'te bir yarışma tek rapor yerine sıralı birkaç rapor

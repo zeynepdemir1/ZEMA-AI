@@ -26,7 +26,9 @@ import {
 } from './config';
 
 // Fixture'lar statik import — Turbopack bundle'a gömer, Vercel'de fs yolu sorunu olmaz.
-import languageTemplate from './fixtures/language_template.json';
+import requiredSections from './fixtures/required_sections.json';
+import templateCompliance from './fixtures/template_compliance.json';
+import languageCheck from './fixtures/language_check.json';
 import titleContent from './fixtures/title_content.json';
 import categoryFit from './fixtures/category_fit.json';
 import similarity from './fixtures/similarity.json';
@@ -34,7 +36,9 @@ import criteriaScoring from './fixtures/criteria_scoring.json';
 import feedbackSynthesis from './fixtures/feedback_synthesis.json';
 
 const FIXTURES: Record<CheckType, unknown> = {
-  language_template: languageTemplate,
+  required_sections: requiredSections,
+  template_compliance: templateCompliance,
+  language_check: languageCheck,
   title_content: titleContent,
   category_fit: categoryFit,
   similarity: similarity,

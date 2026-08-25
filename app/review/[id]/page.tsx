@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { ReviewSidebar } from '@/components/zema/review-sidebar';
-import { loadReview, loadSidebarReports } from '@/lib/reports/queries';
+import { loadReview, loadSidebarReports, loadSimilarity } from '@/lib/reports/queries';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { ROLE_LABEL } from '@/lib/supabase/server';
 import { ReviewPanel } from './review-panel';
@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic';
 export default async function ReviewPage({ params }: PageProps<'/review/[id]'>) {
   const user = await requireRole(['judge', 'evaluation_admin', 'competition_admin']);
   const { id } = await params;
-  const data = await loadReview(id);
+  const [data, similarity] = await Promise.all([loadReview(id), loadSimilarity(id)]);
   if (!data) notFound();
 
   const { data: report } = await supabaseAdmin()
@@ -32,7 +32,7 @@ export default async function ReviewPage({ params }: PageProps<'/review/[id]'>) 
           user={{ name: user.fullName ?? (user.email ?? '—'), roleLabel: ROLE_LABEL[user.role] }}
         />
       </div>
-      <ReviewPanel data={data} />
+      <ReviewPanel data={data} similarityMatches={similarity?.matches ?? []} />
     </div>
   );
 }
