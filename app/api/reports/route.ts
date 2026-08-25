@@ -46,14 +46,44 @@ export async function POST(req: Request) {
     );
   }
 
-  // Yetki en başta: kimliği doğrulanmamış biri için 20 MB gövde ayrıştırmayalım.
-  const resolved = await resolveUploaderTeam();
+  const contentType = req.headers.get('content-type') ?? '';
+
+  // Gövdeyi bir kez okuyup yarışma kimliğini önden çıkar: takım çözümü
+  // SEÇİLEN yarışmaya bağlı (bkz. resolveUploaderTeam).
+  type JsonBody = {
+    file_path?: unknown;
+    title?: unknown;
+    category_id?: unknown;
+    competition_id?: unknown;
+  };
+  let jsonBody: JsonBody | null = null;
+  let formBody: FormData | null = null;
+  if (contentType.includes('application/json')) {
+    jsonBody = (await req.json().catch(() => null)) as JsonBody | null;
+    if (!jsonBody) return NextResponse.json({ error: 'Geçersiz JSON gövde' }, { status: 400 });
+  } else {
+    try {
+      formBody = await req.formData();
+    } catch {
+      return NextResponse.json(
+        {
+          error:
+            'Dosya okunamadı. 20 MB sınırını aşmadığından ve geçerli bir PDF ' +
+            'seçtiğinizden emin olun.',
+        },
+        { status: 400 },
+      );
+    }
+  }
+  const competitionId =
+    String(jsonBody?.competition_id ?? formBody?.get('competition_id') ?? '').trim() || undefined;
+
+  // Yetki: kimliği doğrulanmamış biri buraya kadar gelmemeli.
+  const resolved = await resolveUploaderTeam(competitionId);
   if (!resolved.ok) {
     return NextResponse.json({ error: resolved.error }, { status: resolved.status });
   }
   const team = resolved.team;
-
-  const contentType = req.headers.get('content-type') ?? '';
   let title: string;
   let categoryId: string;
   let bytes: Uint8Array;
@@ -63,14 +93,7 @@ export async function POST(req: Request) {
 
   if (contentType.includes('application/json')) {
     // ── YOL 1: dosya zaten Storage'da ──
-    const body = (await req.json().catch(() => null)) as {
-      file_path?: unknown;
-      title?: unknown;
-      category_id?: unknown;
-    } | null;
-    if (!body) {
-      return NextResponse.json({ error: 'Geçersiz JSON gövde' }, { status: 400 });
-    }
+    const body = jsonBody!;
     title = String(body.title ?? '').trim();
     categoryId = String(body.category_id ?? '').trim();
     filePath = String(body.file_path ?? '').trim();
@@ -104,20 +127,7 @@ export async function POST(req: Request) {
     bytes = new Uint8Array(await blob.arrayBuffer());
   } else {
     // ── YOL 2: multipart (geriye dönük uyumluluk / testler) ──
-    let form: FormData;
-    try {
-      form = await req.formData();
-    } catch {
-      return NextResponse.json(
-        {
-          error:
-            'Dosya okunamadı. 20 MB sınırını aşmadığından ve geçerli bir PDF ' +
-            'seçtiğinizden emin olun.',
-        },
-        { status: 400 },
-      );
-    }
-
+    const form = formBody!;
     const file = form.get('file');
     title = String(form.get('title') ?? '').trim();
     categoryId = String(form.get('category_id') ?? '').trim();
@@ -230,7 +240,7 @@ export async function POST(req: Request) {
     action: 'report.submitted',
     entity: 'reports',
     entity_id: report.id,
-    meta: { page_count: pageCount, word_count: wordCount, queued },
+    meta: { page_count: pageCount, word_count: wordCount, queued, team_created: team.teamCreated },
   });
 
   return NextResponse.json({

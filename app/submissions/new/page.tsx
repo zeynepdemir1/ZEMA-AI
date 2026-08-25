@@ -30,14 +30,17 @@ export default async function NewSubmissionPage() {
           ← Raporlarıma dön
         </Link>
         <div className="text-ink/75 mb-2.5 font-mono text-[10.5px] tracking-[.14em]">
-          {data.team.name} · {data.competition.name}
+          {data.team.name}
         </div>
         <h1 className="font-heading m-0 mb-1.5 text-[28px] font-semibold">Yeni rapor yükle</h1>
         <p className="text-ink/75 m-0 mb-7 text-[14px] leading-[1.6]">
           Yükledikten sonra altı AI kontrolü otomatik çalışır. Sonuçlar önce hakeme gider;
           size yalnızca hakemin onayladığı geri bildirim ulaşır.
         </p>
-        <UploadForm categories={data.categories} />
+        <UploadForm
+          competitions={data.competitions}
+          initialCompetitionId={data.activeCompetitionId ?? data.competitions[0]?.id ?? ''}
+        />
       </div>
     </div>
   );

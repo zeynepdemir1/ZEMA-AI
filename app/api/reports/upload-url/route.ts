@@ -12,8 +12,12 @@ import { resolveUploaderTeam, storagePathFor } from '@/lib/reports/upload';
  * GÜVENLİK: yol adı istemciden ALINMIYOR, oturumun takımından türetiliyor.
  * Böylece imzalı URL yalnızca o takımın klasörüne yazabilir.
  */
-export async function POST() {
-  const resolved = await resolveUploaderTeam();
+export async function POST(req: Request) {
+  // Yarışma kimliği gövdeden geliyor: imzalı URL'nin yolu SEÇİLEN yarışmadaki
+  // takımın klasörü olmalı, kullanıcının rastgele ilk takımının değil.
+  const body = (await req.json().catch(() => null)) as { competition_id?: unknown } | null;
+  const competitionId = String(body?.competition_id ?? '').trim() || undefined;
+  const resolved = await resolveUploaderTeam(competitionId);
   if (!resolved.ok) {
     return NextResponse.json({ error: resolved.error }, { status: resolved.status });
   }

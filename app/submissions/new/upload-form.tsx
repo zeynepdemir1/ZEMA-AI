@@ -63,11 +63,33 @@ async function readJson(res: Response): Promise<Record<string, unknown>> {
 
 type Phase = 'idle' | 'uploading' | 'done' | 'error';
 
-export function UploadForm({ categories }: { categories: Array<{ id: string; name: string }> }) {
+type Competition = {
+  id: string;
+  name: string;
+  categories: Array<{ id: string; name: string }>;
+};
+
+export function UploadForm({
+  competitions,
+  initialCompetitionId,
+}: {
+  competitions: Competition[];
+  initialCompetitionId: string;
+}) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState('');
+  const [competitionId, setCompetitionId] = useState(initialCompetitionId);
+  const active = competitions.find((c) => c.id === competitionId) ?? competitions[0];
+  const categories = active?.categories ?? [];
   const [categoryId, setCategoryId] = useState(categories[0]?.id ?? '');
+
+  // Yarışma değişince kategori listesi de değişir; eski seçim geçersiz kalır.
+  function onCompetitionChange(id: string) {
+    setCompetitionId(id);
+    const next = competitions.find((c) => c.id === id)?.categories ?? [];
+    setCategoryId(next[0]?.id ?? '');
+  }
   const [phase, setPhase] = useState<Phase>('idle');
   const [error, setError] = useState<string | null>(null);
   const [reportId, setReportId] = useState<string | null>(null);
@@ -101,7 +123,11 @@ export function UploadForm({ categories }: { categories: Array<{ id: string; nam
     // İmzalı URL'nin yolu sunucuda oturumdan türetiliyor (istemci seçemiyor).
     let uploadedPath: string | null = null;
     try {
-      const su = await fetch('/api/reports/upload-url', { method: 'POST' });
+      const su = await fetch('/api/reports/upload-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ competition_id: competitionId }),
+      });
       const sb = await readJson(su);
       if (su.ok && typeof sb.path === 'string' && typeof sb.token === 'string') {
         const { error: ue } = await supabaseBrowser()
@@ -125,6 +151,7 @@ export function UploadForm({ categories }: { categories: Array<{ id: string; nam
           file_path: uploadedPath,
           title: title.trim(),
           category_id: categoryId,
+          competition_id: competitionId,
         }),
       });
     } else {
@@ -132,6 +159,7 @@ export function UploadForm({ categories }: { categories: Array<{ id: string; nam
       form.set('file', file);
       form.set('title', title.trim());
       form.set('category_id', categoryId);
+      form.set('competition_id', competitionId);
       res = await fetch('/api/reports', { method: 'POST', body: form });
     }
     const body = await readJson(res);
@@ -173,6 +201,21 @@ export function UploadForm({ categories }: { categories: Array<{ id: string; nam
         className="border-ink/[.18] text-ink mb-5 w-full border bg-white px-[14px] py-3 font-sans text-[14.5px] disabled:opacity-60"
       />
 
+      <label className="text-ink/75 mb-2 block font-mono text-[10.5px] tracking-[.12em]" htmlFor="comp">
+        YARIŞMA
+      </label>
+      <select
+        id="comp"
+        value={competitionId}
+        disabled={busy}
+        onChange={(e) => onCompetitionChange(e.target.value)}
+        className="border-ink/[.18] text-ink mb-5 w-full border bg-white px-[14px] py-3 font-sans text-[14.5px] disabled:opacity-60"
+      >
+        {competitions.map((c) => (
+          <option key={c.id} value={c.id}>{c.name}</option>
+        ))}
+      </select>
+
       <label className="text-ink/75 mb-2 block font-mono text-[10.5px] tracking-[.12em]" htmlFor="cat">
         KATEGORİ
       </label>
@@ -188,7 +231,9 @@ export function UploadForm({ categories }: { categories: Array<{ id: string; nam
         ))}
       </select>
       <div className="text-ink/75 mb-5 -mt-3 text-[12px] leading-[1.5]">
-        Kategori seçiminiz AI tarafından içerikle karşılaştırılır; uyumsuzluk hakeme bildirilir.
+        {categories.length === 0
+          ? 'Bu yarışmada tanımlı kategori yok — yarışma yöneticisi kategori eklemeli.'
+          : 'Kategori seçiminiz AI tarafından içerikle karşılaştırılır; uyumsuzluk hakeme bildirilir.'}
       </div>
 
       <label className="text-ink/75 mb-2 block font-mono text-[10.5px] tracking-[.12em]" htmlFor="file">

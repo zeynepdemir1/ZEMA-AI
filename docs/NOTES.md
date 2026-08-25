@@ -1,5 +1,75 @@
 # ZEMA — Yapılacaklar / Bilinen Eksikler
 
+## 🏁 Yarışmacı yeni yarışmaları göremiyordu — teşhis ve düzeltme (25 Ağustos)
+
+### Teşhis: dört hipotezin üçü yanlıştı
+
+| hipotez | sonuç |
+|---|---|
+| Sorgu sabit bir `competition_id`'ye bağlı | **hayır** — dinamik, ama takımdan türüyordu |
+| `competitions` RLS'i yarışmacıyı kısıtlıyor | **hayır** — `competitions_select_all` herkese `using (true)` veriyor |
+| Yeni yarışmada eksik bir "status/published" alanı var | **hayır** — tabloda böyle bir kolon HİÇ yok |
+| Uygulama katmanı | **EVET** ← kök neden |
+
+`SELECT * FROM competitions` → 2 satır, kolonlar: `id, name, year, language,
+template_spec, similarity_threshold, submission_deadline, created_by,
+created_at`. Görünürlük/durum alanı yok.
+
+### Kök neden: yarışma TAKIMDAN türüyordu
+
+`loadMySubmissions()` kullanıcının takımlarını çekip **`teams[0]`** alıyor ve
+yarışmayı ondan türetiyordu:
+
+```
+const team = teams[0];
+... .eq('competition_id', team.competition_id)   // kategoriler
+```
+
+`resolveUploaderTeam()` de aynısını yapıyordu (`memberships[0]`). Yani
+yarışmacı hangi yarışmaya yüklemek isterse istesin **hep rastgele ilk
+takımının yarışmasına** yüklüyordu, ve ekranda yalnızca o yarışmayı
+görüyordu.
+
+İkinci ve daha derin katman: yeni yarışmanın **hiç takımı yoktu**
+(ölçüldü: "TEKNOFEST 2025 — Model Uydu" → 0 takım, 3 kategori).
+`reports.team_id` NOT NULL olduğu için, listeyi düzeltmek tek başına
+yetmezdi — yarışmacı yönetici kendisine takım açana kadar o yarışmaya
+hiç giremezdi.
+
+### Düzeltme
+
+1. `loadMySubmissions()` artık **tüm** yarışmaları kategorileriyle döndürüyor;
+   varsayılan seçim kullanıcının takımının olduğu yarışma.
+2. Yükleme formuna **yarışma seçici** eklendi; yarışma değişince kategori
+   listesi de değişiyor.
+3. `resolveUploaderTeam(competitionId)` artık **seçilen yarışmadaki** takımı
+   buluyor. Takım yoksa `<Ad Soyad> Takımı` açılıp kullanıcı üye ediliyor.
+   Denetim kaydına `team_created: true` yazılıyor.
+4. `competition_id` her iki rotaya da (`/api/reports`, `.../upload-url`)
+   taşınıyor — imzalı URL'nin yolu doğru takımın klasörü olmalı.
+
+**Takımın otomatik açılması bilinçli bir karar.** Alternatif, yöneticinin
+her yarışmacı için elle takım açması; bu doğru "kurumsal" akış ama
+yarışmacıyı yönetici müdahalesine kadar kilitliyor. `teams_write_admin`
+politikası takım yazmayı yöneticiye kısıtlıyor; rota `service_role`
+kullandığı için RLS baypas ediliyor — yetki zaten kontrol edilmiş durumda
+(rol = competitor) ve açılan takım yalnızca o kullanıcıya bağlanıyor.
+
+### Doğrulama (gerçek model çağrısı YAPILMADAN, kuyruk tetiklenmedi)
+
+Hiç takımı olmayan "TEKNOFEST 2025 — Model Uydu"ya yükleme yapıldı:
+rapor doğru yarışmaya düştü, "Mehmet Şahin Takımı" otomatik açıldı ve
+kullanıcı üye edildi, kategori yeni yarışmanınkilerden seçildi, denetim
+kaydında `team_created: true`, 2026 yarışmasının 13 raporu bozulmadı.
+Test raporu, depo nesnesi ve otomatik takım sonradan silindi.
+
+### Yan gözlem — düzeltilmedi, karar senin
+
+2026 yarışmasının `template_spec.format.footer` alanında *"11.TÜRKSAT Model
+Uydu Yarış…"* yazıyor: şablon çıkarımı bir Model Uydu PDF'i ile İHA
+yarışmasının üstüne çalıştırılmış görünüyor. Veri karışıklığı, kod hatası
+değil. `template_spec.previous` ile geri alınabilir.
+
 ## 🟠 T3 Vakfı entegrasyonu — 2. tur (25 Ağustos)
 
 ### Ortak `<Header />` — mimari düzeltme

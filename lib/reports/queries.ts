@@ -886,7 +886,11 @@ export async function loadMySubmissions() {
     .filter(Boolean);
   const team = teams[0];
 
-  const [{ data: reports }, { data: categories }, { data: competition }] = await Promise.all([
+  // TÜM yarışmalar çekiliyor, yalnızca kullanıcının takımı olan değil.
+  // Sahada çıkan hata buydu: yönetici yeni yarışma eklediğinde yarışmacı
+  // onu göremiyordu, çünkü yarışma kullanıcının İLK TAKIMINDAN türüyordu.
+  // RLS engel değil — competitions_select_all herkese `using (true)` veriyor.
+  const [{ data: reports }, { data: allCategories }, { data: allCompetitions }] = await Promise.all([
     db
       .from('reports')
       .select('id, title, category_id, status, created_at, team_id')
@@ -895,17 +899,29 @@ export async function loadMySubmissions() {
         teams.map((t) => t.id),
       )
       .order('created_at', { ascending: false }),
-    db
-      .from('categories')
-      .select('id, name')
-      .eq('competition_id', team.competition_id)
-      .order('name'),
+    db.from('categories').select('id, name, competition_id').order('name'),
     db
       .from('competitions')
-      .select('name, submission_deadline')
-      .eq('id', team.competition_id)
-      .maybeSingle(),
+      .select('id, name, submission_deadline')
+      .order('created_at', { ascending: true }),
   ]);
+
+  const competitions = (allCompetitions ?? []).map((c) => ({
+    id: c.id,
+    name: c.name,
+    submission_deadline: c.submission_deadline as string | null,
+    categories: (allCategories ?? [])
+      .filter((k) => k.competition_id === c.id)
+      .map((k) => ({ id: k.id, name: k.name })),
+  }));
+
+  // Varsayılan seçim: kullanıcının takımının olduğu yarışma; yoksa ilki.
+  const active =
+    competitions.find((c) => c.id === team.competition_id) ?? competitions[0] ?? null;
+  const categories = active?.categories ?? [];
+  const competition = active
+    ? { name: active.name, submission_deadline: active.submission_deadline }
+    : null;
 
   const ids = (reports ?? []).map((r) => r.id);
   // ⚠️ analysis_jobs yarışmacı için RLS ile GİZLİ (§3.1: ham AI analizi
@@ -948,7 +964,10 @@ export async function loadMySubmissions() {
     teamNameById,
     competitor: profile.full_name ?? '—',
     competition: competition ?? { name: '—', submission_deadline: null },
-    categories: categories ?? [],
+    /** Yükleme formundaki yarışma seçici için — hepsi, kategorileriyle. */
+    competitions,
+    activeCompetitionId: active?.id ?? null,
+    categories,
     reports: list,
   };
 }
