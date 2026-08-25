@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { extractPdfText, pdfErrorMessage } from '@/lib/reports/pdf';
-import { pathBelongsToTeam, resolveUploaderTeam } from '@/lib/reports/upload';
+import {
+  alreadyEnteredMessage,
+  findExistingEntry,
+  pathBelongsToTeam,
+  resolveUploaderTeam,
+} from '@/lib/reports/upload';
 
 /**
  * POST /api/reports — rapor yükleme (PLAN.md §2)
@@ -84,6 +89,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: resolved.error }, { status: resolved.status });
   }
   const team = resolved.team;
+
+  // KATILIM KURALI: bir takım, bir yarışmaya kategoriden bağımsız olarak
+  // en fazla bir kez. Dosya işlenmeden ÖNCE kontrol ediliyor — kullanıcı
+  // 20 MB yükledikten sonra reddedilmesin.
+  const already = await findExistingEntry(team.teamId, team.competitionId);
+  if (already) {
+    return NextResponse.json(
+      { error: alreadyEnteredMessage(already.title), report_id: already.id },
+      { status: 409 },
+    );
+  }
   let title: string;
   let categoryId: string;
   let bytes: Uint8Array;

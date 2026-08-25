@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { resolveUploaderTeam, storagePathFor } from '@/lib/reports/upload';
+import {
+  alreadyEnteredMessage,
+  findExistingEntry,
+  resolveUploaderTeam,
+  storagePathFor,
+} from '@/lib/reports/upload';
 
 /**
  * POST /api/reports/upload-url — tarayıcının doğrudan Storage'a yazması için
@@ -20,6 +25,13 @@ export async function POST(req: Request) {
   const resolved = await resolveUploaderTeam(competitionId);
   if (!resolved.ok) {
     return NextResponse.json({ error: resolved.error }, { status: resolved.status });
+  }
+
+  // Katılım kuralını BURADA da kontrol et: yoksa kullanıcı dosyayı
+  // Storage'a yükleyip ancak sonraki adımda reddediliyordu.
+  const already = await findExistingEntry(resolved.team.teamId, resolved.team.competitionId);
+  if (already) {
+    return NextResponse.json({ error: alreadyEnteredMessage(already.title) }, { status: 409 });
   }
 
   const path = storagePathFor(resolved.team.teamId);

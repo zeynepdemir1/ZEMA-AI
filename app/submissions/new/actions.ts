@@ -15,6 +15,25 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  * çoğu zaman boşuk içerir ("Roket Takımı"); gerekirse aşağıdaki sınıfa
  * boşluk eklemek yeterli.
  */
+/**
+ * `founded_year` kolonu yok mu? (0008 migration'ı çalıştırılmamış)
+ *
+ * İki farklı hata biçimi geliyor ve ikisi de yakalanmalı:
+ *   · Postgres     → code 42703 ("column does not exist")
+ *   · PostgREST    → code PGRST204 ("Could not find the column ... in the
+ *                    schema cache") — şema önbelleği kolonu hiç görmemişse
+ *                    istek Postgres'e ULAŞMADAN reddediliyor.
+ * İlk sürüm yalnızca 42703'e bakıyordu ve gerçek hata PGRST204 çıktı.
+ */
+function isMissingFoundedYear(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  return (
+    error.code === '42703' ||
+    error.code === 'PGRST204' ||
+    /founded_year/.test(error.message ?? '')
+  );
+}
+
 const TEAM_NAME = /^[\p{L}\p{N}_-]+$/u;
 const NAME_MIN = 3;
 const NAME_MAX = 50;
@@ -75,15 +94,27 @@ export async function createTeam(input: {
     .maybeSingle();
   if (!comp) return { ok: false, error: 'Yarışma bulunamadı.' };
 
-  // Aynı yarışmada zaten takımı varsa ikinci bir tane açma.
+  /**
+   * KATILIM KURALI (katman 2) — bir kullanıcı, bir yarışmada tek takım.
+   *
+   * Bir kişi farklı bir takım kurarak aynı yarışmaya ikinci kez giremez.
+   * Önceki sürüm bu durumda sessizce mevcut takımı döndürüyordu; artık
+   * açık hata veriyor, çünkü kullanıcı "yeni takım kurdum" sanıp neden
+   * eski takımın raporlarını gördüğünü anlamıyordu.
+   */
   const { data: mine } = await db
     .from('team_members')
-    .select('team_id, teams(id, competition_id)')
+    .select('team_id, teams(id, name, competition_id)')
     .eq('user_id', auth.user.id);
   const already = (mine ?? [])
-    .map((m) => m.teams as unknown as { id: string; competition_id: string })
+    .map((m) => m.teams as unknown as { id: string; name: string; competition_id: string })
     .find((t) => t?.competition_id === input.competitionId);
-  if (already) return { ok: true, teamId: already.id };
+  if (already) {
+    return {
+      ok: false,
+      error: `Bu yarışmaya zaten "${already.name}" takımı ile katıldınız. Bir kullanıcı, bir yarışmada yalnızca tek bir takımın üyesi olabilir.`,
+    };
+  }
 
   const { data: dup } = await db
     .from('teams')
@@ -95,14 +126,15 @@ export async function createTeam(input: {
 
   // 0008 çalıştırılmadıysa founded_year kolonu yok — kolonsuz tekrar dene.
   // (0006/0007'deki "kolon yokluğunu yakala" deseninin aynısı: migration
-  // koşulmadan özellik tamamen kırılmasın.)
+  // koşulmadan özellik tamamen kırılmasın. Hata biçimi için
+  // isMissingFoundedYear'a bak — PostgREST 42703 değil PGRST204 dönüyor.)
   let created: { id: string } | null = null;
   const full = await db
     .from('teams')
     .insert({ competition_id: input.competitionId, name, founded_year: input.foundedYear })
     .select('id')
     .single();
-  if (full.error?.code === '42703') {
+  if (isMissingFoundedYear(full.error)) {
     const fallback = await db
       .from('teams')
       .insert({ competition_id: input.competitionId, name })

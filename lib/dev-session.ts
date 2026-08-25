@@ -31,6 +31,41 @@ export const EXTRA_JUDGES = [
   { email: 'hakem4@zema.test', fullName: 'Elif Naz Bozkurt' },
 ] as const;
 
+/**
+ * EK YARIŞMACILAR — demo sırasında "farklı yarışmacı" senaryoları için.
+ *
+ * Her biri FARKLI bir takıma bağlı; ikisi 2025 Model Uydu yarışmasında
+ * (o yarışmada hiç takım yoktu), biri 2026 İHA'da.
+ *
+ * KATILIM KURALINA UYGUN: bir kullanıcı bir yarışmada tek takımın üyesi
+ * (katman 2) ve her takımın o yarışmada en fazla bir raporu olabilir
+ * (katman 1). Takım adları createTeam doğrulamasını geçiyor —
+ * harf/rakam/alt çizgi, boşluk yok.
+ */
+export const EXTRA_COMPETITORS = [
+  {
+    email: 'yarismaci2@zema.test',
+    fullName: 'Burak Deniz Aslan',
+    teamName: 'VEGA_2026',
+    foundedYear: 2024,
+    competition: 'TEKNOFEST 2026 — İnsansız Hava Araçları',
+  },
+  {
+    email: 'yarismaci3@zema.test',
+    fullName: 'Selin Aydın',
+    teamName: 'ORION_2025',
+    foundedYear: 2023,
+    competition: 'TEKNOFEST 2025 — Model Uydu',
+  },
+  {
+    email: 'yarismaci4@zema.test',
+    fullName: 'Kerem Doğan',
+    teamName: 'LYRA_2025',
+    foundedYear: 2025,
+    competition: 'TEKNOFEST 2025 — Model Uydu',
+  },
+] as const;
+
 export const DEV_PASSWORD = 'zema-test-2026';
 export const DEV_TEAM_NAME = 'GARO';
 export const DEV_COMPETITION_NAME = 'TEKNOFEST 2026 — İnsansız Hava Araçları';

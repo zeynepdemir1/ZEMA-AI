@@ -1,5 +1,72 @@
 # ZEMA — Yapılacaklar / Bilinen Eksikler
 
+## 🚦 Katılım kuralı — iki katman (25 Ağustos)
+
+**Katman 1:** bir takım, bir yarışmaya KATEGORİDEN BAĞIMSIZ olarak en fazla
+bir kez katılabilir. Kısıt `(team_id, competition_id)` üzerinde —
+`category_id` DAHİL DEĞİL. Kategoriyi dahil etseydik "aynı takım üç
+kategoriye üç rapor" geçerli olurdu; engellenmek istenen tam olarak bu.
+
+**Katman 2:** bir kullanıcı, bir yarışmada tek takımın üyesi olabilir.
+Farklı takım kurarak ikinci kez giremez.
+
+### Uygulama
+
+| yer | ne yapıyor |
+|---|---|
+| `0009_one_entry_per_team.sql` | `unique (team_id, competition_id)` — **henüz uygulanamadı**, aşağıya bak |
+| `findExistingEntry()` | katman 1 kontrolü, `/api/reports` ve `/api/reports/upload-url` |
+| `createTeam()` | katman 2 kontrolü — açık hata: *"Bu yarışmaya zaten X takımı ile katıldınız"* |
+
+Kontrol **imzalı URL adımında da** var: yoksa kullanıcı 5 MB'lık dosyayı
+Storage'a yükleyip ancak sonraki adımda reddediliyordu.
+
+Katman 2 için DB kısıtı YOK — `team_members × teams` üzerinde trigger
+gerektirirdi ve istenen "katılım anında açık hata mesajı" olduğu için
+uygulama katmanı seçildi.
+
+Canlı doğrulandı: raporu olan takım → **409** (hem imzalı URL hem multipart),
+raporu olmayan takım → **200**, yan etki yok (rapor sayısı 13'te kaldı).
+
+`createTeam` ayrıca düzeltildi: `founded_year` kolonu yokken PostgREST
+`42703` DEĞİL **`PGRST204`** dönüyor ("schema cache"), ilk sürüm bunu
+kaçırıyordu ve takım oluşturma tamamen hata veriyordu.
+
+### ⚠️ MEVCUT VERİDE İKİ İHLAL — hiçbir şey silinmedi
+
+**İhlal A — GARO takımının 2026'da 5 raporu var.** `0009` bu yüzden
+uygulanamıyor (migration çakışmaları listeleyip duruyor, sessizce silmiyor).
+
+| rapor | kategori | analiz | kaynak |
+|---|---|---|---|
+| R-175C22 Otonom Su Altı Aracı | Serbest Görev | 6/6 | **demo verisi** |
+| R-63406F ZEMA | Döner Kanat | 4/6 | kullanıcı testi |
+| R-798F26 zema | Serbest Görev | 1/6 | kullanıcı testi (gerçek TEKNOFEST çifti) |
+| R-46A803 TESTMM 20-tabloA | Sabit Kanat | 4/6 | asistan testi |
+| R-1A98F4 TESTMM 21-tabloB | Sabit Kanat | 4/6 | asistan testi |
+
+Diğer sekiz takımın **birer** raporu var; boş takım yok (VEGA_2026,
+ORION_2025, LYRA_2025 yeni açıldı ve raporsuz).
+
+**İhlal B — Mehmet Şahin 2026'da 9 takımın üyesi** (seed böyle kurmuş).
+Katman 2'nin DB kısıtı olmadığı için bu hiçbir şeyi bloke etmiyor; yalnızca
+kuralla tutarsız bir geçmiş veri.
+
+Seçenekler kullanıcıya sunuldu, karar bekleniyor. Hiçbir veri silinmedi.
+
+## 👤 Ek yarışmacı hesapları (25 Ağustos)
+
+| e-posta | ad | takım | yarışma |
+|---|---|---|---|
+| `yarismaci@zema.test` | Mehmet Şahin | GARO +8 | 2026 İHA |
+| `yarismaci2@zema.test` | Burak Deniz Aslan | VEGA_2026 | 2026 İHA |
+| `yarismaci3@zema.test` | Selin Aydın | ORION_2025 | 2025 Model Uydu |
+| `yarismaci4@zema.test` | Kerem Doğan | LYRA_2025 | 2025 Model Uydu |
+
+`scripts/seed-competitors.ts` — fikirdeş, katılım kuralına uyuyor.
+Rapor OLUŞTURMUYOR: katman 1 bir takıma bir rapor izni veriyor, hangisinin
+yükleneceği demo senaryosuna bağlı.
+
 ## 👨‍⚖️ Dört hakem + yeniden dağıtım (25 Ağustos)
 
 **Sorun:** Değerlendirme Yöneticisi ekranında 13 raporun hepsi tek hakeme
