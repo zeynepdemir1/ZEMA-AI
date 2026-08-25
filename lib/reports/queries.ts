@@ -126,7 +126,7 @@ export async function loadReview(reportId: string): Promise<ReviewData | null> {
 
   const { data: report } = await db
     .from('reports')
-    .select('id, title, status, competition_id, category_id, team_id')
+    .select('id, title, status, competition_id, category_id, team_id, stage_id')
     .eq('id', reportId)
     .maybeSingle();
   if (!report) return null;
@@ -149,8 +149,10 @@ export async function loadReview(reportId: string): Promise<ReviewData | null> {
     await Promise.all([
       db
         .from('criteria')
+        // Kriterler AŞAMAYA bağlı (0010): competition_id ile filtrelemek
+        // çok aşamalı bir yarışmada TÜM aşamaların rubriğini karıştırırdı.
         .select('id, name, description, sort_order')
-        .eq('competition_id', report.competition_id)
+        .eq('stage_id', report.stage_id)
         .order('sort_order'),
       db
         .from('ai_criterion_scores')
@@ -638,30 +640,40 @@ export async function loadDashboard(): Promise<DashData | null> {
 // /admin/competitions — Yarışma Yöneticisi kurulumu
 // ─────────────────────────────────────────────────────────────
 
-export type SetupData = {
-  competition: {
-    id: string;
-    name: string;
-    year: number;
-    language: string;
-    similarity_threshold: number;
-    submission_deadline: string | null;
-    template_spec: {
-      report_type?: string;
-      required_sections?: string[];
-      citation_format?: string;
-      format?: {
-        font?: string;
-        page?: string;
-        alignment?: string;
-        max_pages?: number;
-        footer?: string;
-      };
-      content_rules?: string[];
-      not_specified?: string[];
-      /** Şablon PDF'inden otomatik çıkarıldıysa çıkarımın künyesi. */
-      /** Eski (tek belgeli) künye alanı — şablonu ifade eder. `sources` ile aynı şekil. */
-      source?: {
+/** `template_spec` biçimi — artık AŞAMAYA bağlı (0010_report_stages.sql). */
+export type TemplateSpec = {
+  report_type?: string;
+  required_sections?: string[];
+  citation_format?: string;
+  format?: {
+    font?: string;
+    page?: string;
+    alignment?: string;
+    max_pages?: number;
+    footer?: string;
+  };
+  content_rules?: string[];
+  not_specified?: string[];
+  /** Eski (tek belgeli) künye alanı — şablonu ifade eder. `sources` ile aynı şekil. */
+  source?: {
+    file_path?: string;
+    model?: string;
+    extracted_at?: string;
+    page_count?: number;
+    quotes_verified?: number;
+    quotes_total?: number;
+    fields?: string[];
+    declares?: string;
+  };
+  /**
+   * İKİ BELGELİ KÜNYE: hangi alan hangi PDF'ten geldi.
+   * `source` tarihsel olarak yalnızca şablonu ifade ediyordu; şartname
+   * eklenince tek alan yetmedi (bkz. lib/reports/spec-sources.ts).
+   */
+  sources?: Partial<
+    Record<
+      'sablon' | 'sartname',
+      {
         file_path?: string;
         model?: string;
         extracted_at?: string;
@@ -670,32 +682,33 @@ export type SetupData = {
         quotes_total?: number;
         fields?: string[];
         declares?: string;
-      };
-      /**
-       * İKİ BELGELİ KÜNYE: hangi alan hangi PDF'ten geldi.
-       * `source` tarihsel olarak yalnızca şablonu ifade ediyordu; şartname
-       * eklenince tek alan yetmedi (bkz. lib/reports/spec-sources.ts).
-       */
-      sources?: Partial<
-        Record<
-          'sablon' | 'sartname',
-          {
-            file_path?: string;
-            model?: string;
-            extracted_at?: string;
-            page_count?: number;
-            quotes_verified?: number;
-            quotes_total?: number;
-            fields?: string[];
-            declares?: string;
-          }
-        >
-      >;
-      /** Çıkarım öncesindeki spec — yanlış çıkarımdan dönmek için. */
-      previous?: unknown;
-    };
+      }
+    >
+  >;
+  /** Çıkarım öncesindeki spec — yanlış çıkarımdan dönmek için. */
+  previous?: unknown;
+};
+
+export type SetupData = {
+  competition: {
+    id: string;
+    name: string;
+    year: number;
+    language: string;
+    similarity_threshold: number;
+    submission_deadline: string | null;
+  };
+  /** "Rapor Aşaması" seçici için — bir yarışmanın TÜM aşamaları, sırayla. */
+  stages: Array<{ id: string; name: string; sortOrder: number }>;
+  activeStageId: string;
+  /** Seçili aşamanın şablon/şartname çıkarımı — competitions.template_spec DEĞİL. */
+  stage: {
+    id: string;
+    name: string;
+    templateSpec: TemplateSpec;
   };
   categories: Array<{ id: string; name: string; description: string; reportCount: number }>;
+  /** Seçili AŞAMANIN kriterleri — her teslimin kendi rubriği var. */
   criteria: Array<{
     id: string;
     code: string;
@@ -724,10 +737,15 @@ export async function loadAllCompetitions(): Promise<Array<{ id: string; name: s
  * competitionId verilirse o yarışmayı yükler (admin sekmelerindeki
  * yarışma seçicinin seçtiği). Verilmezse İLK oluşturulan yarışmaya düşer
  * (bkz. loadDashboard() — "en yüksek yıl" artık seçim anahtarı değil).
+ *
+ * stageId verilirse o AŞAMA aktif olur (bkz. app/admin/competitions/
+ * stage-switcher.tsx); verilmezse ya da o yarışmaya ait değilse yarışmanın
+ * İLK aşamasına düşülür. Şablon/şartname/kriterler artık aşamaya bağlı
+ * (0010_report_stages.sql) — competitions.template_spec DEĞİL.
  */
-export async function loadSetup(competitionId?: string): Promise<SetupData | null> {
+export async function loadSetup(competitionId?: string, stageId?: string): Promise<SetupData | null> {
   const db = await supabaseServer();
-  const SELECT = 'id, name, year, language, similarity_threshold, submission_deadline, template_spec';
+  const SELECT = 'id, name, year, language, similarity_threshold, submission_deadline';
   const raw = competitionId
     ? (await db.from('competitions').select(SELECT).eq('id', competitionId).maybeSingle()).data
     : await firstCompetition(db, SELECT);
@@ -739,8 +757,19 @@ export async function loadSetup(competitionId?: string): Promise<SetupData | nul
     language: string;
     similarity_threshold: number;
     submission_deadline: string | null;
-    template_spec: unknown;
   };
+
+  const { data: stageRows } = await db
+    .from('report_stages')
+    .select('id, name, sort_order, template_spec')
+    .eq('competition_id', competition.id)
+    .order('sort_order', { ascending: true })
+    .order('id', { ascending: true });
+  const stages = stageRows ?? [];
+  // Her yarışmanın en az bir aşaması olmalı (migration + createCompetition
+  // ikisi de garanti ediyor) — boşsa kurulum ekranı gösterilecek bir şey yok.
+  if (!stages.length) return null;
+  const activeStage = stages.find((s) => s.id === stageId) ?? stages[0];
 
   const [{ data: categories }, { data: criteria }, { data: reports }, { data: pairs }] =
     await Promise.all([
@@ -751,8 +780,9 @@ export async function loadSetup(competitionId?: string): Promise<SetupData | nul
         .order('name'),
       db
         .from('criteria')
+        // Kriterler de AŞAMAYA bağlı: her teslimin kendi rubriği var.
         .select('id, name, description, max_score, weight, sort_order')
-        .eq('competition_id', competition.id)
+        .eq('stage_id', activeStage.id)
         .order('sort_order'),
       db.from('reports').select('id, category_id').eq('competition_id', competition.id),
       db.from('similarity_pairs').select('report_id, semantic_score'),
@@ -764,9 +794,13 @@ export async function loadSetup(competitionId?: string): Promise<SetupData | nul
   ).length;
 
   return {
-    competition: {
-      ...competition,
-      template_spec: (competition.template_spec ?? {}) as SetupData['competition']['template_spec'],
+    competition,
+    stages: stages.map((s) => ({ id: s.id, name: s.name, sortOrder: s.sort_order ?? 1 })),
+    activeStageId: activeStage.id,
+    stage: {
+      id: activeStage.id,
+      name: activeStage.name,
+      templateSpec: (activeStage.template_spec ?? {}) as TemplateSpec,
     },
     categories: (categories ?? []).map((c) => ({
       ...c,
@@ -921,21 +955,25 @@ export async function loadMySubmissions() {
   // Sahada çıkan hata buydu: yönetici yeni yarışma eklediğinde yarışmacı
   // onu göremiyordu, çünkü yarışma kullanıcının İLK TAKIMINDAN türüyordu.
   // RLS engel değil — competitions_select_all herkese `using (true)` veriyor.
-  const [{ data: reports }, { data: allCategories }, { data: allCompetitions }] = await Promise.all([
-    db
-      .from('reports')
-      .select('id, title, category_id, status, created_at, team_id')
-      .in(
-        'team_id',
-        teams.map((t) => t.id),
-      )
-      .order('created_at', { ascending: false }),
-    db.from('categories').select('id, name, competition_id').order('name'),
-    db
-      .from('competitions')
-      .select('id, name, submission_deadline')
-      .order('created_at', { ascending: true }),
-  ]);
+  const [{ data: reports }, { data: allCategories }, { data: allCompetitions }, { data: allStages }] =
+    await Promise.all([
+      db
+        .from('reports')
+        .select('id, title, category_id, status, created_at, team_id')
+        .in(
+          'team_id',
+          teams.map((t) => t.id),
+        )
+        .order('created_at', { ascending: false }),
+      db.from('categories').select('id, name, competition_id').order('name'),
+      db
+        .from('competitions')
+        .select('id, name, submission_deadline')
+        .order('created_at', { ascending: true }),
+      // Aşama seçici için (0010) — tek aşamalı yarışmalarda formda hiç
+      // gösterilmiyor (bkz. upload-form.tsx), ama veri her zaman geliyor.
+      db.from('report_stages').select('id, name, sort_order, competition_id').order('sort_order'),
+    ]);
 
   const competitions = (allCompetitions ?? []).map((c) => ({
     id: c.id,
@@ -944,6 +982,9 @@ export async function loadMySubmissions() {
     categories: (allCategories ?? [])
       .filter((k) => k.competition_id === c.id)
       .map((k) => ({ id: k.id, name: k.name })),
+    stages: (allStages ?? [])
+      .filter((s) => s.competition_id === c.id)
+      .map((s) => ({ id: s.id, name: s.name })),
   }));
 
   // Varsayılan seçim: kullanıcının takımının olduğu yarışma; yoksa ilki.

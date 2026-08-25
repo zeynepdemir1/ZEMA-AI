@@ -32,9 +32,12 @@ const EMPTY = { code: '', title: '', description: '', maxScore: 10, weightPct: 2
  */
 export function CriteriaCard({
   competitionId,
+  stageId,
   criteria,
 }: {
   competitionId: string;
+  /** Kriterler aşamaya bağlı (0010) — her teslimin kendi rubriği var. */
+  stageId: string;
   criteria: CriterionRow[];
 }) {
   const router = useRouter();
@@ -141,6 +144,7 @@ export function CriteriaCard({
             run(() =>
               saveCriterion({
                 competitionId,
+                stageId,
                 criterionId: editing ?? undefined,
                 ...form,
               }),

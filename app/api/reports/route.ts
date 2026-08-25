@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { extractPdfText, pdfErrorMessage } from '@/lib/reports/pdf';
+import { resolveStage } from '@/lib/reports/stage-resolve';
 import {
   alreadyEnteredMessage,
   findExistingEntry,
@@ -60,6 +61,7 @@ export async function POST(req: Request) {
     title?: unknown;
     category_id?: unknown;
     competition_id?: unknown;
+    stage_id?: unknown;
   };
   let jsonBody: JsonBody | null = null;
   let formBody: FormData | null = null;
@@ -82,6 +84,8 @@ export async function POST(req: Request) {
   }
   const competitionId =
     String(jsonBody?.competition_id ?? formBody?.get('competition_id') ?? '').trim() || undefined;
+  const stageIdInput =
+    String(jsonBody?.stage_id ?? formBody?.get('stage_id') ?? '').trim() || undefined;
 
   // Yetki: kimliği doğrulanmamış biri buraya kadar gelmemeli.
   const resolved = await resolveUploaderTeam(competitionId);
@@ -90,13 +94,24 @@ export async function POST(req: Request) {
   }
   const team = resolved.team;
 
-  // KATILIM KURALI: bir takım, bir yarışmaya kategoriden bağımsız olarak
-  // en fazla bir kez. Dosya işlenmeden ÖNCE kontrol ediliyor — kullanıcı
-  // 20 MB yükledikten sonra reddedilmesin.
-  const already = await findExistingEntry(team.teamId, team.competitionId);
+  // RAPOR HANGİ AŞAMAYA GİDİYOR (0010). stage_id verilmezse yarışmanın ilk
+  // aşaması kullanılır — tek aşamalı yarışmalarda yarışmacı seçim hiç
+  // görmüyor, istemci hiç göndermiyor.
+  const stage = await resolveStage(db, team.competitionId, stageIdInput);
+  if (!stage) {
+    return NextResponse.json(
+      { error: 'Bu yarışmada rapor aşaması bulunamadı.' },
+      { status: 404 },
+    );
+  }
+
+  // KATILIM KURALI: bir takım, bir AŞAMAYA kategoriden bağımsız olarak
+  // en fazla bir kez (bkz. lib/reports/upload.ts). Dosya işlenmeden ÖNCE
+  // kontrol ediliyor — kullanıcı 20 MB yükledikten sonra reddedilmesin.
+  const already = await findExistingEntry(team.teamId, stage.id);
   if (already) {
     return NextResponse.json(
-      { error: alreadyEnteredMessage(already.title), report_id: already.id },
+      { error: alreadyEnteredMessage(already.title, stage.name), report_id: already.id },
       { status: 409 },
     );
   }
@@ -223,6 +238,7 @@ export async function POST(req: Request) {
     .from('reports')
     .insert({
       competition_id: team.competitionId,
+      stage_id: stage.id,
       category_id: categoryId || null,
       team_id: team.teamId,
       title,

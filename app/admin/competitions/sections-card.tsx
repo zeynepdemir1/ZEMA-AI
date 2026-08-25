@@ -23,12 +23,13 @@ type Format = {
  * gösteriliyor; onlar bu turda düzenlenebilir değil.
  */
 export function SectionsCard({
-  competitionId,
+  stageId,
   initialSections,
   format,
   citationFormat,
 }: {
-  competitionId: string;
+  /** Aşamaya bağlı (0010) — her teslimin kendi zorunlu bölümleri var. */
+  stageId: string;
   initialSections: string[];
   format: Format;
   citationFormat: string;
@@ -58,7 +59,7 @@ export function SectionsCard({
     setError(null);
     setMsg(null);
     startTransition(async () => {
-      const r = await updateRequiredSections(competitionId, sections);
+      const r = await updateRequiredSections(stageId, sections);
       if (r.ok) setMsg('Kaydedildi.');
       else setError(r.error ?? 'Kaydedilemedi.');
     });

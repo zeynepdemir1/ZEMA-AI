@@ -43,6 +43,12 @@ export type CompetitionContextInput = {
     language: string;
     template_spec: unknown;
   };
+  /**
+   * Değerlendirilen TESLİM AŞAMASI ("Ön Tasarım Raporu", "Kritik Tasarım
+   * Raporu"…). Modelin hangi aşamayı değerlendirdiğini bilmesi gerekiyor:
+   * bir ÖTR'den beklenen olgunluk bir KTR'den beklenenden farklı.
+   */
+  stageName?: string;
   categories: Array<{ id: string; name: string; description: string }>;
   criteria: Array<{
     id: string;
@@ -112,6 +118,7 @@ export function buildCompetitionContext(input: CompetitionContextInput): string 
     YAZIM_KURALI,
     '',
     `YARIŞMA: ${competition.name} (${competition.year}), rapor dili: ${competition.language}`,
+    ...(input.stageName ? [`TESLİM AŞAMASI: ${input.stageName}`] : []),
     '',
     'ŞABLON KURALLARI:',
     JSON.stringify(templateRulesForPrompt(competition.template_spec), null, 2),

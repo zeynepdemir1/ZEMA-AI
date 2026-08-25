@@ -55,9 +55,12 @@ async function readJson(res: Response): Promise<Record<string, unknown>> {
  */
 export function RulebookCard({
   competitionId,
+  stageId,
   competitionName,
 }: {
   competitionId: string;
+  /** Rubrik SEÇİLİ AŞAMAYA yazılıyor (0010) — competitions.template_spec değil. */
+  stageId: string;
   competitionName: string;
 }) {
   const router = useRouter();
@@ -99,7 +102,7 @@ export function RulebookCard({
     const res = await fetch(`/api/competitions/${competitionId}/rulebook`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ file_path: sb.path }),
+      body: JSON.stringify({ file_path: sb.path, stage_id: stageId }),
     });
     const body = await readJson(res);
     if (!res.ok) {

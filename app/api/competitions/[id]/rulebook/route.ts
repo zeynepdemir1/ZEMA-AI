@@ -3,6 +3,7 @@ import { extractRulebookSpec, RULEBOOK_PROMPT_VERSION } from '@/lib/ai/extract-r
 import { replaceCriteria } from '@/lib/reports/criteria-writer';
 import { extractPdfText, pdfErrorMessage } from '@/lib/reports/pdf';
 import { withSource } from '@/lib/reports/spec-sources';
+import { resolveStage } from '@/lib/reports/stage-resolve';
 import {
   TEMPLATE_MAX_BYTES,
   TEMPLATE_MIN_TEXT_CHARS,
@@ -15,7 +16,8 @@ import { authorize } from '@/lib/supabase/server';
 /**
  * POST /api/competitions/[id]/rulebook — şartnameden RUBRİK çıkarır.
  *
- * Gövde: { file_path } — dosya imzalı URL ile zaten Storage'a yüklenmiş.
+ * Gövde: { file_path, stage_id? } — dosya imzalı URL ile zaten Storage'a
+ * yüklenmiş. `stage_id` verilmezse yarışmanın ilk aşaması kullanılır.
  *
  * NEDEN AYRI BİR AKIŞ: puanlama rubriği çoğu TEKNOFEST yarışmasında rapor
  * ŞABLONUNDA değil ŞARTNAMEDE. Sahada ölçüldü — gerçek bir ÖTR şablonundan
@@ -37,13 +39,26 @@ export async function POST(req: Request, ctx: RouteContext<'/api/competitions/[i
   const auth = await authorize(['competition_admin']);
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: 403 });
 
-  const body = (await req.json().catch(() => null)) as { file_path?: unknown } | null;
+  const body = (await req.json().catch(() => null)) as {
+    file_path?: unknown;
+    stage_id?: unknown;
+  } | null;
   const filePath = String(body?.file_path ?? '').trim();
   if (!rulebookPathBelongsTo(filePath, id)) {
     return NextResponse.json({ error: 'Geçersiz dosya yolu.' }, { status: 403 });
   }
 
   const db = supabaseAdmin();
+
+  // ŞARTNAME DE AŞAMAYA YAZILIYOR (0010) — template/route.ts ile aynı gerekçe.
+  const stage = await resolveStage(db, id, body?.stage_id);
+  if (!stage) {
+    return NextResponse.json(
+      { error: 'Bu yarışmada rapor aşaması bulunamadı.' },
+      { status: 404 },
+    );
+  }
+
   const cleanup = () => db.storage.from('reports').remove([filePath]);
 
   const { data: blob, error: de } = await db.storage.from('reports').download(filePath);
@@ -109,16 +124,11 @@ export async function POST(req: Request, ctx: RouteContext<'/api/competitions/[i
   // "boş" diye üzerine yazmak, elle girilmiş kriterleri silmek olurdu.
   let criteriaResult: { replaced: number; note?: string } = { replaced: 0 };
   if (spec.criteria.length > 0) {
-    criteriaResult = await replaceCriteria(db, id, spec.criteria);
+    criteriaResult = await replaceCriteria(db, id, spec.criteria, stage.id);
   }
 
-  // ── template_spec'i birleştir ──
-  const { data: existing } = await db
-    .from('competitions')
-    .select('template_spec')
-    .eq('id', id)
-    .maybeSingle();
-  const current = ((existing?.template_spec ?? {}) as Record<string, unknown>) ?? {};
+  // ── template_spec'i birleştir — AŞAMANIN spec'i (0010) ──
+  const current = { ...stage.template_spec } as Record<string, unknown>;
   const previous = { ...current };
   delete previous.previous; // tek kademe geçmiş yeter
 
@@ -155,9 +165,9 @@ export async function POST(req: Request, ctx: RouteContext<'/api/competitions/[i
   );
 
   const { error: ue } = await db
-    .from('competitions')
+    .from('report_stages')
     .update({ template_spec: merged })
-    .eq('id', id);
+    .eq('id', stage.id);
   if (ue) {
     return NextResponse.json({ error: `Şartname kaydedilemedi: ${ue.message}` }, { status: 500 });
   }
@@ -165,13 +175,13 @@ export async function POST(req: Request, ctx: RouteContext<'/api/competitions/[i
   const { count: criteriaCount } = await db
     .from('criteria')
     .select('id', { count: 'exact', head: true })
-    .eq('competition_id', id);
+    .eq('stage_id', stage.id);
 
   await db.from('audit_log').insert({
     actor: auth.user.id,
-    action: 'competition.rulebook_extracted',
-    entity: 'competitions',
-    entity_id: id,
+    action: 'stage.rulebook_extracted',
+    entity: 'report_stages',
+    entity_id: stage.id,
     meta: {
       file_path: filePath,
       model: extraction.model,

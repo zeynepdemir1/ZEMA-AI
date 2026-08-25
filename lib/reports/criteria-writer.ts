@@ -21,11 +21,17 @@ export async function replaceCriteria(
   db: ReturnType<typeof supabaseAdmin>,
   competitionId: string,
   extracted: ExtractedCriterion[],
+  /**
+   * Rubrik AŞAMAYA bağlı (0010): her teslimin kendi kriterleri var.
+   * Yalnızca bu aşamanın satırları eşleştiriliyor — başka aşamanın
+   * rubriğini ezmemek için.
+   */
+  stageId: string,
 ): Promise<{ replaced: number; note?: string }> {
   const { data: existing } = await db
     .from('criteria')
     .select('id, sort_order')
-    .eq('competition_id', competitionId)
+    .eq('stage_id', stageId)
     .order('sort_order', { ascending: true });
   const rows = existing ?? [];
 
@@ -33,6 +39,7 @@ export async function replaceCriteria(
     const c = extracted[i];
     const payload = {
       competition_id: competitionId,
+      stage_id: stageId,
       category_id: null,
       name: `${c.code} · ${c.name}`,
       description: c.description,

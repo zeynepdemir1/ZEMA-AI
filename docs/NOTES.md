@@ -1,5 +1,64 @@
 # ZEMA — Yapılacaklar / Bilinen Eksikler
 
+## 🧬 Çok aşamalı rapor desteği tamamlandı (26 Ağustos)
+
+**İstek:** TEKNOFEST'te bir yarışma tek rapor yerine sıralı birkaç rapor
+isteyebiliyor — Ön Tasarım Raporu → Kritik Tasarım Raporu → Final. Her
+aşamanın kendi şablonu, şartnamesi, rubriği ve teslim tarihi var.
+
+**Veri modeli** (`0010_report_stages.sql`, uygulandı ve canlı doğrulandı):
+`report_stages` tablosu; `template_spec`, `criteria`, `reports` artık
+`competition_id` değil `stage_id`'ye bağlı (bileşik FK ile aşama↔yarışma
+tutarlılığı DB düzeyinde garanti). Katılım kısıtı `unique(team_id,
+competition_id)`'den `unique(team_id, stage_id)`'e indi — bir takım ÖTR
+verip sonra KTR verebiliyor, bu ikinci bir katılım sayılmıyor.
+
+**Bir önceki oturum bu migration'ı kurup DB'de çalıştırmıştı ama yazma
+tarafını yarım bırakmıştı** — devralındığında şu gerçekten kırıktı:
+
+- `template`/`rulebook` route'ları hâlâ `competitions.template_spec`'e
+  yazıyordu; `run-check.ts` ise yalnızca `report_stages.template_spec`'i
+  okuyor hale getirilmişti. Yani yeni şablon yüklemek hiçbir etki
+  yapmıyordu, `tsc` de derleme hatası veriyordu (`replaceCriteria`
+  4 parametre istiyor, 3 veriliyordu).
+- `saveCriterion` (elle kriter girişi) `stage_id` yazmıyordu — `criteria.
+  stage_id` NOT NULL olduğu için bu action'ın kendisi artık başarısız
+  olurdu.
+- `findExistingEntry` (katılım kuralı) hâlâ `competition_id`'ye bakıyordu
+  — DB kısıtı aşamaya indiği için bu, ikinci aşamaya (KTR) yüklemeyi
+  YARIŞMA düzeyinde yanlışlıkla engelliyordu.
+- `reports` insert'i (`/api/reports`) `stage_id` göndermiyordu — NOT NULL
+  ihlali, yani yarışmacı tarafı rapor yükleyemezdi.
+
+**Yapılanlar:** iki route aşamaya yazacak şekilde düzeltildi (künye
+`withSource` ile korunuyor); `saveCriterion`, `updateRequiredSections`,
+`revertTemplateSpec` aşama bazlı hale getirildi; `loadSetup`/`loadReview`
+kriterleri `stage_id` ile filtreliyor (yoksa çok aşamalı bir yarışmada
+rubrikler karışırdı); `createCompetition` artık varsayılan bir aşama
+açıyor (yoksa yeni yarışmanın hiç aşaması olmazdı).
+
+**UI:** "Şablon ve Kriterler" sayfasının üstüne `StageSwitcher` eklendi
+(`?stage=` query param, `?comp=` ile aynı desen) — aşama seç/ekle, her
+aşama kendi şablon/şartname/kriter kutularını gösteriyor. Yarışmacı
+yükleme formuna aşama seçici eklendi ama **yalnızca >1 aşama varsa**
+gösteriliyor — tek aşamalı yarışmalarda (varsayılan, geriye dönük
+uyumluluk) yarışmacı hiçbir yeni adım görmüyor, sunucu ilk aşamaya
+otomatik düşüyor (`lib/reports/stage-resolve.ts`).
+
+**Doğrulama:** `tsc`/`lint`/`build` temiz. DB'de gerçek yazma/silme ile
+uçtan uca test edildi (geçici yarışma + 2 aşama + aynı takımın iki farklı
+aşamaya rapor göndermesi başarılı, aynı aşamaya ikinci rapor DB kısıtıyla
+reddedildi) — hiçbir gerçek Gemini çağrısı yapılmadı. Tarayıcıdan görsel
+doğrulama bu oturumda YAPILAMADI (Claude in Chrome bağlı değildi) —
+`localhost:3111`'de elle kontrol gerekiyor.
+
+**Bilinen sınır:** aşama bazlı teslim tarihi (`report_stages.
+submission_deadline`) için henüz düzenleme ekranı yok; "Yarışma
+Bilgileri" sekmesi hâlâ `competitions.submission_deadline`'ı düzenliyor.
+Tek aşamalı yarışmalarda fark etmiyor (migration ikisini eşitledi);
+ikinci bir aşama açıldığında o aşamanın teslim tarihi Supabase
+Studio'dan elle girilmeli.
+
 ## 📜 Şartname yükleme — rubrik boşluğu kapandı (25 Ağustos)
 
 **Sorun:** yalnızca rapor ŞABLONU yüklenebiliyordu ve kriterler hep boş

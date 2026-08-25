@@ -10,6 +10,7 @@ function badId(...ids: Array<string | undefined | null>): string | null {
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { authorize } from '@/lib/supabase/server';
+import { createStage as insertStage } from '@/lib/reports/stages';
 
 /**
  * YENİ yarışma oluşturur — mevcut tek satırı GÜNCELLEMEZ.
@@ -52,6 +53,12 @@ export async function createCompetition(input: {
     .single();
   if (error) return { ok: false, error: error.message };
 
+  // Her yarışmanın EN AZ BİR aşaması olmalı (0010_report_stages.sql) — aksi
+  // halde şablon/kriter sayfası "aşama bulunamadı" ile boş kalır. Mevcut
+  // yarışmalar migration'da backfill edildi; yeni açılanlar için burada.
+  const stage = await insertStage(db, data.id, 'Ön Tasarım Raporu');
+  if (!stage.ok) return { ok: false, error: `Yarışma oluşturuldu ama aşama açılamadı: ${stage.error}` };
+
   await db.from('audit_log').insert({
     actor: auth.user.id,
     action: 'competition.created',
@@ -64,19 +71,56 @@ export async function createCompetition(input: {
 }
 
 /**
+ * Yeni bir rapor aşaması açar — TEKNOFEST'te yaygın örüntü: Ön Tasarım
+ * Raporu → Kritik Tasarım Raporu → Final Değerlendirme Raporu. Her aşamanın
+ * kendi şablonu, şartnamesi, rubriği ve teslim tarihi olur (bkz.
+ * lib/reports/stages.ts, 0010_report_stages.sql).
+ */
+export async function createStage(
+  competitionId: string,
+  name: string,
+): Promise<{ ok: boolean; error?: string; id?: string }> {
+  const invalid = badId(competitionId);
+  if (invalid) return { ok: false, error: invalid };
+  const auth = await authorize(['competition_admin']);
+  if ('error' in auth) return { ok: false, error: auth.error };
+
+  const trimmed = name.trim();
+  if (!trimmed) return { ok: false, error: 'Aşama adı zorunlu.' };
+  if (trimmed.length > 80) return { ok: false, error: 'Aşama adı çok uzun (maks. 80 karakter).' };
+
+  const db = supabaseAdmin();
+  const { data: comp } = await db.from('competitions').select('id').eq('id', competitionId).maybeSingle();
+  if (!comp) return { ok: false, error: 'Yarışma bulunamadı.' };
+
+  const result = await insertStage(db, competitionId, trimmed);
+  if (!result.ok) return { ok: false, error: result.error };
+
+  await db.from('audit_log').insert({
+    actor: auth.user.id,
+    action: 'stage.created',
+    entity: 'report_stages',
+    entity_id: result.id,
+    meta: { name: trimmed, competition_id: competitionId },
+  });
+  revalidatePath('/admin/competitions/template');
+  return { ok: true, id: result.id };
+}
+
+/**
  * Zorunlu bölüm başlıklarını elle düzenler.
  *
  * AI çıkarımı yanlış/eksik olabilir (bkz. template-card.tsx'in "AI ÇIKTISI"
  * uyarısı) — Yarışma Yöneticisi burayı doğrudan düzeltebilsin diye var.
- * template_spec BİR JSONB blob; yalnızca required_sections alanını
- * değiştirip diğer alanlara (format, criteria, source, previous…)
+ * template_spec artık AŞAMAYA bağlı (0010) — yalnızca required_sections
+ * alanını değiştirip diğer alanlara (format, criteria, source, previous…)
  * DOKUNMADAN geri yazıyoruz.
  */
 export async function updateRequiredSections(
-  competitionId: string,
+  stageId: string,
   sections: string[],
 ): Promise<{ ok: boolean; error?: string }> {
-  const invalid = badId(competitionId);
+  const invalid = badId(stageId);
   if (invalid) return { ok: false, error: invalid };
   const auth = await authorize(['competition_admin']);
   if ('error' in auth) return { ok: false, error: auth.error };
@@ -84,25 +128,25 @@ export async function updateRequiredSections(
   const cleaned = sections.map((s) => s.trim()).filter(Boolean);
 
   const db = supabaseAdmin();
-  const { data: comp, error: se } = await db
-    .from('competitions')
+  const { data: stage, error: se } = await db
+    .from('report_stages')
     .select('template_spec')
-    .eq('id', competitionId)
+    .eq('id', stageId)
     .maybeSingle();
-  if (se || !comp) return { ok: false, error: se?.message ?? 'Yarışma bulunamadı.' };
+  if (se || !stage) return { ok: false, error: se?.message ?? 'Aşama bulunamadı.' };
 
-  const spec = (comp.template_spec ?? {}) as Record<string, unknown>;
+  const spec = (stage.template_spec ?? {}) as Record<string, unknown>;
   const { error } = await db
-    .from('competitions')
+    .from('report_stages')
     .update({ template_spec: { ...spec, required_sections: cleaned } })
-    .eq('id', competitionId);
+    .eq('id', stageId);
   if (error) return { ok: false, error: error.message };
 
   await db.from('audit_log').insert({
     actor: auth.user.id,
-    action: 'competition.sections_edited',
-    entity: 'competitions',
-    entity_id: competitionId,
+    action: 'stage.sections_edited',
+    entity: 'report_stages',
+    entity_id: stageId,
     meta: { count: cleaned.length },
   });
   revalidatePath('/admin/competitions/template');
@@ -309,39 +353,40 @@ export async function saveSimilarityThreshold(
  *
  * AI çıkarımı yanlış olabilir ve yarışma kuralları tek bir model çağrısına
  * emanet edilemez. Çıkarım sırasında eski spec `template_spec.previous`
- * altına yazılıyor; bu action onu geri yükler.
+ * altına yazılıyor; bu action onu geri yükler. Spec artık AŞAMAYA bağlı
+ * (0010) — bu yüzden stageId alıyor, competitionId değil.
  */
 export async function revertTemplateSpec(
-  competitionId: string,
+  stageId: string,
 ): Promise<{ ok: boolean; error?: string }> {
-  const invalid = badId(competitionId);
+  const invalid = badId(stageId);
   if (invalid) return { ok: false, error: invalid };
   const auth = await authorize(['competition_admin']);
   if ('error' in auth) return { ok: false, error: auth.error };
 
   const db = supabaseAdmin();
   const { data, error } = await db
-    .from('competitions')
+    .from('report_stages')
     .select('template_spec')
-    .eq('id', competitionId)
+    .eq('id', stageId)
     .maybeSingle();
-  if (error || !data) return { ok: false, error: 'Yarışma bulunamadı.' };
+  if (error || !data) return { ok: false, error: 'Aşama bulunamadı.' };
 
   const spec = data.template_spec as Record<string, unknown> | null;
   const previous = spec?.previous as Record<string, unknown> | null | undefined;
   if (!previous) return { ok: false, error: 'Geri dönülecek önceki şablon yok.' };
 
   const { error: ue } = await db
-    .from('competitions')
+    .from('report_stages')
     .update({ template_spec: previous })
-    .eq('id', competitionId);
+    .eq('id', stageId);
   if (ue) return { ok: false, error: ue.message };
 
   await db.from('audit_log').insert({
     actor: auth.user.id,
-    action: 'competition.template_reverted',
-    entity: 'competitions',
-    entity_id: competitionId,
+    action: 'stage.template_reverted',
+    entity: 'report_stages',
+    entity_id: stageId,
   });
   revalidatePath('/admin/competitions/template');
   return { ok: true };
@@ -363,6 +408,8 @@ export async function revertTemplateSpec(
  */
 export async function saveCriterion(input: {
   competitionId: string;
+  /** Kriterler AŞAMAYA bağlı (0010) — her teslimin kendi rubriği var. */
+  stageId: string;
   criterionId?: string;
   code: string;
   title: string;
@@ -370,7 +417,7 @@ export async function saveCriterion(input: {
   maxScore: number;
   weightPct: number;
 }): Promise<{ ok: boolean; error?: string }> {
-  const invalid = badId(input.competitionId);
+  const invalid = badId(input.competitionId, input.stageId);
   if (invalid) return { ok: false, error: invalid };
   if (input.criterionId) {
     const bad = badId(input.criterionId);
@@ -399,6 +446,7 @@ export async function saveCriterion(input: {
   const name = code ? `${code} · ${title}` : title;
   const payload = {
     competition_id: input.competitionId,
+    stage_id: input.stageId,
     category_id: null,
     name,
     description,
@@ -413,7 +461,7 @@ export async function saveCriterion(input: {
     const { count } = await db
       .from('criteria')
       .select('id', { count: 'exact', head: true })
-      .eq('competition_id', input.competitionId);
+      .eq('stage_id', input.stageId);
     const { error } = await db
       .from('criteria')
       .insert({ ...payload, sort_order: (count ?? 0) + 1 });

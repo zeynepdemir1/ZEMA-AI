@@ -99,36 +99,39 @@ export function pathBelongsToTeam(path: string, teamId: string): boolean {
 }
 
 /**
- * KATILIM KURALI (katman 1) — bir takım, bir yarışmaya en fazla bir kez.
+ * KATILIM KURALI (katman 1) — bir takım, bir AŞAMAYA en fazla bir kez.
  *
- * Kategoriden BAĞIMSIZ: aynı takım aynı yarışmanın farklı kategorilerine
- * ayrı ayrı başvuramaz. Bu yüzden sorgu yalnızca (team_id, competition_id)
+ * 0010_report_stages.sql kısıtı yarışma düzeyinden aşama düzeyine indi:
+ * `unique (team_id, stage_id)`. Sebep: ÖTR verip sonra KTR vermek aynı
+ * takımın NORMAL akışı, ikinci bir katılım değil — eski
+ * `unique (team_id, competition_id)` kısıtı çok aşamalı bir yarışmada
+ * KTR'yi tamamen engellerdi.
+ *
+ * Kategoriden BAĞIMSIZ: aynı takım aynı aşamanın farklı kategorilerine
+ * ayrı ayrı başvuramaz. Bu yüzden sorgu yalnızca (team_id, stage_id)
  * bakıyor, category_id'ye bakmıyor.
  *
- * DB kısıtı `0009_one_entry_per_team.sql` ile geliyor ama mevcut veride
- * çakışma olduğu için henüz uygulanamadı (denetim: GARO takımı 2026'da
- * 5 rapor). Bu kontrol o boşluğu şimdiden kapatıyor — kısıt eklenene
- * kadar YENİ ihlal oluşmuyor. Kısıt eklendiğinde bu kontrol yine gerekli:
- * kullanıcıya anlaşılır bir mesaj veriyor, ham duplicate-key hatası değil.
+ * Tek aşamalı yarışmalarda davranış birebir eskisi gibi (tek aşama →
+ * aşama kısıtı yarışma kısıtına denk).
  */
 export async function findExistingEntry(
   teamId: string,
-  competitionId: string,
+  stageId: string,
 ): Promise<{ id: string; title: string } | null> {
   const { data } = await supabaseAdmin()
     .from('reports')
     .select('id, title')
     .eq('team_id', teamId)
-    .eq('competition_id', competitionId)
+    .eq('stage_id', stageId)
     .limit(1)
     .maybeSingle();
   return data ?? null;
 }
 
-export function alreadyEnteredMessage(title: string): string {
+export function alreadyEnteredMessage(title: string, stageName: string): string {
   return (
-    `Bu yarışmaya takımınız adına zaten bir rapor gönderildi ("${title}"). ` +
-    'Bir takım, bir yarışmaya kategoriden bağımsız olarak yalnızca bir kez ' +
+    `"${stageName}" aşaması için takımınız adına zaten bir rapor gönderildi ("${title}"). ` +
+    'Bir takım, bir aşamaya kategoriden bağımsız olarak yalnızca bir kez ' +
     'katılabilir. Mevcut raporunuzu güncellemek istiyorsanız yarışma ' +
     'yöneticisiyle iletişime geçin.'
   );

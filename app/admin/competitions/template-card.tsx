@@ -34,9 +34,12 @@ async function readJson(res: Response): Promise<Record<string, unknown>> {
 
 export function TemplateCard({
   competitionId,
+  stageId,
   hasPrevious,
 }: {
   competitionId: string;
+  /** Şablon SEÇİLİ AŞAMAYA yazılıyor (0010) — competitions.template_spec değil. */
+  stageId: string;
   hasPrevious: boolean;
 }) {
   const router = useRouter();
@@ -80,7 +83,7 @@ export function TemplateCard({
     const res = await fetch(`/api/competitions/${competitionId}/template`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ file_path: sb.path }),
+      body: JSON.stringify({ file_path: sb.path, stage_id: stageId }),
     });
     const body = await readJson(res);
     if (!res.ok) {
@@ -94,7 +97,7 @@ export function TemplateCard({
 
   function onRevert() {
     startTransition(async () => {
-      const r = await revertTemplateSpec(competitionId);
+      const r = await revertTemplateSpec(stageId);
       if (!r.ok) setError(r.error ?? 'Geri alınamadı.');
       else {
         setResult(null);

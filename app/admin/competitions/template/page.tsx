@@ -1,6 +1,7 @@
 import { loadAllCompetitions, loadSetup } from '@/lib/reports/queries';
 import { AdminTabs } from '../tabs';
 import { CompetitionSwitcher } from '../switcher';
+import { StageSwitcher } from '../stage-switcher';
 import { TemplateCard } from '../template-card';
 import { SectionsCard } from '../sections-card';
 import { ThresholdCard } from '../threshold-card';
@@ -16,6 +17,13 @@ const SECTION = 'font-mono text-[11px] tracking-[.1em] text-ink/75';
 
 /**
  * Sekme 2 — Şablon ve Kriterler.
+ *
+ * ÇOK AŞAMALI RAPOR DESTEĞİ (0010_report_stages.sql): şablon, şartname,
+ * kriterler ve teslim tarihi artık YARIŞMAYA değil o yarışmanın bir
+ * AŞAMASINA bağlı (Ön Tasarım Raporu, Kritik Tasarım Raporu, …). Üstteki
+ * StageSwitcher hangi aşamanın düzenlendiğini seçtiriyor; seçim `?stage=`
+ * query param'ıyla korunuyor (CompetitionSwitcher'ın `?comp=` deseninin
+ * aynısı). Tek aşamalı yarışmalarda (varsayılan) tek seçenek görünür.
  *
  * İki dikey sütun (sayfa dar tek sütunda boşa alan harcıyordu):
  *   SOL  — 1. Şablon yükleme  2. Zorunlu bölüm başlıkları (düzenlenebilir)
@@ -34,7 +42,11 @@ export default async function TemplateSetupPage({
   await requireRole(['competition_admin']);
   const sp = await searchParams;
   const compParam = typeof sp.comp === 'string' ? sp.comp : undefined;
-  const [data, allCompetitions] = await Promise.all([loadSetup(compParam), loadAllCompetitions()]);
+  const stageParam = typeof sp.stage === 'string' ? sp.stage : undefined;
+  const [data, allCompetitions] = await Promise.all([
+    loadSetup(compParam, stageParam),
+    loadAllCompetitions(),
+  ]);
 
   if (!data) {
     return (
@@ -50,8 +62,8 @@ export default async function TemplateSetupPage({
     );
   }
 
-  const { competition, criteria, overThresholdPct } = data;
-  const spec = competition.template_spec;
+  const { competition, stages, activeStageId, stage, criteria, overThresholdPct } = data;
+  const spec = stage.templateSpec;
   const sources = spec.sources ?? {};
   // `source` eski (yalnızca şablon) alan; sources yoksa ondan türet.
   const sablon = sources.sablon ?? spec.source;
@@ -71,36 +83,40 @@ export default async function TemplateSetupPage({
           prompt&apos;a giriyor.
         </p>
 
+        <StageSwitcher competitionId={competition.id} stages={stages} activeId={activeStageId} />
+
         <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[1.2fr_.9fr]">
         <div className="flex flex-col gap-5">
-          {/* 1. Şablon yükleme */}
+          {/* 1. Şablon yükleme — SEÇİLİ AŞAMAYA yazılıyor (0010). */}
           <TemplateCard
             competitionId={competition.id}
+            stageId={stage.id}
             hasPrevious={Boolean(spec.previous)}
           />
 
           {/* ŞARTNAME — şablonun hemen altında. Rubrik çoğu yarışmada
               şablonda değil şartnamede; ölçüldü, iki gerçek şablondan da
               çıkarılan kriter sayısı 0 çıktı. */}
-          <RulebookCard competitionId={competition.id} competitionName={competition.name} />
+          <RulebookCard competitionId={competition.id} stageId={stage.id} competitionName={competition.name} />
 
           {/* 2. Zorunlu bölüm başlıkları — düzenlenebilir.
-              key: yeni bir şablon çözümlendiğinde (ya da geri alındığında)
-              bileşeni YENİDEN MOUNT ET — yoksa useState ilk yüklemedeki
-              bölümlerde takılı kalır, TemplateCard'ın router.refresh()'i
-              yeni sunucu verisini prop olarak getirir ama iç state'i
-              güncellemez. */}
+              key: yeni bir şablon çözümlendiğinde (ya da geri alındığında,
+              ya da AŞAMA değiştirildiğinde) bileşeni YENİDEN MOUNT ET —
+              yoksa useState ilk yüklemedeki bölümlerde takılı kalır,
+              TemplateCard'ın router.refresh()'i yeni sunucu verisini prop
+              olarak getirir ama iç state'i güncellemez. */}
           <SectionsCard
-            key={spec.source?.extracted_at ?? 'none'}
-            competitionId={competition.id}
+            key={`${stage.id}:${spec.source?.extracted_at ?? 'none'}`}
+            stageId={stage.id}
             initialSections={spec.required_sections ?? []}
             format={spec.format ?? {}}
             citationFormat={spec.citation_format ?? ''}
           />
 
           {/* Kriterler burada: şablon çıkarımı rubriği bulamayınca yarışma
-              0 kriterle kalıyordu ve elle girecek hiçbir ekran yoktu. */}
-          <CriteriaCard competitionId={competition.id} criteria={criteria} />
+              0 kriterle kalıyordu ve elle girecek hiçbir ekran yoktu.
+              SEÇİLİ AŞAMANIN kriterleri (0010). */}
+          <CriteriaCard competitionId={competition.id} stageId={stage.id} criteria={criteria} />
         </div>
 
         {/* SAĞ SÜTUN — şablon PDF'inden çıkarıldı · içerik kuralları · benzerlik eşiği */}

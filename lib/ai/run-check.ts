@@ -60,17 +60,27 @@ export async function runCheck(reportId: string, checkType: CheckType): Promise<
   // ── Rapor + yarışma bağlamı ──
   const { data: report, error: re } = await db
     .from('reports')
-    .select('id, title, extracted_text, file_path, category_id, competition_id')
+    .select('id, title, extracted_text, file_path, category_id, competition_id, stage_id')
     .eq('id', reportId)
     .single();
   if (re || !report) throw new Error(`rapor okunamadı: ${re?.message ?? 'bulunamadı'}`);
   if (!report.extracted_text) throw new Error('raporun extracted_text alanı boş');
 
-  const [{ data: competition }, { data: categories }, { data: criteria }] = await Promise.all([
+  // ŞABLON VE RUBRİK AŞAMADAN GELİYOR (0010). Yarışma düzeyindeki
+  // template_spec artık yalnızca geriye dönük uyumluluk için duruyor;
+  // analiz raporun ait olduğu AŞAMANIN kurallarına göre yapılmalı —
+  // ÖTR ile KTR aynı şablona göre değerlendirilemez.
+  const [{ data: competition }, { data: stage }, { data: categories }, { data: criteria }] =
+    await Promise.all([
     db
       .from('competitions')
-      .select('name, year, language, template_spec')
+      .select('name, year, language')
       .eq('id', report.competition_id)
+      .single(),
+    db
+      .from('report_stages')
+      .select('id, name, template_spec, submission_deadline')
+      .eq('id', report.stage_id)
       .single(),
     db
       .from('categories')
@@ -80,13 +90,16 @@ export async function runCheck(reportId: string, checkType: CheckType): Promise<
     db
       .from('criteria')
       .select('id, name, description, max_score, weight')
-      .eq('competition_id', report.competition_id)
+      // Kriterler de aşamaya bağlı: her teslimin kendi rubriği var.
+      .eq('stage_id', report.stage_id)
       .order('sort_order'),
   ]);
   if (!competition) throw new Error('yarışma bulunamadı');
+  if (!stage) throw new Error('raporun aşaması bulunamadı');
 
   const competitionContext = buildCompetitionContext({
-    competition,
+    competition: { ...competition, template_spec: stage.template_spec },
+    stageName: stage.name,
     categories: categories ?? [],
     criteria: criteria ?? [],
   });
@@ -206,7 +219,7 @@ export async function runCheck(reportId: string, checkType: CheckType): Promise<
   // Ölçüm MOCK_AI'dan BAĞIMSIZ — mock modda bile bu bulgular gerçek.
   let formatFindings: FormatFinding[] = [];
   if (checkType === 'language_template') {
-    const spec = (competition.template_spec ?? {}) as { format?: Record<string, unknown> };
+    const spec = (stage.template_spec ?? {}) as { format?: Record<string, unknown> };
     const fmt = spec.format ?? {};
     const own = pdfs.find((f) => f.label === 'rapor');
     if (own && Object.keys(fmt).length > 0) {

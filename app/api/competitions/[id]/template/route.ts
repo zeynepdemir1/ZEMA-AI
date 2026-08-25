@@ -9,15 +9,19 @@ import {
 } from '@/lib/reports/template';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { replaceCriteria } from '@/lib/reports/criteria-writer';
+import { withSource } from '@/lib/reports/spec-sources';
+import { resolveStage } from '@/lib/reports/stage-resolve';
 import { authorize } from '@/lib/supabase/server';
 
 /**
  * POST /api/competitions/[id]/template — şablon PDF'ini template_spec'e çevirir.
  *
- * Gövde: { file_path } — dosya imzalı URL ile zaten Storage'a yüklenmiş.
+ * Gövde: { file_path, stage_id? } — dosya imzalı URL ile zaten Storage'a
+ * yüklenmiş. `stage_id` verilmezse yarışmanın ilk aşaması kullanılır (tek
+ * aşamalı yarışmalarda istemci hiç göndermek zorunda kalmaz).
  *
  * Akış: PDF → metin → Gemini (yapılandırılmış çıktı) → alıntı doğrulama →
- *       competitions.template_spec.
+ *       report_stages.template_spec (0010_report_stages.sql).
  *
  * Bu, elle template_spec doldurmanın yerini alıyor. Kaydedilen spec'in şekli
  * scripts/seed.ts'teki elle yazılmış TEMPLATE_SPEC ile birebir aynı, çünkü
@@ -26,6 +30,10 @@ import { authorize } from '@/lib/supabase/server';
  * ÖNEMLİ: yeni spec kaydedilirken ESKİSİ `template_spec.previous` altında
  * saklanıyor. Model yanlış çıkarım yaparsa yönetici geri dönebilsin diye —
  * yarışma kuralları tek bir model çağrısına emanet edilemez.
+ *
+ * İKİ BELGE: şartname ayrı bir rotadan (bkz. rulebook/route.ts) aynı
+ * aşamanın template_spec'ine yazıyor; `withSource` iki belgenin künyesini
+ * `sources.<tür>` altında ayrı tutuyor, biri diğerini silmiyor.
  */
 export async function POST(req: Request, ctx: RouteContext<'/api/competitions/[id]/template'>) {
   const { id } = await ctx.params;
@@ -35,13 +43,28 @@ export async function POST(req: Request, ctx: RouteContext<'/api/competitions/[i
   const auth = await authorize(['competition_admin']);
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: 403 });
 
-  const body = (await req.json().catch(() => null)) as { file_path?: unknown } | null;
+  const body = (await req.json().catch(() => null)) as {
+    file_path?: unknown;
+    stage_id?: unknown;
+  } | null;
   const filePath = String(body?.file_path ?? '').trim();
   if (!templatePathBelongsTo(filePath, id)) {
     return NextResponse.json({ error: 'Geçersiz dosya yolu.' }, { status: 403 });
   }
 
   const db = supabaseAdmin();
+
+  // ŞABLON ARTIK AŞAMAYA YAZILIYOR (0010). stage_id verilmezse yarışmanın
+  // ilk aşaması kullanılır — tek aşamalı yarışmalarda istemci hiç
+  // göndermek zorunda kalmasın.
+  const stage = await resolveStage(db, id, body?.stage_id);
+  if (!stage) {
+    return NextResponse.json(
+      { error: 'Bu yarışmada rapor aşaması bulunamadı.' },
+      { status: 404 },
+    );
+  }
+
   const cleanup = () => db.storage.from('reports').remove([filePath]);
 
   const { data: blob, error: de } = await db.storage.from('reports').download(filePath);
@@ -97,18 +120,15 @@ export async function POST(req: Request, ctx: RouteContext<'/api/competitions/[i
     );
   }
 
-  // Eski spec'i sakla — yanlış çıkarımdan dönülebilsin.
-  const { data: existing } = await db
-    .from('competitions')
-    .select('template_spec')
-    .eq('id', id)
-    .maybeSingle();
-  const previous = (existing?.template_spec ?? null) as Record<string, unknown> | null;
-  if (previous) delete previous.previous; // tek kademe geçmiş yeter, sonsuz iç içe olmasın
+  // Eski spec'i sakla — yanlış çıkarımdan dönülebilsin. Spec ARTIK AŞAMAYA
+  // bağlı (0010); competitions.template_spec değil report_stages okunuyor.
+  const previous = { ...stage.template_spec } as Record<string, unknown>;
+  delete previous.previous; // tek kademe geçmiş yeter, sonsuz iç içe olmasın
 
-  const spec = {
-    ...extraction.spec,
-    source: {
+  const spec = withSource(
+    { ...stage.template_spec, ...extraction.spec, previous },
+    {
+      kind: 'sablon',
       file_path: filePath,
       page_count: pageCount,
       extracted_chars: text.length,
@@ -118,28 +138,31 @@ export async function POST(req: Request, ctx: RouteContext<'/api/competitions/[i
       /** Alıntıların kaçı şablon metninde birebir bulundu? */
       quotes_verified: extraction.quotes.filter((q) => q.verified).length,
       quotes_total: extraction.quotes.length,
+      fields: Object.keys(extraction.spec),
     },
-    previous,
-  };
+  );
 
-  const { error: ue } = await db.from('competitions').update({ template_spec: spec }).eq('id', id);
+  const { error: ue } = await db
+    .from('report_stages')
+    .update({ template_spec: spec })
+    .eq('id', stage.id);
   if (ue) {
     return NextResponse.json({ error: `Şablon kaydedilemedi: ${ue.message}` }, { status: 500 });
   }
 
   await db.from('audit_log').insert({
     actor: auth.user.id,
-    action: 'competition.template_extracted',
-    entity: 'competitions',
-    entity_id: id,
+    action: 'stage.template_extracted',
+    entity: 'report_stages',
+    entity_id: stage.id,
     meta: {
       file_path: filePath,
       model: extraction.model,
       mocked: extraction.mocked,
       sections: extraction.spec.required_sections.length,
       not_specified: extraction.spec.not_specified,
-      quotes_verified: spec.source.quotes_verified,
-      quotes_total: spec.source.quotes_total,
+      quotes_verified: extraction.quotes.filter((q) => q.verified).length,
+      quotes_total: extraction.quotes.length,
     },
   });
 
@@ -149,12 +172,12 @@ export async function POST(req: Request, ctx: RouteContext<'/api/competitions/[i
   // olmadan bırakır ve criteria_scoring kontrolünü kırar.
   let criteriaResult: { replaced: number; note?: string } = { replaced: 0 };
   if (extraction.spec.criteria.length > 0) {
-    criteriaResult = await replaceCriteria(db, id, extraction.spec.criteria);
+    criteriaResult = await replaceCriteria(db, id, extraction.spec.criteria, stage.id);
     await db.from('audit_log').insert({
       actor: auth.user.id,
-      action: 'competition.criteria_extracted',
-      entity: 'competitions',
-      entity_id: id,
+      action: 'stage.criteria_extracted',
+      entity: 'report_stages',
+      entity_id: stage.id,
       meta: { count: extraction.spec.criteria.length, replaced: criteriaResult.replaced },
     });
   }
@@ -164,7 +187,7 @@ export async function POST(req: Request, ctx: RouteContext<'/api/competitions/[i
   const { count: criteriaCount } = await db
     .from('criteria')
     .select('id', { count: 'exact', head: true })
-    .eq('competition_id', id);
+    .eq('stage_id', stage.id);
 
   return NextResponse.json({
     spec: extraction.spec,

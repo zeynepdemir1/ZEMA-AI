@@ -68,6 +68,8 @@ type Competition = {
   id: string;
   name: string;
   categories: Array<{ id: string; name: string }>;
+  /** Rapor aşamaları (0010) — Ön Tasarım Raporu, Kritik Tasarım Raporu, … */
+  stages: Array<{ id: string; name: string }>;
 };
 
 export function UploadForm({
@@ -90,13 +92,18 @@ export function UploadForm({
     teamCompetitionIds.includes(competitionId) || justCreated.includes(competitionId);
   const active = competitions.find((c) => c.id === competitionId) ?? competitions[0];
   const categories = active?.categories ?? [];
+  const stages = active?.stages ?? [];
   const [categoryId, setCategoryId] = useState(categories[0]?.id ?? '');
+  // Hangi rapor aşamasına yükleniyor (0010: Ön Tasarım Raporu, Kritik
+  // Tasarım Raporu, …). Tek aşamalı yarışmalarda bu seçim hiç gösterilmez.
+  const [stageId, setStageId] = useState(stages[0]?.id ?? '');
 
-  // Yarışma değişince kategori listesi de değişir; eski seçim geçersiz kalır.
+  // Yarışma değişince kategori/aşama listesi de değişir; eski seçim geçersiz kalır.
   function onCompetitionChange(id: string) {
     setCompetitionId(id);
-    const next = competitions.find((c) => c.id === id)?.categories ?? [];
-    setCategoryId(next[0]?.id ?? '');
+    const next = competitions.find((c) => c.id === id);
+    setCategoryId(next?.categories[0]?.id ?? '');
+    setStageId(next?.stages[0]?.id ?? '');
   }
   const [phase, setPhase] = useState<Phase>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -134,7 +141,7 @@ export function UploadForm({
       const su = await fetch('/api/reports/upload-url', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ competition_id: competitionId }),
+        body: JSON.stringify({ competition_id: competitionId, stage_id: stageId }),
       });
       const sb = await readJson(su);
       if (su.ok && typeof sb.path === 'string' && typeof sb.token === 'string') {
@@ -160,6 +167,7 @@ export function UploadForm({
           title: title.trim(),
           category_id: categoryId,
           competition_id: competitionId,
+          stage_id: stageId,
         }),
       });
     } else {
@@ -168,6 +176,7 @@ export function UploadForm({
       form.set('title', title.trim());
       form.set('category_id', categoryId);
       form.set('competition_id', competitionId);
+      form.set('stage_id', stageId);
       res = await fetch('/api/reports', { method: 'POST', body: form });
     }
     const body = await readJson(res);
@@ -243,6 +252,29 @@ export function UploadForm({
           aksi halde kullanıcı doldurup 409 alırdı. */}
       {hasTeam && (
         <>
+        {/* Aşama seçimi YALNIZCA birden fazla aşama varsa gösteriliyor —
+            tek aşamalı yarışmalarda (varsayılan) gereksiz karmaşıklık
+            katmamak için form bu adımı hiç göstermiyor, sunucu tarafında
+            ilk aşamaya otomatik düşülüyor (bkz. lib/reports/stage-resolve.ts). */}
+        {stages.length > 1 && (
+          <>
+            <label className="text-ink/75 mb-2 block font-mono text-[10.5px] tracking-[.12em]" htmlFor="stage">
+              RAPOR AŞAMASI
+            </label>
+            <select
+              id="stage"
+              value={stageId}
+              disabled={busy}
+              onChange={(e) => setStageId(e.target.value)}
+              className="border-ink/[.18] text-ink mb-5 w-full border bg-white px-[14px] py-3 font-sans text-[14.5px] disabled:opacity-60"
+            >
+              {stages.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </>
+        )}
+
         <label className="text-ink/75 mb-2 block font-mono text-[10.5px] tracking-[.12em]" htmlFor="cat">
           KATEGORİ
         </label>
