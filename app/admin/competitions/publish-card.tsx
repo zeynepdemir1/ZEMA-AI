@@ -27,9 +27,13 @@ export function PublishCard({
   const [error, setError] = useState<string | null>(null);
 
   function toggle(next: boolean) {
-    if (next === false && !confirm('Yarışma yayından kaldırılsın mı? Yarışmacılar onu artık göremeyecek.')) {
-      return;
-    }
+    // İki yönde de onay isteniyor — tek bir yanlış tıkla yarışmayı
+    // hazır olmadan yarışmacıya açmak ya da yayında bir yarışmayı
+    // yanlışlıkla kapatmak kolay olmasın.
+    const question = next
+      ? 'Yarışma yayımlansın mı? Yarışmacılar onu yükleme formunda görüp rapor gönderebilecek.'
+      : 'Yarışma yayından kaldırılsın mı? Yarışmacılar onu artık göremeyecek.';
+    if (!confirm(question)) return;
     setError(null);
     startTransition(async () => {
       const r = await setCompetitionPublished(competitionId, next);
