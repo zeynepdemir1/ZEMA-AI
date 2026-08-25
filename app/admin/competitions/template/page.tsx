@@ -7,6 +7,7 @@ import { SectionsCard } from '../sections-card';
 import { ThresholdCard } from '../threshold-card';
 import { CriteriaCard } from '../criteria-card';
 import { RulebookCard } from '../rulebook-card';
+import { PublishCard } from '../publish-card';
 import { notSpecifiedLabel } from '../not-specified-labels';
 
 import { requireRole } from '@/lib/supabase/server';
@@ -208,6 +209,10 @@ export default async function TemplateSetupPage({
           />
         </div>
         </div>
+
+        {/* Sayfanın EN ALTI, bilinçli olarak son adım — yönetici şablon/
+            kriterleri gözden geçirmeden yayımlamasın diye buraya konuldu. */}
+        <PublishCard competitionId={competition.id} isPublished={competition.is_published} />
       </div>
     </div>
   );

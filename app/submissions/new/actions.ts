@@ -87,12 +87,19 @@ export async function createTeam(input: {
 
   const db = supabaseAdmin();
 
+  // service_role RLS'i baypas ediyor — is_published kontrolü BURADA elle
+  // yapılmalı (0011). Aksi halde bir yarışmacı, henüz yayımlanmamış bir
+  // yarışmanın kimliğini bir şekilde ele geçirirse (örn. eski bir link)
+  // o yarışmaya takım kurup girebilirdi.
   const { data: comp } = await db
     .from('competitions')
-    .select('id')
+    .select('id, is_published')
     .eq('id', input.competitionId)
     .maybeSingle();
   if (!comp) return { ok: false, error: 'Yarışma bulunamadı.' };
+  if (!comp.is_published) {
+    return { ok: false, error: 'Bu yarışma henüz yayımlanmadı.' };
+  }
 
   /**
    * KATILIM KURALI (katman 2) — bir kullanıcı, bir yarışmada tek takım.

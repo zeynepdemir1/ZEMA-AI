@@ -48,6 +48,11 @@ export async function createCompetition(input: {
       created_by: auth.user.id,
       similarity_threshold: 50,
       template_spec: {},
+      // Yeni yarışma TASLAK başlıyor (0011) — kolonun kendi varsayılanı
+      // `true` (mevcut yarışmaları geriye dönük yayımlı tutmak için),
+      // burada BİLEREK override ediliyor: şablon/kriter hazır olmadan
+      // yarışmacı ekranında görünmemeli.
+      is_published: false,
     })
     .select('id')
     .single();
@@ -345,6 +350,44 @@ export async function saveSimilarityThreshold(
     meta: { similarity_threshold: value },
   });
   revalidatePath('/admin/competitions/template');
+  return { ok: true };
+}
+
+/**
+ * Yarışmayı yayımlar/yayından kaldırır (0011_competition_published.sql).
+ *
+ * NEDEN GEREKLİ: `createCompetition` ile açılan bir yarışma şablon/kriter
+ * hiç tanımlanmadan yarışmacı ekranında (yükleme formunun yarışma
+ * seçicisinde) beliriyordu. RLS artık `is_published = true` olmayan
+ * yarışmaları yarışmacıdan (ve rolsüz oturumlardan) tamamen gizliyor —
+ * bu action o bayrağı çeviriyor. Yönetici/hakem rolleri RLS'te ayrıca
+ * muaf (auth_is_staff() / judge), yani onlar taslağı her zaman görür.
+ */
+export async function setCompetitionPublished(
+  competitionId: string,
+  published: boolean,
+): Promise<{ ok: boolean; error?: string }> {
+  const invalid = badId(competitionId);
+  if (invalid) return { ok: false, error: invalid };
+  const auth = await authorize(['competition_admin']);
+  if ('error' in auth) return { ok: false, error: auth.error };
+
+  const db = supabaseAdmin();
+  const { error } = await db
+    .from('competitions')
+    .update({ is_published: published })
+    .eq('id', competitionId);
+  if (error) return { ok: false, error: error.message };
+
+  await db.from('audit_log').insert({
+    actor: auth.user.id,
+    action: published ? 'competition.published' : 'competition.unpublished',
+    entity: 'competitions',
+    entity_id: competitionId,
+  });
+  revalidatePath('/admin/competitions');
+  revalidatePath('/admin/competitions/template');
+  revalidatePath('/submissions/new');
   return { ok: true };
 }
 

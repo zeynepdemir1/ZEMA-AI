@@ -697,6 +697,8 @@ export type SetupData = {
     language: string;
     similarity_threshold: number;
     submission_deadline: string | null;
+    /** Yönetici onaylayana kadar yarışmacılar bu yarışmayı hiç göremez (0011). */
+    is_published: boolean;
   };
   /** "Rapor Aşaması" seçici için — bir yarışmanın TÜM aşamaları, sırayla. */
   stages: Array<{ id: string; name: string; sortOrder: number }>;
@@ -745,19 +747,39 @@ export async function loadAllCompetitions(): Promise<Array<{ id: string; name: s
  */
 export async function loadSetup(competitionId?: string, stageId?: string): Promise<SetupData | null> {
   const db = await supabaseServer();
-  const SELECT = 'id, name, year, language, similarity_threshold, submission_deadline';
-  const raw = competitionId
-    ? (await db.from('competitions').select(SELECT).eq('id', competitionId).maybeSingle()).data
-    : await firstCompetition(db, SELECT);
+  const FULL_SELECT =
+    'id, name, year, language, similarity_threshold, submission_deadline, is_published';
+  // is_published kolonu yoksa (0011_competition_published.sql henüz
+  // koşulmadıysa) PostgREST is_published dahil TÜM sorguyu reddeder —
+  // kolonsuz tekrar deniyoruz (0006/0007'deki "kolon yokluğunu yakala"
+  // deseninin aynısı). Migration koşulmadan yönetici ekranı "tanımlı
+  // yarışma yok" diye boşalmasın.
+  const FALLBACK_SELECT = 'id, name, year, language, similarity_threshold, submission_deadline';
+
+  const fetchRow = (select: string) =>
+    competitionId
+      ? db.from('competitions').select(select).eq('id', competitionId).maybeSingle().then((r) => r.data)
+      : firstCompetition(db, select);
+
+  let raw = await fetchRow(FULL_SELECT);
+  let hasPublishedColumn = true;
+  if (!raw) {
+    raw = await fetchRow(FALLBACK_SELECT);
+    hasPublishedColumn = false;
+  }
   if (!raw) return null;
-  const competition = raw as {
+  const row = raw as {
     id: string;
     name: string;
     year: number;
     language: string;
     similarity_threshold: number;
     submission_deadline: string | null;
+    is_published?: boolean;
   };
+  // Kolon yoksa yayımlı say — migration öncesi TÜM yarışmalar zaten
+  // yarışmacıya açıktı, davranış aynen korunuyor.
+  const competition = { ...row, is_published: hasPublishedColumn ? Boolean(row.is_published) : true };
 
   const { data: stageRows } = await db
     .from('report_stages')
