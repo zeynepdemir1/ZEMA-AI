@@ -81,7 +81,23 @@ export async function unassignReport(reportId: string): Promise<Result> {
  * hakeme sırayla verir. Var olan atamalara DOKUNMAZ — hakemin yarıda
  * bıraktığı bir inceleme başkasına geçmesin.
  */
-export async function distributeBalanced(): Promise<Result> {
+/**
+ * Raporları hakemler arasında dengeli dağıt.
+ *
+ * `mode: 'fill'`      — yalnızca ATANMAMIŞ raporları dağıtır (varsayılan).
+ * `mode: 'rebalance'` — mevcut atamaları da yeniden dağıtır.
+ *
+ * Neden iki mod: 'fill' her şey atanmışken hiçbir şey yapmıyordu ve düğme
+ * ölü görünüyordu. Tek hakem varken bütün raporlar ona yığılıyor, sonradan
+ * hakem eklenince dağıtacak bir yol kalmıyordu.
+ *
+ * ⚠️ REBALANCE, HAKEMİN ÇALIŞTIĞI RAPORU TAŞIMAZ. Kriter metnini düzenlemiş
+ * veya kontrol notu yazmış bir hakemin raporunu başka hakeme vermek, yarım
+ * kalmış işi devretmek olur. O satırlar mevcut hakeminde bırakılıyor.
+ */
+export async function distributeBalanced(
+  mode: 'fill' | 'rebalance' = 'fill',
+): Promise<Result> {
   const auth = await guard();
   if ('error' in auth) return { ok: false, error: auth.error };
 
@@ -102,31 +118,61 @@ export async function distributeBalanced(): Promise<Result> {
 
   if (!judges?.length) return { ok: false, error: 'Kayıtlı hakem yok.' };
 
-  const assigned = new Set((assigns ?? []).map((a) => a.report_id));
-  const unassigned = (reports ?? []).filter((r) => !assigned.has(r.id));
-  if (!unassigned.length) return { ok: true, changed: 0 };
+  const byReport = new Map((assigns ?? []).map((a) => [a.report_id, a]));
 
-  // Mevcut yükle başla, her atamada sayacı artır → gerçekten dengeli.
-  const load = new Map(
-    judges.map((j) => [j.id, (assigns ?? []).filter((a) => a.judge_id === j.id).length]),
-  );
+  // Hakemin üzerinde çalıştığı raporlar taşınmaz.
+  const [{ data: scores }, { data: results }] = await Promise.all([
+    db.from('ai_criterion_scores').select('report_id, edit_status'),
+    db.from('analysis_results').select('report_id, judge_note'),
+  ]);
+  const worked = new Set<string>([
+    ...(scores ?? []).filter((s) => s.edit_status !== 'ai_generated').map((s) => s.report_id),
+    ...(results ?? []).filter((r) => r.judge_note).map((r) => r.report_id),
+  ]);
 
-  const rows = unassigned.map((r) => {
+  const movable = (reports ?? []).filter((r) => {
+    if (worked.has(r.id)) return false;
+    return mode === 'rebalance' ? true : !byReport.has(r.id);
+  });
+  if (!movable.length) return { ok: true, changed: 0 };
+
+  // Taşınmayan raporların yükü baştan sayılıyor → sonuç gerçekten dengeli.
+  const load = new Map(judges.map((j) => [j.id, 0]));
+  for (const [rid, a] of byReport) {
+    const stays = mode === 'rebalance' ? worked.has(rid) : true;
+    if (stays && a.judge_id && load.has(a.judge_id)) {
+      load.set(a.judge_id, (load.get(a.judge_id) ?? 0) + 1);
+    }
+  }
+
+  let changed = 0;
+  for (const r of movable) {
     const target = [...load.entries()].sort((a, b) => a[1] - b[1])[0][0];
     load.set(target, (load.get(target) ?? 0) + 1);
-    return { report_id: r.id, judge_id: target, assigned_by: auth.user.id, status: 'pending' };
-  });
-
-  const { error } = await db.from('assignments').insert(rows);
-  if (error) return { ok: false, error: error.message };
+    const existing = byReport.get(r.id);
+    if (existing) {
+      if (existing.judge_id === target) continue;
+      const { error } = await db
+        .from('assignments')
+        .update({ judge_id: target, assigned_by: auth.user.id, status: 'pending' })
+        .eq('report_id', r.id);
+      if (error) return { ok: false, error: error.message };
+    } else {
+      const { error } = await db
+        .from('assignments')
+        .insert({ report_id: r.id, judge_id: target, assigned_by: auth.user.id, status: 'pending' });
+      if (error) return { ok: false, error: error.message };
+    }
+    changed++;
+  }
 
   await db.from('audit_log').insert({
     actor: auth.user.id,
     action: 'assignment.distributed',
     entity: 'assignments',
-    meta: { count: rows.length },
+    meta: { count: changed, mode, protected: [...worked].length },
   });
   revalidatePath('/evaluation/assignments');
   revalidatePath('/evaluation');
-  return { ok: true, changed: rows.length };
+  return { ok: true, changed };
 }

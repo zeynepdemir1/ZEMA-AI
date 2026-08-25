@@ -1,5 +1,84 @@
 # ZEMA — Yapılacaklar / Bilinen Eksikler
 
+## 👨‍⚖️ Dört hakem + yeniden dağıtım (25 Ağustos)
+
+**Sorun:** Değerlendirme Yöneticisi ekranında 13 raporun hepsi tek hakeme
+(Zeynep Demir) atanmış görünüyordu. Ekranda bir hata YOKTU — çoklu hakem
+zaten destekleniyordu (hakem yükü tablosu, rapor başına açılır liste,
+dengeli dağıtım). Eksik olan **hakemdi**: sistemde tek hakem hesabı vardı.
+
+Eklenen hesaplar (`lib/dev-session.ts` → `EXTRA_JUDGES`, şifre `DEV_PASSWORD`):
+
+| e-posta | ad |
+|---|---|
+| `hakem@zema.test` | Zeynep Demir *(mevcut)* |
+| `hakem2@zema.test` | Mehmet Emre Çelebi |
+| `hakem3@zema.test` | Adem Coşar |
+| `hakem4@zema.test` | Elif Naz Bozkurt |
+
+`scripts/seed-judges.ts` bunları açıp raporları yeniden dağıtıyor. Ayrı bir
+betik: `npm run seed` yarışma/kriter/takım/rapor da üretiyor ve elde bilinçli
+bırakılmış test verisi var; bu betik YALNIZCA profiles/auth ve assignments'a
+dokunuyor.
+
+Sonuç: 4/3/3/3. **Hakemin üzerinde çalıştığı iki rapor taşınmadı**
+(düzenlenmiş kriter metni veya kontrol notu olanlar) — başka hakeme vermek
+yarım kalmış işi devretmek olurdu.
+
+### "Dengeli dağıt" düğmesi ölüydü — düzeltildi
+
+`distributeBalanced` yalnızca ATANMAMIŞ raporları dağıtıyordu. Her şey
+atanmışken hiçbir şey yapmıyor, düğme tıklanıp sonuçsuz kalıyordu — tek
+hakem varken her şey ona yığıldığı için tam olarak bu duruma düşülüyordu.
+Artık iki mod var: atanmamış varsa `fill`, yoksa `rebalance` (onay
+kutusuyla). Rebalance da hakemin çalıştığı raporu taşımıyor.
+
+## 🔧 Şablon karışıklığı çözüldü — C seçeneği (25 Ağustos)
+
+Model Uydu PDR şablonu yanlışlıkla 2026 İHA yarışmasına uygulanmıştı.
+Uygulanan sıra:
+
+1. Aynı PDF depoda **kopyalandı** (kaynak silinmedi) ve 2025 Model Uydu
+   yarışmasında işletildi → o yarışma artık gerçek şablonuna sahip.
+2. 2026 İHA'da `template_spec.previous` geri yüklendi.
+
+Doğrulama — 9/9 kontrol geçti:
+
+| | 2026 İHA | 2025 Model Uydu |
+|---|---|---|
+| rapor türü | Ön Tasarım Raporu | Ön Tasarım Gözden Geçirme Raporu |
+| bölüm | 8 | 33 |
+| maks sayfa | 15 | 120 |
+| yazı tipi | Arial 11 pt | (şablonda yok) |
+| altbilgi | takım adı + sayfa no | 11.TÜRKSAT … PDR |
+| atıf | IEEE | (şablonda yok) |
+| kriter | 6 | 0 |
+
+**"İki kuş tek taş" beklentisi yarım karşılandı.** 2025'in şablonu düzeldi
+ama **kriter sorunu çözülmedi: Model Uydu PDF'inde puanlama rubriği yok**
+(`ÇIKARILAN KRİTER: 0`). Bu, rubriğin ayrı belgede olduğu tezini doğruluyor;
+kriterler elle girilmeli — v0.24'teki uyarı ve `CriteriaCard` tam bu iş için.
+
+## 🔍 R-798F26 "SÜRDÜR tamamlamıyor" teşhisi (25 Ağustos)
+
+Mekanik bir engel YOK:
+
+| kontrol | bulgu |
+|---|---|
+| Düğme render ediliyor mu | ✓ "ANALİZ 1/6 · SÜRDÜR" HTML'de var |
+| İşler kapılmış mı | ✗ beş iş `attempts=0`, `started_at=None` — **hiç kapılmamış** |
+| `claim_analysis_jobs` | doğru: `status='pending'` olanı FIFO ile kapıyor, rapor filtresi yok |
+| `/api/jobs/tick` auth | rota içinde kontrol yok; koruma middleware'de (giriş yeterli) |
+| kota/hata izi | yok — hata olsaydı `attempts ≥ 1` olurdu |
+
+Yani düğme "çalışmıyor" değil, **henüz çalıştırılmamış**: v0.24 ile eklendi,
+ondan önce ekranda yalnızca salt-okunur bir rozet vardı. `attempts=0` bunun
+kanıtı — bir tick dokunmuş olsaydı sayaç artmış olurdu.
+
+Kasıtlı olarak basılmadı: şablon o an hâlâ yanlıştı (Model Uydu) ve
+çalıştırmak beş kontrolü yanlış şablona göre değerlendirirdi. Şablon
+düzeldikten sonra basmak güvenli.
+
 ## ⚠️ ÇALIŞTIRILMASI GEREKEN MIGRATION — `0008_teams_founded_year.sql`
 
 `teams` tablosuna `founded_year int` (NULL kabul) ve 1900-2200 aralık

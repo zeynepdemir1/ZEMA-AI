@@ -35,16 +35,34 @@ export function AssignmentTable({
           <div className="text-ink/75 font-mono text-[10.5px] tracking-[.14em]">
             HAKEM YÜKÜ · {judges.length} HAKEM
           </div>
+          {/* Her şey atanmışken 'fill' hiçbir şey yapmıyor ve düğme ölü
+              görünüyordu. O durumda yeniden dağıtım sunuluyor. */}
           <button
-            disabled={pending || unassignedCount === 0 || judges.length === 0}
-            onClick={() =>
-              run(distributeBalanced, (n) =>
-                n === 0 ? 'Atanmamış rapor yok.' : `${n} rapor dengeli dağıtıldı.`,
-              )
-            }
+            disabled={pending || judges.length === 0}
+            onClick={() => {
+              if (unassignedCount > 0) {
+                run(() => distributeBalanced('fill'), (n) =>
+                  n === 0 ? 'Atanmamış rapor yok.' : `${n} rapor dengeli dağıtıldı.`,
+                );
+                return;
+              }
+              if (
+                confirm(
+                  'Tüm raporlar hakemler arasında yeniden dağıtılacak. Hakemin üzerinde çalıştığı raporlar (düzenlenmiş kriter metni veya kontrol notu olanlar) mevcut hakeminde KALIR. Devam edilsin mi?',
+                )
+              ) {
+                run(() => distributeBalanced('rebalance'), (n) =>
+                  n === 0 ? 'Taşınacak rapor yok.' : `${n} rapor yeniden dağıtıldı.`,
+                );
+              }
+            }}
             className="bg-t3-blue cursor-pointer border-none px-5 py-2.5 font-sans text-[13px] font-semibold text-white disabled:opacity-40"
           >
-            {pending ? 'Dağıtılıyor…' : `Dengeli dağıt (${unassignedCount} atanmamış)`}
+            {pending
+              ? 'Dağıtılıyor…'
+              : unassignedCount > 0
+                ? `Dengeli dağıt (${unassignedCount} atanmamış)`
+                : 'Yeniden dağıt'}
           </button>
         </div>
 

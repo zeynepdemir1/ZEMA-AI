@@ -14,6 +14,23 @@ export const DEV_USERS = {
   competitionAdmin: { email: 'yarisma@zema.test', fullName: 'Mert Kaya', role: 'competition_admin' },
 } as const;
 
+/**
+ * EK HAKEMLER — demo sırasında "farklı hakemler" göstermek için.
+ *
+ * Neden gerekli: sistemde tek hakem varken Değerlendirme Yöneticisi
+ * ekranındaki bütün raporlar aynı isme atanmış görünüyordu ve "hakem
+ * ataması" özelliği çalışıyor gibi durmuyordu. Ekran zaten çoklu hakemi
+ * destekliyordu (hakem yükü tablosu, rapor başına açılır liste, dengeli
+ * dağıtım) — eksik olan hakemlerdi.
+ *
+ * Şifreleri DEV_PASSWORD ile aynı.
+ */
+export const EXTRA_JUDGES = [
+  { email: 'hakem2@zema.test', fullName: 'Mehmet Emre Çelebi' },
+  { email: 'hakem3@zema.test', fullName: 'Adem Coşar' },
+  { email: 'hakem4@zema.test', fullName: 'Elif Naz Bozkurt' },
+] as const;
+
 export const DEV_PASSWORD = 'zema-test-2026';
 export const DEV_TEAM_NAME = 'GARO';
 export const DEV_COMPETITION_NAME = 'TEKNOFEST 2026 — İnsansız Hava Araçları';
