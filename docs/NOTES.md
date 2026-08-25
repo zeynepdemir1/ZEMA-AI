@@ -49,11 +49,46 @@ Mevcut satır model çağrısı YAPILMADAN yeniden hesaplandı (9 category_fit
 satırının 1'i değişti). Bu yüzden R-798F26'nın category_fit kararı artık
 `insufficient_evidence` — bozuk alıntı doğrulanamadığı için dürüst olan bu.
 
-**Açık kalan:** payload'daki bozuk metin hâlâ orada ve hakem ekranında
-görünür. `category_fit`'i yeniden çalıştırmak (1 API çağrısı) temiz metin ve
-muhtemelen doğrulanabilir bir alıntı getirir — asıl bulgu (Model Uydu raporu
-İHA yarışmasında) zaten doğru ve `title_content` ile `feedback_synthesis`
-tarafından da söyleniyor.
+### category_fit yeniden çalıştırıldı — temiz geldi (18:31)
+
+Bozuk çıktı tek seferlik bir model hatasıydı. Yeniden çalıştırma temiz
+Türkçe ve **birebir doğrulanan** bir alıntı getirdi:
+
+```
+gerekçe : Rapor içeriğinin havacılık ve İnsansız Hava Araçları Serbest
+          Görev kategorisi yerine tamamen Türksat Model Uydu Yarışması
+          isterlerine ve model uydu tasarımına yönelik hazırlanmış olması
+          açık bir çelişkidir.
+alıntı  : "10.TÜRKSAT Model Uydu Yarışması 2025 Ön Tasarım Gözden Geçirme
+           Sunumu Preliminary Design Review (PDR) Kategori-1 Sunumu"
+doğrulama: exact  → karar: fail
+```
+
+Karar `fail` çıkması, yeni kanıt doğrulamasının alıntıyı raporda BULDUĞU
+anlamına geliyor (bulamazsa `insufficient_evidence` dönerdi). Altı payload'da
+bozuk karakter kalmadı.
+
+**R-798F26 KAPANDI — bir daha dokunulmayacak.** Nihai durum:
+
+| kontrol | karar | skor | üretim |
+|---|---|---|---|
+| language_template | fail | 35 | 13:26 |
+| title_content | fail | 25 | 14:04 |
+| category_fit | fail | — | 18:31 |
+| similarity | pass | 0 | 13:28 |
+| criteria_scoring | fail | 33 | 13:28 |
+| feedback_synthesis | pass | — | 17:51 |
+
+Son kontroller 7/7: kuyruk 6/6, hepsi şablon düzeltmesinden sonra,
+category_fit alıntısı doğrulanmış, hiçbir payload'da bozuk karakter yok,
+title_content ve category_fit aynı bulguda birleşiyor, feedback kategori
+çelişkisine değiniyor ve puan sızdırmıyor.
+
+Atanmış hakem: **Adem Coşar** (`hakem3@zema.test`) · takım GARO.
+
+Not: `feedback_synthesis` (17:51) bir önceki category_fit çıktısından
+beslendi. Bulgu ÖZDEŞ (kategori uyumsuzluğu), yalnızca o çıktının Türkçesi
+bozuktu; sentezin içeriği geçerli, yeniden üretilmesine gerek yok.
 
 ## 🔒 0009 uygulandı — kısıt canlı doğrulandı (25 Ağustos)
 
