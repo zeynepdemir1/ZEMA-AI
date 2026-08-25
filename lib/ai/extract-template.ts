@@ -5,7 +5,7 @@ import { TEMPLATE_EXTRACTION_INSTRUCTION, TEMPLATE_EXTRACTION_ROLE } from './pro
 import { TemplateSpecSchema, type TemplateSpec } from './schemas';
 import templateFixture from './fixtures/template_spec.json';
 
-export const TEMPLATE_PROMPT_VERSION = 'v2'; // v2: değerlendirme kriterleri (rubrik) de çıkarılıyor
+export const TEMPLATE_PROMPT_VERSION = 'v3'; // v3: rapor içeriğinden değerlendirilemeyen kriterler (canlı sunum/prototip) artık çıkarılmıyor
 
 export type TemplateExtraction = {
   spec: TemplateSpec;

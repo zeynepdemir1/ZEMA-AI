@@ -1,5 +1,54 @@
 # ZEMA — Yapılacaklar / Bilinen Eksikler
 
+## ⚠️ K2/K3 kriterleri rapor içeriğinden değerlendirilemez (26 Ağustos)
+
+**Bildirilen sorun:** "TEKNOFEST 2025 — İnsanlık Yararına Teknolojiler"
+yarışmasında yalnızca K1 (Proje Ön Değerlendirme Raporu) aşaması aktifken
+sistem K2 (Proje Sunumu) ve K3'ü (Prototip ve Final Sunumu) de
+değerlendirmiş, "sunum şablonu kullanılmamış", "prototip gösterimi eksik"
+gibi anlamsız geri bildirim üretmiş.
+
+**Kök sebep — ŞÜPHELENİLENDEN FARKLI ÇIKTI.** Sanılanın aksine bu bir
+`report_stages` filtreleme hatası DEĞİL — kontrol ettim: bu yarışmanın
+`report_stages` tablosunda TEK bir aşama var ("PROJE SUNUMU") ve raporun
+`stage_id`'si o aşamayla birebir eşleşiyor; `run-check.ts`'teki
+`criteria` sorgusu zaten doğru `stage_id`'ye göre filtreleniyor (0010'dan
+beri). Asıl sebep: o TEK aşamanın `criteria` tablosunda K1/K2/K3 üç
+kriter de var — çünkü yüklenen ŞARTNAME, tek bir puanlama tablosunda
+YARIŞMANIN TÜM SÜRECİNİ (yazılı rapor + canlı sunum + prototip demosu)
+anlatıyor ve rubrik çıkarımı üçünü de körü körüne `criteria` tablosuna
+yazdı. `criteria_scoring` promptu "rubrikteki HER kriter için bir kayıt
+üret, ATLAMA" diyor — yani kontrolün kendisi doğru çalışıyor, ona verilen
+rubrik yanlış kapsamda.
+
+**Düzeltme (kod, önleyici):** `lib/ai/prompts.ts`'teki hem
+`RULEBOOK_EXTRACTION_INSTRUCTION` hem `TEMPLATE_EXTRACTION_INSTRUCTION`'a
+"KAPSAM SINIRI" kuralı eklendi: açıklaması "sunum", "canlı sunum",
+"prototip gösterimi", "demo", "jüri karşısında" gibi RAPORUN YAZILI
+İÇERİĞİNDEN doğrulanamayacak bir şeyden bahseden kriterler artık
+`criteria` dizisine hiç yazılmıyor, bunun yerine `not_specified`'a not
+düşülüyor. Prompt sürümleri artırıldı (rulebook v1→v2, template v2→v3).
+Bu, BUNDAN SONRAKİ çıkarımlar için geçerli.
+
+**⚠️ MEVCUT YANLIŞ VERİ TEMİZLENMEDİ — yönetici kararı gerekiyor.**
+"TEKNOFEST 2025 — İnsanlık Yararına Teknolojiler" yarışmasının K2 ve K3
+kriterleri (ve onlara bağlı `ai_criterion_scores` satırları) hâlâ
+DB'de duruyor, silmedim çünkü gerçek yarışma verisi ve geri alınamaz bir
+işlem. Önerilen temizlik: Yarışma Yöneticisi → Şablon ve Kriterler →
+Değerlendirme Kriterleri kartından K2 ve K3'ü **SİL** butonuyla kaldırın
+(bu, bağlı `ai_criterion_scores` satırlarını da cascade ile temizler —
+kriterin kendisi FK ile bağlı). K1 dokunulmadan kalır. Alternatif: bu
+kriterleri silmek yerine sadece rapor değerlendirmesinde görmezden
+gelinmesini istiyorsanız (örn. K2/K3 gerçekten ileride canlı sunum/
+prototip için elle puanlanacaksa), kriterleri SİLMEYİN — yalnızca
+`criteria_scoring`'in onları atlamasını istiyorsanız ayrı bir "bu kriter
+rapor dışında değerlendirilir" bayrağı eklenmesi gerekir (şu an yok,
+istenirse ayrı bir iş olarak eklenebilir).
+
+**Doğrulama:** tsc/lint/build temiz. DB'de salt okunur inceleme yapıldı
+(gerçek yarışma/rapor/kriter verisi okundu, hiçbir satır değiştirilmedi
+veya silinmedi). API çağrısı yapılmadı.
+
 ## 🔎 Hakem ekranı: kontroller ayrıştırıldı, benzerlik + özet inline (26 Ağustos)
 
 **İstek:** Gerçek bir rapor analizini inceleyen hakem geri bildirimi, beş

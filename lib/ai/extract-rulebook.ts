@@ -5,7 +5,7 @@ import { RULEBOOK_EXTRACTION_INSTRUCTION, RULEBOOK_EXTRACTION_ROLE } from './pro
 import { RulebookSpecSchema, type RulebookSpec } from './schemas';
 import rulebookFixture from './fixtures/rulebook_spec.json';
 
-export const RULEBOOK_PROMPT_VERSION = 'v1';
+export const RULEBOOK_PROMPT_VERSION = 'v2'; // v2: rapor içeriğinden değerlendirilemeyen kriterler (canlı sunum/prototip) artık çıkarılmıyor
 
 export type RulebookExtraction = {
   spec: RulebookSpec;

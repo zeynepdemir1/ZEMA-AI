@@ -344,6 +344,13 @@ Yukarıdaki şablon dokümanından yarışma kural setini çıkar.
   "criteria" değerini not_specified'a ekle — var olmayan bir rubriği ASLA
   uydurma; bu durumda yönetici mevcut rubriği değiştirmeden kalır.
 
+  KAPSAM SINIRI: Bu sistem YALNIZCA yüklenen PDF RAPORUNU okur — canlı bir
+  sunumu izleyemez, prototip elleyemez, jüri karşısı performans göremez.
+  Bir kriterin açıklaması "sunum", "canlı sunum", "prototip gösterimi",
+  "demo", "jüri karşısında" gibi RAPORUN İÇERİĞİNDEN doğrulanamayacak bir
+  şeyden bahsediyorsa o kriteri criteria dizisine EKLEME; not_specified'a
+  "criteria[KOD]: rapor içeriğinden değerlendirilemiyor" diye not düş.
+
 UYDURMA YASAĞI — EN ÖNEMLİ KURAL:
 Şablonda AÇIKÇA yazmayan bir kuralı ASLA ekleme. Bir alanı şablonda
 bulamadıysan:
@@ -399,6 +406,22 @@ bir bölümde, çoğu zaman TABLO halinde bulunur. Her kriter için:
 
 Ağırlıkların toplamı 1'e yakın olmalı. Değilse ölçeklemeye çalışma —
 şartnamede yazanı ver, tutarsızlığı yöneticiye bırak.
+
+KAPSAM SINIRI — HANGİ KRİTERLER BU LİSTEYE GİRMEZ:
+Bazı şartnameler TEK bir belgeye YÜKLENEN RAPORU değil, yarışmanın TÜM
+sürecini (ör. "K1: Ön Değerlendirme Raporu", "K2: Sunum", "K3: Prototip ve
+Final Sunumu" gibi ayrı fazları) tek bir puanlama tablosunda anlatır. Bu
+sistem YALNIZCA yüklenen PDF RAPORUNU okuyup değerlendirir — canlı bir
+sunumu izleyemez, bir prototipi elleyemez, jüri karşısındaki performansı
+göremez. Bir kriterin AÇIKLAMASI "sunum", "canlı sunum", "prototip
+gösterimi", "demo", "jüri karşısında", "final sunumu" gibi RAPORUN
+İÇERİĞİNDEN DEĞİL başka bir etkinlikten/teslimattan bahsediyorsa — yani bu
+raporun metni üzerinden ASLA doğrulanamayacak bir şeyse — o kriteri
+criteria dizisine EKLEME. Yalnızca raporun YAZILI İÇERİĞİNDEN
+değerlendirilebilecek kriterleri çıkar. Atladığın her kriter için
+not_specified'a "criteria[KOD]: rapor içeriğinden değerlendirilemiyor
+(sunum/prototip/canlı etkinlik)" gibi bir not düş — sessizce kaybolmasın,
+yönetici neden eksik olduğunu görsün.
 
 extra_rules: şartnamede geçen, BİÇİMLE İLGİLİ OLMAYAN kurallar (katılım
 koşulları, teslim kuralları, diskalifiye sebepleri, özgünlük şartı). Sayfa
