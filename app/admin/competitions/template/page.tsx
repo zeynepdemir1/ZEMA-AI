@@ -5,6 +5,7 @@ import { TemplateCard } from '../template-card';
 import { SectionsCard } from '../sections-card';
 import { ThresholdCard } from '../threshold-card';
 import { CriteriaCard } from '../criteria-card';
+import { RulebookCard } from '../rulebook-card';
 import { notSpecifiedLabel } from '../not-specified-labels';
 
 import { requireRole } from '@/lib/supabase/server';
@@ -51,7 +52,11 @@ export default async function TemplateSetupPage({
 
   const { competition, criteria, overThresholdPct } = data;
   const spec = competition.template_spec;
-  const wasProcessed = Boolean(spec.source);
+  const sources = spec.sources ?? {};
+  // `source` eski (yalnızca şablon) alan; sources yoksa ondan türet.
+  const sablon = sources.sablon ?? spec.source;
+  const sartname = sources.sartname;
+  const wasProcessed = Boolean(sablon || sartname);
   const reportCount = data.categories.reduce((a, c) => a + c.reportCount, 0);
 
   return (
@@ -73,6 +78,11 @@ export default async function TemplateSetupPage({
             competitionId={competition.id}
             hasPrevious={Boolean(spec.previous)}
           />
+
+          {/* ŞARTNAME — şablonun hemen altında. Rubrik çoğu yarışmada
+              şablonda değil şartnamede; ölçüldü, iki gerçek şablondan da
+              çıkarılan kriter sayısı 0 çıktı. */}
+          <RulebookCard competitionId={competition.id} competitionName={competition.name} />
 
           {/* 2. Zorunlu bölüm başlıkları — düzenlenebilir.
               key: yeni bir şablon çözümlendiğinde (ya da geri alındığında)
@@ -97,23 +107,48 @@ export default async function TemplateSetupPage({
         <div className="flex flex-col gap-5">
           {wasProcessed && (
             <div className="border-ink/10 border bg-white p-[26px]">
-              <div className={`${SECTION} mb-2.5`}>ŞABLON PDF&apos;İNDEN ÇIKARILDI</div>
-              <ul className="text-ink/75 m-0 list-none p-0 text-[13px] leading-[1.6]">
-                <li>Model: {spec.source?.model ?? '—'}</li>
-                {spec.source?.extracted_at && (
-                  <li>
-                    Tarih:{' '}
-                    {new Date(spec.source.extracted_at).toLocaleString('tr-TR', {
-                      dateStyle: 'medium',
-                      timeStyle: 'short',
-                    })}
-                  </li>
-                )}
-                <li>
-                  Alıntı doğrulama: {spec.source?.quotes_verified ?? 0}/{spec.source?.quotes_total ?? 0}{' '}
-                  alıntı şablonda birebir bulundu
-                </li>
-              </ul>
+              {/* İKİ BELGE, İKİ KÜNYE. Tek bir `source` alanı vardı ve Model
+                  Uydu şablonunun İHA yarışmasına uygulandığı fark edilene
+                  kadar hangi kuralın nereden geldiği anlaşılamıyordu. */}
+              <div className={`${SECTION} mb-2.5`}>KURALLAR HANGİ BELGEDEN GELDİ</div>
+              {[
+                { key: 'sablon' as const, label: 'RAPOR ŞABLONU', s: sablon, quoteIn: 'şablonda' },
+                { key: 'sartname' as const, label: 'ŞARTNAME', s: sartname, quoteIn: 'şartnamede' },
+              ].map(({ key, label, s: src, quoteIn }) => (
+                <div key={key} className="border-ink/[.12] mb-3 border-l-2 pl-3">
+                  <div className="text-ink/75 mb-1.5 font-mono text-[10px] tracking-[.1em]">
+                    {label}
+                  </div>
+                  {src ? (
+                    <ul className="text-ink/75 m-0 list-none p-0 text-[13px] leading-[1.6]">
+                      <li>Model: {src.model ?? '—'}</li>
+                      {src.extracted_at && (
+                        <li>
+                          Tarih:{' '}
+                          {new Date(src.extracted_at).toLocaleString('tr-TR', {
+                            dateStyle: 'medium',
+                            timeStyle: 'short',
+                          })}
+                        </li>
+                      )}
+                      <li>
+                        Alıntı doğrulama: {src.quotes_verified ?? 0}/{src.quotes_total ?? 0} alıntı{' '}
+                        {quoteIn} birebir bulundu
+                      </li>
+                      {(src.fields ?? []).length > 0 && (
+                        <li>Doldurduğu alanlar: {(src.fields ?? []).join(', ')}</li>
+                      )}
+                      {src.declares && <li>Belge kendini tanıtıyor: {src.declares}</li>}
+                    </ul>
+                  ) : (
+                    <div className="text-ink/75 text-[13px] leading-[1.6]">
+                      Henüz yüklenmedi.
+                      {key === 'sartname' &&
+                        ' Değerlendirme kriterleri genellikle bu belgede bulunur.'}
+                    </div>
+                  )}
+                </div>
+              ))}
 
               {(spec.not_specified ?? []).length > 0 && (
                 <div className="border-gold-ink/40 mt-3 border-l-2 pl-3">

@@ -282,3 +282,46 @@ export const TemplateSpecSchema = z.object({
 });
 
 export type TemplateSpec = z.output<typeof TemplateSpecSchema>;
+
+
+// ─────────────────────────────────────────────────────────────
+// ŞARTNAME ÇIKARIMI (yarışma kuralları belgesi)
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Şartname = yarışmanın resmî kurallar belgesi.
+ *
+ * NEDEN AYRI BİR BELGE TÜRÜ: puanlama rubriği çoğu TEKNOFEST yarışmasında
+ * rapor ŞABLONUNDA değil ŞARTNAMEDE bulunuyor. Sahada ölçüldü: gerçek bir
+ * ÖTR şablonundan ve bir Model Uydu PDR şablonundan çıkarılan kriter
+ * sayısı İKİSİNDE DE 0. Şablon "raporu nasıl yazacaksın"ı, şartname
+ * "nasıl puanlanacaksın"ı anlatıyor; ikisi farklı belgeler.
+ *
+ * Bu şema `TemplateSpecSchema` ile bilinçli olarak ÖRTÜŞÜYOR ama aynı
+ * değil: şartnamenin asıl katkısı `criteria`, şablonun asıl katkısı
+ * `format` + `required_sections`. Hangi alanın hangi belgeden geldiği
+ * `template_spec.sources` altında işaretleniyor.
+ */
+export const RulebookSpecSchema = z.object({
+  /** Şartnamenin tanımladığı yarışma adı — yanlış belge yüklendiyse fark edilir. */
+  competition_name: z.string(),
+  /** ASIL KATKI: puanlama rubriği. */
+  criteria: z.array(ExtractedCriterionSchema),
+  /**
+   * Şartnamede geçen, biçimle ilgili OLMAYAN ek kurallar (katılım koşulu,
+   * teslim kuralı, diskalifiye sebebi…). `content_rules`'a eklenir.
+   */
+  extra_rules: z.array(z.string()),
+  /** Şartnamede bulunamayan alanların adları — model uydurmasın. */
+  not_specified: z.array(z.string()),
+  /** Her çıkarımı gerekçelendiren BİREBİR alıntı; verifyQuotes ile aranır. */
+  source_quotes: z.array(
+    z.object({
+      quote: z.string(),
+      /** Gerekçelendirdiği alan: "criteria[K1]", "extra_rules", … */
+      section_ref: z.string(),
+    }),
+  ),
+});
+
+export type RulebookSpec = z.output<typeof RulebookSpecSchema>;

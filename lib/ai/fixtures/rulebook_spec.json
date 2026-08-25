@@ -1,0 +1,26 @@
+{
+  "competition_name": "MOCK — şartname çıkarımı fixture'ı",
+  "criteria": [
+    {
+      "code": "K1",
+      "name": "Problem Tanımı ve Özgünlük",
+      "description": "Problemin somut verilerle tanımlanması ve çözümün özgün katkısının açıkça ortaya konması.",
+      "max_score": 20,
+      "weight": 0.2
+    },
+    {
+      "code": "K2",
+      "name": "Teknik Yaklaşım ve Sistem Mimarisi",
+      "description": "Donanım ve yazılım bileşenlerinin, veri akışının ve karar mekanizmalarının tutarlı biçimde anlatılması.",
+      "max_score": 30,
+      "weight": 0.3
+    }
+  ],
+  "extra_rules": [
+    "MOCK_AI=true — bu çıktı fixture'dan geldi, gerçek çağrı yapılmadı"
+  ],
+  "not_specified": [],
+  "source_quotes": [
+    { "quote": "MOCK_AI=true — bu çıktı fixture'dan geldi", "section_ref": "mock" }
+  ]
+}

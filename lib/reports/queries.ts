@@ -34,6 +34,13 @@ async function firstCompetition(
     .from('competitions')
     .select(select)
     .order('created_at', { ascending: true })
+    // İKİNCİL ANAHTAR ZORUNLU: 0007 migration'ı mevcut satırların
+    // created_at'ini `default now()` ile TEK SEFERDE doldurdu, yani iki
+    // yarışmanın değeri BİREBİR aynı. Beraberlikte Postgres satır sırası
+    // garanti değil — varsayılan yarışma istekler arasında değişebiliyordu.
+    // Sahada ısırdı: şartname İHA'ya yüklendi ama yönetici ekranı Model
+    // Uydu yarışmasını gösterdi ve "şartname yüklenmedi" yazdı.
+    .order('id', { ascending: true })
     .limit(1)
     .maybeSingle();
   if (!byCreated.error) return byCreated.data as Record<string, unknown> | null;
@@ -653,13 +660,37 @@ export type SetupData = {
       content_rules?: string[];
       not_specified?: string[];
       /** Şablon PDF'inden otomatik çıkarıldıysa çıkarımın künyesi. */
+      /** Eski (tek belgeli) künye alanı — şablonu ifade eder. `sources` ile aynı şekil. */
       source?: {
+        file_path?: string;
         model?: string;
         extracted_at?: string;
         page_count?: number;
         quotes_verified?: number;
         quotes_total?: number;
+        fields?: string[];
+        declares?: string;
       };
+      /**
+       * İKİ BELGELİ KÜNYE: hangi alan hangi PDF'ten geldi.
+       * `source` tarihsel olarak yalnızca şablonu ifade ediyordu; şartname
+       * eklenince tek alan yetmedi (bkz. lib/reports/spec-sources.ts).
+       */
+      sources?: Partial<
+        Record<
+          'sablon' | 'sartname',
+          {
+            file_path?: string;
+            model?: string;
+            extracted_at?: string;
+            page_count?: number;
+            quotes_verified?: number;
+            quotes_total?: number;
+            fields?: string[];
+            declares?: string;
+          }
+        >
+      >;
       /** Çıkarım öncesindeki spec — yanlış çıkarımdan dönmek için. */
       previous?: unknown;
     };

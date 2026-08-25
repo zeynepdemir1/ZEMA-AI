@@ -1,5 +1,90 @@
 # ZEMA — Yapılacaklar / Bilinen Eksikler
 
+## 📜 Şartname yükleme — rubrik boşluğu kapandı (25 Ağustos)
+
+**Sorun:** yalnızca rapor ŞABLONU yüklenebiliyordu ve kriterler hep boş
+çıkıyordu. Sebep ölçüldü: puanlama rubriği şablonda DEĞİL şartnamede.
+Gerçek bir ÖTR şablonundan ve bir Model Uydu PDR şablonundan çıkarılan
+kriter sayısı **ikisinde de 0**.
+
+Şablon "raporu nasıl yazacaksın"ı, şartname "nasıl puanlanacaksın"ı
+anlatıyor — iki farklı belge, iki farklı yükleme alanı.
+
+### Akış
+
+`_specs/<yarışma>/<uuid>.pdf` → imzalı URL ile doğrudan Storage → metin →
+Gemini (`RulebookSpecSchema`, effort **high** çünkü tablo okuma + ağırlık
+hesabı) → alıntı doğrulama → `criteria` tablosu + `template_spec`.
+
+Depo öneki `_templates` ile aynı gerekçeyle güvenli: 0002_rls.sql'deki
+yarışmacı politikaları ilk klasör adının UUID olmasını şart koşuyor,
+`_specs` bu regex'i geçmiyor.
+
+### İki kaynak, iki künye — "hangi PDF'ten geldi" bir daha sorulmasın
+
+Tek bir `source` alanı vardı ve Model Uydu şablonunun İHA yarışmasına
+uygulandığı ancak `format.footer` gözle okunarak fark edilmişti. İkinci
+belge devreye girince bu büsbütün takip edilemez olacaktı.
+
+`lib/reports/spec-sources.ts` → `template_spec.sources.<sablon|sartname>`:
+her belge kendi künyesini ve **hangi alanları doldurduğunu** (`fields`)
+yazıyor. Şartname ayrıca belgenin kendini nasıl tanıttığını
+(`declares`) kaydediyor — yanlış belge yüklenirse ekran uyarıyor.
+
+Yönetici ekranında "KURALLAR HANGİ BELGEDEN GELDİ" bloğu ikisini ayrı
+gösteriyor; yüklenmemiş olan için *"Değerlendirme kriterleri genellikle bu
+belgede bulunur"* diyor.
+
+### Birleştirme kuralları
+
+| alan | kaynak |
+|---|---|
+| `required_sections`, `format` | şablon |
+| `criteria` (rubrik) | şartname |
+| `content_rules` | **ikisi birleşir**, tekrarlar ayıklanır |
+
+Rubrik bulunamazsa mevcut kriterlere **DOKUNULMUYOR** — olmayan bir rubriği
+"boş" diye üzerine yazmak elle girilmiş kriterleri silmek olurdu. O durumda
+aynı dürüst uyarı + "KRİTERLERİ ELLE GİR →" düğmesi çıkıyor.
+
+### Gerçek şartnameyle ölçüm (1 API çağrısı)
+
+6 kriterli bir TEKNOFEST İHA şartnamesi çözümlendi:
+
+- **6/6 kriter** doğru kod, ad, puan ve ağırlıkla çıkarıldı
+- **ağırlık toplamı tam 1.000** (şartnamedeki 15+20+25+20+10+10=100'den)
+- **6/6 alıntı** şartname metninde birebir doğrulandı
+- 7 ek kural çıkarıldı (katılım, teslim, intihal) → `content_rules`
+- belge kendini doğru tanıttı: "TEKNOFEST 2026 İnsansız Hava Araçları Yarışması"
+
+`replaceCriteria` sıra pozisyonuna göre güncelliyor: **54
+`ai_criterion_scores` satırının tamamı bağlı kaldı, 0 yetim**, hakem
+düzenlemesi olan 2 kart korundu. Şablon alanları bozulmadı
+(`required_sections=8`, `max_pages=15`).
+
+⚠️ **Bilinmesi gereken:** rubrik değiştiğinde mevcut kriter kartlarındaki
+AI metni ESKİ beklentilere göre üretilmiş kalıyor. Kartlar yeni kriter
+adlarını gösterir ama değerlendirme metni eskidir. Tazelemek için ilgili
+raporlarda `criteria_scoring` yeniden çalıştırılmalı (rapor başına 1 çağrı).
+
+### Yol boyunca: varsayılan yarışma rastgele seçiliyordu
+
+Şartname İHA'ya yüklendi ama yönetici ekranı Model Uydu yarışmasını
+gösterip "şartname yüklenmedi" dedi. Sebep 0007 notunda öngörülen
+beraberlikti: migration mevcut satırların `created_at`'ini **tek seferde**
+`now()` ile doldurmuş, iki yarışmanın değeri birebir aynı. Beraberlikte
+Postgres satır sırası garanti değil.
+
+İki düzeltme:
+1. `firstCompetition` artık ikincil anahtar olarak `id` kullanıyor →
+   sonuç determinist.
+2. Seed yarışmasının `created_at`'i gerçeğe uyduruldu (o gerçekten ilk
+   oluşturulandı) → varsayılan artık demo yarışması. 5 istekte 5 kez aynı.
+
+Ayrıca `distributeBalanced` hâlâ `year desc` ile yarışma seçiyordu, yani
+ekranda görünenden BAŞKA bir yarışmanın raporlarını dağıtabilirdi — aynı
+sıralamaya hizalandı.
+
 ## ✅ R-798F26 tam tutarlı (25 Ağustos) — ve iki hata daha
 
 `feedback_synthesis` yenilendi; altı kontrolün hepsi şablon düzeltmesinden

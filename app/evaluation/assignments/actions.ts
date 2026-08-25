@@ -102,10 +102,15 @@ export async function distributeBalanced(
   if ('error' in auth) return { ok: false, error: auth.error };
 
   const db = await supabaseServer();
+  // Varsayılan yarışma seçimi loadSetup/loadDashboard ile AYNI olmalı:
+  // ilk oluşturulan (0007), beraberlikte id. Burada `year desc` kalmıştı,
+  // yani dağıtım ekranda görünenden BAŞKA bir yarışmanın raporlarını
+  // dağıtabilirdi.
   const { data: competition } = await db
     .from('competitions')
     .select('id')
-    .order('year', { ascending: false })
+    .order('created_at', { ascending: true })
+    .order('id', { ascending: true })
     .limit(1)
     .maybeSingle();
   if (!competition) return { ok: false, error: 'Yarışma bulunamadı.' };

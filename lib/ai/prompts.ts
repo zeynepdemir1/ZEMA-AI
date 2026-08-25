@@ -63,8 +63,9 @@ export type CompetitionContextInput = {
  *
  * Şablon PDF'inden otomatik çıkarım eklendiğinde (bkz. extract-template.ts)
  * `template_spec`'e üç alan daha yazılmaya başlandı: çıkarımın künyesi
- * (`source`), çıkarımı gerekçelendiren birebir alıntılar (`source_quotes`)
- * ve geri dönüş için saklanan eski spec'in TAM KOPYASI (`previous`).
+ * (`source` ve iki belgeli künye `sources`), çıkarımı gerekçelendiren
+ * birebir alıntılar (`source_quotes`) ve geri dönüş için saklanan eski
+ * spec'in TAM KOPYASI (`previous`).
  *
  * Bunlar yarışma KURALI değil, çıkarımın denetim kaydı. Ama
  * buildCompetitionContext spec'i olduğu gibi JSON'a çevirdiği için hepsi
@@ -78,7 +79,7 @@ export type CompetitionContextInput = {
  * eklenirse sessizce düşmesin. Buradaki üç alanı yazan tek yer şablon
  * çıkarım rotası, yani liste kapalı ve denetlenebilir.
  */
-const TEMPLATE_SPEC_METADATA_KEYS = ['source', 'source_quotes', 'previous'] as const;
+const TEMPLATE_SPEC_METADATA_KEYS = ['source', 'sources', 'source_quotes', 'previous'] as const;
 
 export function templateRulesForPrompt(spec: unknown): Record<string, unknown> {
   if (!spec || typeof spec !== 'object' || Array.isArray(spec)) return {};
@@ -316,4 +317,62 @@ alıntı ver ve section_ref alanına gerekçelendirdiği alanın adını yaz
 Alıntılar kelime kelime aynı olmalı — özetleme, kısaltma, düzeltme yapma.
 Bu alıntılar şablon metninde otomatik olarak aranıyor; bulunamayan alıntı
 yöneticiye "doğrulanamadı" olarak gösteriliyor.
+`.trim();
+
+
+// ─────────────────────────────────────────────────────────────
+// ŞARTNAME ÇIKARIMI
+// ─────────────────────────────────────────────────────────────
+
+export const RULEBOOK_EXTRACTION_ROLE = [
+  'Sen TEKNOFEST yarışma ŞARTNAMELERİNİ okuyup değerlendirme rubriğini',
+  'makine tarafından işlenebilir bir kural setine çeviren bir asistansın.',
+  'Görevin ŞARTNAMEDE YAZANI çıkarmak; yazmayan hiçbir kuralı eklemiyorsun.',
+  '',
+  YAZIM_KURALI,
+].join('\n');
+
+export const RULEBOOK_EXTRACTION_INSTRUCTION = `
+Yukarıdaki şartname belgesinden DEĞERLENDİRME RUBRİĞİNİ çıkar.
+
+EN ÖNEMLİ ALAN — criteria:
+Şartnamede raporun hangi başlıklar altında puanlanacağı yazar. Genellikle
+"Değerlendirme Kriterleri", "Puanlama", "Rapor Değerlendirme Tablosu" gibi
+bir bölümde, çoğu zaman TABLO halinde bulunur. Her kriter için:
+
+  · code        : kısa kod. Şartnamede varsa aynen ("K1", "1.2"); yoksa
+                  sırayla K1, K2, … üret.
+  · name        : kriterin adı, şartnamedeki yazımıyla.
+  · description : hakemin ne aradığını anlatan BEKLENTİ metni. Şartnamede
+                  açıklama varsa onu kullan; yoksa kriterin adından
+                  türetilebilecek en somut ifadeyi yaz.
+  · max_score   : o kriterden alınabilecek en yüksek puan.
+  · weight      : 0-1 arası ağırlık ORANI (yüzde değil). Şartnamede yüzde
+                  yazıyorsa 100'e böl. Puan yazıyorsa kriterin puanını
+                  toplam puana böl. Hiçbiri yoksa kriterleri eşit ağırlıkla
+                  paylaştır (1 / kriter sayısı).
+
+Ağırlıkların toplamı 1'e yakın olmalı. Değilse ölçeklemeye çalışma —
+şartnamede yazanı ver, tutarsızlığı yöneticiye bırak.
+
+extra_rules: şartnamede geçen, BİÇİMLE İLGİLİ OLMAYAN kurallar (katılım
+koşulları, teslim kuralları, diskalifiye sebepleri, özgünlük şartı). Sayfa
+sayısı/yazı tipi gibi biçim kuralları BURAYA GİRMEZ — onlar rapor
+şablonunun işi.
+
+competition_name: şartnamenin hangi yarışmaya ait olduğu. Yanlış belge
+yüklendiğinde yönetici bunu görüp anlayacak.
+
+UYDURMA YASAĞI — EN KATI KURAL:
+Şartnamede puanlama rubriği YOKSA criteria alanını BOŞ DİZİ olarak ver ve
+not_specified'a "criteria" yaz. Bazı şartnameler gerçekten rubrik
+içermez; uydurulmuş bir rubrikle yarışma değerlendirmek, hiç rubrik
+olmamasından çok daha kötüdür. "Genelde şöyle olur" diye tamamlama.
+
+KANITLAMA:
+source_quotes içinde çıkardığın her kriter için şartnameden BİREBİR bir
+alıntı ver; section_ref alanına "criteria[K1]" biçiminde hangi kriteri
+gerekçelendirdiğini yaz. Alıntılar kelime kelime aynı olmalı — özetleme,
+kısaltma, düzeltme yapma. Bu alıntılar şartname metninde otomatik olarak
+aranıyor; bulunamayan alıntı yöneticiye "doğrulanamadı" olarak gösteriliyor.
 `.trim();
