@@ -221,27 +221,34 @@ export async function approveAllCriteria(
 }
 
 /**
- * Başarısız kontrolleri yeniden kuyruğa al.
+ * Takılı kalan analizi sürdür.
  *
- * NEDEN GEREKLİ: bir iş 3 denemede başarısız olunca `failed` yazılıyor ve
- * ORADA KALIYOR — kuyruk yalnızca `pending` işleri kapıyor, geri döndürecek
- * hiçbir yol yoktu. Canlı yüklemede geçici bir hata (kota, 503, modelin
- * eksik alan döndürmesi) raporu kalıcı olarak eksik kontrolle bırakıyordu.
- * Sahada görüldü: üç `category_fit` işi bu şekilde kilitlendi; aynı çağrı
- * daha sonra elle tekrarlandığında sorunsuz çalıştı, yani hata geçiciydi.
+ * İKİ AYRI DURUM, TEK DÜĞME:
  *
- * `attempts` sıfırlanıyor (yeni bir deneme turu) ve `created_at` öne
- * alınıyor: kuyruk FIFO çalıştığı için aksi halde yeniden denenen iş
- * sıranın en sonunda kalırdı.
+ *  1. `failed` işler — 3 denemede pes edilmiş. Kuyruk yalnızca `pending`
+ *     kapıyor, geri döndürecek yol yoktu.
+ *  2. `pending` işler — HİÇ ÇALIŞTIRILMAMIŞ. Kuyruğu ilerleten tek şey
+ *     yükleme formundaki istemci döngüsü (Vercel Cron güvenilmez sayıldı);
+ *     kullanıcı yükleme bitmeden sayfadan ayrılırsa kalan işler sonsuza
+ *     kadar `pending` kalıyor. Sahada görüldü: R-798F26 raporunda
+ *     title_content `done`, diğer beş kontrol `attempts=0` ile `pending` —
+ *     yani hiç kapılmamışlar. Hakem ekranı "ANALİZ SÜRÜYOR · 1/6" yazıp
+ *     orada kalıyordu ve ilerletecek hiçbir düğme yoktu.
  *
- * YETKİ: hakem kendi raporunu kurtarabilmeli — aksi halde ekranında
- * "2 KONTROL BAŞARISIZ" yazan bir rozetle kilitli kalıp yönetici beklerdi.
- * Yöneticiler de kuyruğu izledikleri için dahil. Bu bir analiz işlemi,
- * yayımlama değil; §3.1'deki rol ayrımını bozmuyor.
+ * Bu action failed'ları pending'e döndürüyor; asıl ilerletmeyi istemci
+ * /api/jobs/tick'i döngüde çağırarak yapıyor.
+ *
+ * `attempts` sıfırlanıyor ve `created_at` öne alınıyor: kuyruk FIFO
+ * çalıştığı için aksi halde yeniden denenen iş sıranın en sonunda kalırdı.
+ *
+ * YETKİ: hakem kendi raporunu kurtarabilmeli — aksi halde ekranında takılı
+ * bir ilerleme çubuğuyla kalıp yönetici beklerdi. Yöneticiler de kuyruğu
+ * izledikleri için dahil. Bu bir analiz işlemi, yayımlama değil; §3.1'deki
+ * rol ayrımını bozmuyor.
  */
-export async function requeueFailedChecks(
+export async function resumeAnalysis(
   reportId: string,
-): Promise<{ ok: boolean; error?: string; requeued?: number }> {
+): Promise<{ ok: boolean; error?: string; requeued?: number; pending?: number }> {
   const invalid = badId(reportId);
   if (invalid) return { ok: false, error: invalid };
   const auth = await authorize(['judge', 'evaluation_admin', 'competition_admin']);
@@ -250,39 +257,44 @@ export async function requeueFailedChecks(
   if (denied) return { ok: false, error: denied };
 
   const db = supabaseAdmin();
-  const { data: failed, error: se } = await db
+  const { data: jobs, error: se } = await db
     .from('analysis_jobs')
-    .select('id, check_type')
+    .select('id, check_type, status')
     .eq('report_id', reportId)
-    .eq('status', 'failed');
+    .neq('status', 'done');
   if (se) return { ok: false, error: se.message };
-  if (!failed?.length) return { ok: true, requeued: 0 };
 
-  const { error } = await db
-    .from('analysis_jobs')
-    .update({
-      status: 'pending',
-      attempts: 0,
-      error: null,
-      started_at: null,
-      finished_at: null,
-      // Sıranın önüne al — yoksa FIFO'da en arkaya düşerdi.
-      created_at: new Date().toISOString(),
-    })
-    .in(
-      'id',
-      failed.map((j) => j.id),
-    );
-  if (error) return { ok: false, error: error.message };
+  const failed = (jobs ?? []).filter((j) => j.status === 'failed');
+  if (failed.length) {
+    const { error } = await db
+      .from('analysis_jobs')
+      .update({
+        status: 'pending',
+        attempts: 0,
+        error: null,
+        started_at: null,
+        finished_at: null,
+        // Sıranın önüne al — yoksa FIFO'da en arkaya düşerdi.
+        created_at: new Date().toISOString(),
+      })
+      .in(
+        'id',
+        failed.map((j) => j.id),
+      );
+    if (error) return { ok: false, error: error.message };
+  }
 
   await db.from('audit_log').insert({
     actor: auth.user.id,
-    action: 'checks.requeued',
+    action: 'checks.resumed',
     entity: 'reports',
     entity_id: reportId,
-    meta: { checks: failed.map((j) => j.check_type) },
+    meta: {
+      requeued_failed: failed.map((j) => j.check_type),
+      still_pending: (jobs ?? []).filter((j) => j.status === 'pending').map((j) => j.check_type),
+    },
   });
 
   revalidatePath(`/review/${reportId}`);
-  return { ok: true, requeued: failed.length };
+  return { ok: true, requeued: failed.length, pending: (jobs ?? []).length };
 }

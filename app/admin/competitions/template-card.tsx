@@ -20,7 +20,7 @@ type Result = {
   mocked: boolean;
   page_count: number;
   quotes: Array<{ verified: boolean }>;
-  criteria: { replaced: number };
+  criteria?: { replaced: number; existing: number; note?: string };
 };
 
 async function readJson(res: Response): Promise<Record<string, unknown>> {
@@ -160,6 +160,36 @@ export function TemplateCard({
           <div className="text-success font-mono text-[11px] tracking-[.1em]">
             ✓ ŞABLON ÇÖZÜMLENDİ · {result.page_count} SAYFA OKUNDU
           </div>
+          {/* Şablonda puanlama rubriği YOKSA bunu sessizce geçme. Rubrik çoğu
+              TEKNOFEST yarışmasında şablondan ayrı bir belgede olur; gerçek
+              bir şablonla denendiğinde criteria boş dizi döndü ve yarışma
+              0 kriterle kaldı. O halde criteria_scoring kontrolü
+              değerlendirecek hiçbir şey bulamıyor. */}
+          {result.criteria && result.criteria.replaced === 0 && (
+            <div className="border-gold-ink/40 mt-3 border-l-2 pl-3">
+              <div className={`${SECTION} mb-1.5`}>PUANLAMA KRİTERİ BULUNAMADI</div>
+              <div className={`${BODY} mb-2`}>
+                {result.criteria.existing > 0
+                  ? `Bu şablonda puanlama kriterleri bulunamadı — yarışmadaki mevcut ${result.criteria.existing} kritere DOKUNULMADI.`
+                  : 'Bu şablonda puanlama kriterleri bulunamadı — değerlendirme kriterlerini elle girmeniz gerekiyor.'}
+              </div>
+              <div className={`${MUTED} mb-3`}>
+                Bu beklenen bir durumdur: rubrik çoğu yarışmada rapor şablonunun
+                içinde değil, ayrı bir belgede yer alır.
+                {result.criteria.existing === 0 &&
+                  ' Kriter girilmezse hakem ekranındaki kriter bazlı değerlendirme çalışmaz.'}
+              </div>
+              {result.criteria.existing === 0 && (
+                <a
+                  href="#kriterler"
+                  className="bg-t3-blue inline-block px-4 py-2 font-mono text-[11px] tracking-[.1em] text-white no-underline"
+                >
+                  KRİTERLERİ ELLE GİR →
+                </a>
+              )}
+            </div>
+          )}
+
           <div className={`${MUTED} mt-1.5`}>
             {result.mocked ? (
               <>Mock mod (MOCK_AI=true) — gerçek çağrı yapılmadı, sabit çıktı gösterildi.</>
@@ -168,7 +198,7 @@ export function TemplateCard({
                 {result.model} · {result.spec.required_sections.length} zorunlu bölüm ·{' '}
                 {result.spec.criteria.length} kriter · alıntı doğrulama: {verified}/
                 {result.quotes.length}
-                {result.criteria.replaced > 0 && ` · kriterler güncellendi (${result.criteria.replaced})`}
+                {(result.criteria?.replaced ?? 0) > 0 && ` · kriterler güncellendi (${result.criteria?.replaced ?? 0})`}
               </>
             )}
             {' '}— aşağıdaki kutulara yazıldı.

@@ -346,3 +346,116 @@ export async function revertTemplateSpec(
   revalidatePath('/admin/competitions/template');
   return { ok: true };
 }
+
+// ─────────────────────────────────────────────────────────────
+// Değerlendirme kriterleri (rubrik) — ELLE GİRİŞ
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * NEDEN GEREKLİ: kriterler şimdiye kadar YALNIZCA şablon PDF'inden
+ * çıkarılabiliyordu. Ama puanlama rubriği çoğu TEKNOFEST yarışmasında
+ * şablonun İÇİNDE değil, ayrı bir belgede olur — nitekim gerçek bir
+ * şablonla denendiğinde `template_spec.criteria` boş dizi döndü ve yarışma
+ * 0 kriterle kaldı. Bu durumda criteria_scoring kontrolü değerlendirecek
+ * hiçbir şey bulamıyor ve hakem ekranı sessizce boş görünüyordu.
+ *
+ * Bu action elle giriş yolunu açıyor.
+ */
+export async function saveCriterion(input: {
+  competitionId: string;
+  criterionId?: string;
+  code: string;
+  title: string;
+  description: string;
+  maxScore: number;
+  weightPct: number;
+}): Promise<{ ok: boolean; error?: string }> {
+  const invalid = badId(input.competitionId);
+  if (invalid) return { ok: false, error: invalid };
+  if (input.criterionId) {
+    const bad = badId(input.criterionId);
+    if (bad) return { ok: false, error: bad };
+  }
+  const auth = await authorize(['competition_admin']);
+  if ('error' in auth) return { ok: false, error: auth.error };
+
+  const code = input.code.trim();
+  const title = input.title.trim();
+  const description = input.description.trim();
+  if (!title) return { ok: false, error: 'Kriter adı zorunlu.' };
+  if (!description) {
+    return { ok: false, error: 'Beklenti metni zorunlu — AI değerlendirmeyi buna göre yapıyor.' };
+  }
+  if (!Number.isFinite(input.maxScore) || input.maxScore <= 0) {
+    return { ok: false, error: 'En yüksek puan 0’dan büyük olmalı.' };
+  }
+  if (!Number.isFinite(input.weightPct) || input.weightPct <= 0 || input.weightPct > 100) {
+    return { ok: false, error: 'Ağırlık 1-100 arasında olmalı.' };
+  }
+
+  const db = supabaseAdmin();
+  // Ad biçimi şablon çıkarımıyla AYNI tutuluyor ("K-01 · Problem Tanımı"):
+  // hakem ekranı adı bu ayraçtan bölüp kod ve başlık olarak gösteriyor.
+  const name = code ? `${code} · ${title}` : title;
+  const payload = {
+    competition_id: input.competitionId,
+    category_id: null,
+    name,
+    description,
+    max_score: input.maxScore,
+    weight: input.weightPct / 100,
+  };
+
+  if (input.criterionId) {
+    const { error } = await db.from('criteria').update(payload).eq('id', input.criterionId);
+    if (error) return { ok: false, error: error.message };
+  } else {
+    const { count } = await db
+      .from('criteria')
+      .select('id', { count: 'exact', head: true })
+      .eq('competition_id', input.competitionId);
+    const { error } = await db
+      .from('criteria')
+      .insert({ ...payload, sort_order: (count ?? 0) + 1 });
+    if (error) return { ok: false, error: error.message };
+  }
+
+  await db.from('audit_log').insert({
+    actor: auth.user.id,
+    action: input.criterionId ? 'criterion.updated' : 'criterion.created',
+    entity: 'criteria',
+    entity_id: input.competitionId,
+    meta: { name },
+  });
+  revalidatePath('/admin/competitions');
+  return { ok: true };
+}
+
+/**
+ * Kriteri sil.
+ *
+ * ⚠️ Bu kritere bağlı `ai_criterion_scores` satırları da gider (FK cascade).
+ * Yani daha önce yapılmış AI değerlendirmeleri ve hakemin o kriterdeki
+ * metni kaybolur — çağıran ekran bunu kullanıcıya söylüyor.
+ */
+export async function deleteCriterion(
+  criterionId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const invalid = badId(criterionId);
+  if (invalid) return { ok: false, error: invalid };
+  const auth = await authorize(['competition_admin']);
+  if ('error' in auth) return { ok: false, error: auth.error };
+
+  const db = supabaseAdmin();
+  const { error } = await db.from('criteria').delete().eq('id', criterionId);
+  if (error) return { ok: false, error: error.message };
+
+  await db.from('audit_log').insert({
+    actor: auth.user.id,
+    action: 'criterion.deleted',
+    entity: 'criteria',
+    entity_id: criterionId,
+  });
+  revalidatePath('/admin/competitions');
+  return { ok: true };
+}

@@ -4,6 +4,7 @@ import { CompetitionSwitcher } from '../switcher';
 import { TemplateCard } from '../template-card';
 import { SectionsCard } from '../sections-card';
 import { ThresholdCard } from '../threshold-card';
+import { CriteriaCard } from '../criteria-card';
 import { notSpecifiedLabel } from '../not-specified-labels';
 
 import { requireRole } from '@/lib/supabase/server';
@@ -48,7 +49,7 @@ export default async function TemplateSetupPage({
     );
   }
 
-  const { competition, overThresholdPct } = data;
+  const { competition, criteria, overThresholdPct } = data;
   const spec = competition.template_spec;
   const wasProcessed = Boolean(spec.source);
   const reportCount = data.categories.reduce((a, c) => a + c.reportCount, 0);
@@ -86,6 +87,10 @@ export default async function TemplateSetupPage({
             format={spec.format ?? {}}
             citationFormat={spec.citation_format ?? ''}
           />
+
+          {/* Kriterler burada: şablon çıkarımı rubriği bulamayınca yarışma
+              0 kriterle kalıyordu ve elle girecek hiçbir ekran yoktu. */}
+          <CriteriaCard competitionId={competition.id} criteria={criteria} />
         </div>
 
         {/* SAĞ SÜTUN — şablon PDF'inden çıkarıldı · içerik kuralları · benzerlik eşiği */}

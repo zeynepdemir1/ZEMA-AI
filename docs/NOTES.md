@@ -1,5 +1,107 @@
 # ZEMA — Yapılacaklar / Bilinen Eksikler
 
+## ⚠️ ÇALIŞTIRILMASI GEREKEN MIGRATION — `0008_teams_founded_year.sql`
+
+`teams` tablosuna `founded_year int` (NULL kabul) ve 1900-2200 aralık
+kısıtı ekliyor. Takım oluşturma formunun ikinci alanı bu.
+
+**Çalıştırılmadan da uygulama çökmüyor:** `createTeam` insert'i `42703`
+alırsa kolonsuz tekrar deniyor (0006/0007'deki desenin aynısı), yani takım
+yine açılıyor ama kuruluş yılı KAYDEDİLMİYOR.
+
+Mevcut takımlarda (seed'in dokuz takımı dahil) `founded_year` NULL kalıyor
+— bilinmiyor, uydurulmadı.
+
+## 🔍 R-798F26 "1/6" ve "0/6 kriter" teşhisi (25 Ağustos)
+
+### Bulgu 1 — altı kontrol ÇALIŞMADI, hâlâ 1/6
+
+```
+title_content        done     attempts=1
+category_fit         pending  attempts=0
+criteria_scoring     pending  attempts=0
+feedback_synthesis   pending  attempts=0
+language_template    pending  attempts=0
+similarity           pending  attempts=0
+```
+
+Beş iş `attempts=0` — yani hiç KAPILMAMIŞLAR. Kuyruğu ilerleten tek şey
+yükleme formundaki istemci döngüsü (Vercel Cron güvenilmez sayılmıştı);
+kullanıcı yükleme bitmeden sayfadan ayrılınca kalan işler orada kalıyor.
+`claim_analysis_jobs` doğru çalışıyor, sorun onda değil — **kuyruğu
+ilerletecek hiçbir yol yoktu.**
+
+Aynı durumdaki diğer raporlar: R-63406F (4/6), R-46A803 (4/6), R-1A98F4 (4/6).
+
+### Bulgu 2 — "0/6 kriter"in sebebi `template_spec.criteria` DEĞİL
+
+Hipotez doğrulanmadı. Kanıt:
+
+| kontrol | sonuç |
+|---|---|
+| `criteria_scoring` işi | `pending`, attempts=0 → hiç çalışmadı |
+| `ai_criterion_scores` (bu rapor) | **0 satır** — çünkü kontrol çalışmadı |
+| 2026 yarışmasının `criteria` tablosu | **6 satır** (K-01…K-06) |
+| `run-check` kriterleri nereden okuyor | `criteria` TABLOSU, template_spec'ten DEĞİL |
+
+Yani kriterler tanımlı ve yerinde; "0/6" = 6 kriter var, 0'ı onaylanmış,
+çünkü AI hiç kart üretmedi.
+
+**AMA hipotez BAŞKA bir yarışma için doğru:** "TEKNOFEST 2025 — Model Uydu"
+yarışmasında `criteria` tablosu **0 satır** ve `template_spec.criteria`
+**boş dizi** — şablon PDF'inde rubrik bulunamamış. Bu beklenen bir durum
+(rubrik çoğu yarışmada şablondan ayrı belgede) ve o yarışmada gerçekten
+kriter yok.
+
+### Düzeltmeler
+
+**a) Takılı kuyruk sürdürülebiliyor.** Hakem ekranındaki salt-okunur
+"ANALİZ SÜRÜYOR · 1/6" rozeti düğmeye dönüştü: `resumeAnalysis` failed
+işleri pending'e döndürüyor, sonra istemci kuyruğu döndürüyor. Önceki
+sürüm yalnızca `failed` işleri kapsıyordu; `pending` takılmayı hiç
+çözmüyordu.
+
+**b) Yönetici tarafında boş rubrik uyarısı.** Şablon çözümlendiğinde
+rubrik bulunamazsa açık uyarı + "KRİTERLERİ ELLE GİR →" düğmesi.
+Yarışmada zaten kriter varsa "mevcut N kritere DOKUNULMADI" deniyor
+(rota zaten üzerine yazmıyordu, artık bunu söylüyor da).
+
+**c) Elle kriter giriş ekranı — yoktu, oluşturuldu.** Kriterler yalnızca
+şablon çıkarımından yazılabiliyordu. `CriteriaCard` ekle/düzenle/sil
+sunuyor; ad biçimi şablon çıkarımıyla aynı (`K-01 · Başlık`) tutuldu ki
+hakem ekranı kodu ayraçtan bölebilsin. Silme uyarısı, bağlı AI
+skorlarının da gideceğini söylüyor.
+
+**d) Hakem ekranında iki ayrı boş durum.** "0/6" ikisini de gizliyordu:
+*"Bu yarışma için henüz puanlama kriteri tanımlanmamış"* (kriter yok) ve
+*"N kriter tanımlı ancak değerlendirme henüz çalışmadı"* (kuyruk takılı,
+SÜRDÜR düğmesine yönlendiriyor).
+
+## 👥 Takım oluşturma formu — sessiz otomatik açma kaldırıldı (25 Ağustos)
+
+Önceki sürüm, takımı olmayan bir yarışmaya yükleme yapılırken arka planda
+sessizce `<Ad Soyad> Takımı` açıyordu. Kullanıcının adına, onayı olmadan ve
+adını kendisi seçmeden kayıt yaratmak doğru değil.
+
+Artık `resolveUploaderTeam` takım açmıyor; `needsTeam` ile 409 dönüyor ve
+istemci **Takım Oluştur** formunu gösteriyor:
+
+- **Takım Adı** — 3-50 karakter, harf/rakam/tire/alt çizgi.
+  Unicode harf sınıfı (`\p{L}`) kullanıldı ki Türkçe harfler geçsin.
+  ⚠️ **Boşluk kabul edilmiyor** (istenen kural buydu). Gerçek takım adları
+  çoğu zaman boşluk içerir; gerekirse regex'e boşluk eklemek yeterli.
+- **Kuruluş Yılı** — zorunlu, bulunduğumuz yıldan büyük olamaz, 1900'den
+  küçük olamaz (alt sınır veri girişi hatasını yakalamak için eklendi).
+
+Doğrulama hem istemcide (yazarken görünür) hem sunucuda. Takım kurulana
+kadar yükleme alanları gösterilmiyor — aksi halde kullanıcı formu doldurup
+409 alırdı. Denetim kaydı: `team.created` + `report.submitted`'daki
+`team_created` bayrağı aynen duruyor.
+
+Sunucu tarafı doğrulandı: takımı olmayan yarışmaya hem `/api/reports` hem
+`/api/reports/upload-url` **409** dönüyor, sessizce takım **açılmıyor**,
+rapor oluşmuyor.
+
 ## 🏁 Yarışmacı yeni yarışmaları göremiyordu — teşhis ve düzeltme (25 Ağustos)
 
 ### Teşhis: dört hipotezin üçü yanlıştı

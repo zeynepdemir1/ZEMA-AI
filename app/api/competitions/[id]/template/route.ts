@@ -158,6 +158,13 @@ export async function POST(req: Request, ctx: RouteContext<'/api/competitions/[i
     });
   }
 
+  // Çıkarımdan SONRAKİ gerçek kriter sayısı: ekran "şablonda rubrik yoktu ve
+  // elde de kriter yok" durumunu ancak bunu bilerek uyarabilir.
+  const { count: criteriaCount } = await db
+    .from('criteria')
+    .select('id', { count: 'exact', head: true })
+    .eq('competition_id', id);
+
   return NextResponse.json({
     spec: extraction.spec,
     model: extraction.model,
@@ -166,7 +173,7 @@ export async function POST(req: Request, ctx: RouteContext<'/api/competitions/[i
     extracted_chars: text.length,
     quotes: extraction.quotes,
     usage: extraction.usage,
-    criteria: criteriaResult,
+    criteria: { ...criteriaResult, existing: criteriaCount ?? 0 },
   });
 }
 

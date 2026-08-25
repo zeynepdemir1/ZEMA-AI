@@ -580,7 +580,47 @@ function CheckDetail({
 
   // ── Kriter puanlaması ──
   if (check.type === 'criteria_scoring') {
+    // İKİ FARKLI BOŞ DURUM, İKİ FARKLI SEBEP — "0/6" ikisini de gizliyordu:
+    //
+    //  a) Yarışmada hiç kriter TANIMLI DEĞİL. Şablon PDF'inde puanlama
+    //     rubriği bulunamayınca oluyor ve beklenen bir durum: rubrik çoğu
+    //     yarışmada şablondan ayrı bir belgede. Çözüm yöneticide.
+    //  b) Kriterler tanımlı ama criteria_scoring HENÜZ ÇALIŞMADI (kuyruk
+    //     takılı kalmış). Çözüm başlıktaki "SÜRDÜR" düğmesi.
+    //
+    // İkisi de "boş/başarısız" gibi görünmemeli.
+    if (cards.length === 0) {
+      return (
+        <Block title="PUANLAMA KRİTERİ YOK">
+          <div className={BODY}>Bu yarışma için henüz puanlama kriteri tanımlanmamış.</div>
+          <div className={MUTED}>
+            Kriter bazlı değerlendirme, yarışma yöneticisi kriterleri tanımlayana kadar
+            çalışmaz. Bu bir analiz hatası değil — rubrik çoğu yarışmada rapor
+            şablonunun içinde değil, ayrı bir belgede yer alır ve elle girilmesi
+            gerekir.
+          </div>
+        </Block>
+      );
+    }
+
     const criteria = (p.criteria ?? []) as Array<{ status: string }>;
+    if (criteria.length === 0) {
+      return (
+        <Block title={`KRİTER KARTLARI · ${cards.length}`}>
+          <div className={BODY}>
+            Bu yarışmada {cards.length} kriter tanımlı, ancak kriter bazlı değerlendirme
+            henüz çalışmadı.
+          </div>
+          <div className={MUTED}>
+            Analiz kuyruğu tamamlanmamış olabilir — sayfanın üstündeki{' '}
+            <span className="font-mono">SÜRDÜR</span> düğmesi kalan kontrolleri
+            çalıştırır.
+          </div>
+          <div className="mt-3 flex flex-col gap-4">{renderCards()}</div>
+        </Block>
+      );
+    }
+
     const stats = (p.evidence_stats ?? {}) as {
       totalQuotes?: number;
       exactQuotes?: number;

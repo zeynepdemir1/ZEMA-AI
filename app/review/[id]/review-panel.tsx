@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import type { CriterionCardData, ReviewData } from '@/lib/reports/queries';
 import {
   approveAllCriteria,
-  requeueFailedChecks,
+  resumeAnalysis,
   saveCriterionText,
   setCriterionApproval,
 } from './actions';
@@ -16,30 +16,39 @@ import { CheckPanels } from './check-panels';
 const MAX_TICKS = 20;
 
 /**
- * Başarısız kontrolleri kurtarma düğmesi.
+ * Takılı analizi sürdürme düğmesi.
  *
- * Kuyruk yalnızca `pending` işleri kapıyor; `failed` olan iş orada kalıyor
- * ve hakemin ekranında kalıcı bir "2 KONTROL BAŞARISIZ" rozeti bırakıyordu.
- * Önce işler pending'e döndürülüyor, sonra kuyruk buradan döndürülüyor —
- * yükleme formundaki desenin aynısı (Vercel Cron'a güvenilmiyor).
+ * Kuyruğu ilerleten tek şey yükleme formundaki istemci döngüsü (Vercel Cron
+ * güvenilmez sayıldı). Kullanıcı yükleme bitmeden sayfadan ayrılırsa kalan
+ * işler `pending` olarak kalıyor ve hakem ekranı "ANALİZ SÜRÜYOR · 1/6"
+ * yazıp orada donuyordu — ilerletecek hiçbir yol yoktu.
+ *
+ * Düğme iki durumu birden çözüyor: `failed` işler pending'e döndürülüyor,
+ * sonra kuyruk buradan döndürülüyor (yükleme formundaki desenin aynısı).
  */
-function RetryFailed({ reportId, failed }: { reportId: string; failed: number }) {
+function ResumeAnalysis({
+  reportId,
+  done,
+  total,
+  failed,
+}: {
+  reportId: string;
+  done: number;
+  total: number;
+  failed: number;
+}) {
   const router = useRouter();
   const [phase, setPhase] = useState<'idle' | 'running' | 'error'>('idle');
   const [message, setMessage] = useState<string | null>(null);
+  const [progress, setProgress] = useState(done);
 
-  async function onRetry() {
+  async function onResume() {
     setPhase('running');
     setMessage(null);
-    const r = await requeueFailedChecks(reportId);
+    const r = await resumeAnalysis(reportId);
     if (!r.ok) {
       setPhase('error');
-      setMessage(r.error ?? 'Yeniden kuyruğa alınamadı.');
-      return;
-    }
-    if (!r.requeued) {
-      setPhase('idle');
-      router.refresh();
+      setMessage(r.error ?? 'Analiz sürdürülemedi.');
       return;
     }
     for (let i = 0; i < MAX_TICKS; i++) {
@@ -49,21 +58,32 @@ function RetryFailed({ reportId, failed }: { reportId: string; failed: number })
         body: JSON.stringify({ reportId }),
       });
       const td = (await t.json().catch(() => ({}))) as { done?: boolean; reportPending?: number };
+      if (typeof td.reportPending === 'number') {
+        setProgress(Math.max(0, total - td.reportPending));
+      }
       if (td.done || td.reportPending === 0) break;
     }
     setPhase('idle');
     router.refresh();
   }
 
+  const tone = failed > 0 ? 'border-danger text-danger hover:bg-danger/[.06]' : 'border-t3-blue text-t3-blue-ink hover:bg-t3-blue/[.06]';
+  const label =
+    phase === 'running'
+      ? `ÇALIŞIYOR · ${progress}/${total}`
+      : failed > 0
+        ? `${failed} KONTROL BAŞARISIZ · YENİDEN DENE`
+        : `ANALİZ ${done}/${total} · SÜRDÜR`;
+
   return (
     <>
       <button
         type="button"
-        onClick={onRetry}
+        onClick={onResume}
         disabled={phase === 'running'}
-        className="border-danger text-danger hover:bg-danger/[.06] border px-2 py-[3px] font-mono text-[11px] tracking-[.1em] transition-colors disabled:opacity-50"
+        className={`${tone} border px-2 py-[3px] font-mono text-[11px] tracking-[.1em] transition-colors disabled:opacity-50`}
       >
-        {phase === 'running' ? 'YENİDEN DENENİYOR…' : `${failed} KONTROL BAŞARISIZ · YENİDEN DENE`}
+        {label}
       </button>
       {message && <span className="text-danger text-[13px] leading-[1.6]">{message}</span>}
     </>
@@ -105,12 +125,12 @@ export function ReviewPanel({ data }: { data: ReviewData }) {
               {report.category}
             </span>
             {progress.total > 0 && progress.done < progress.total && (
-              <span className="text-teal-ink border-teal border px-2 py-[3px] font-mono text-[11px] tracking-[.1em]">
-                ANALİZ SÜRÜYOR · {progress.done}/{progress.total}
-              </span>
-            )}
-            {progress.failed > 0 && (
-              <RetryFailed reportId={report.id} failed={progress.failed} />
+              <ResumeAnalysis
+                reportId={report.id}
+                done={progress.done}
+                total={progress.total}
+                failed={progress.failed}
+              />
             )}
           </div>
           <h2 className="font-heading m-0 text-[24px] font-semibold">{report.team}</h2>

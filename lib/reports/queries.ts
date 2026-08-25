@@ -966,6 +966,8 @@ export async function loadMySubmissions() {
     competition: competition ?? { name: '—', submission_deadline: null },
     /** Yükleme formundaki yarışma seçici için — hepsi, kategorileriyle. */
     competitions,
+    /** Kullanıcının TAKIMI OLAN yarışmalar. Diğerlerinde önce takım kurulur. */
+    teamCompetitionIds: [...new Set(teams.map((t) => t.competition_id))],
     activeCompetitionId: active?.id ?? null,
     categories,
     reports: list,

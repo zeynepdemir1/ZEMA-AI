@@ -36,7 +36,10 @@ export type UploaderTeam = {
  */
 export async function resolveUploaderTeam(
   competitionId?: string,
-): Promise<{ ok: true; team: UploaderTeam } | { ok: false; status: number; error: string }> {
+): Promise<
+  | { ok: true; team: UploaderTeam }
+  | { ok: false; status: number; error: string; needsTeam?: boolean }
+> {
   const user = await currentUser();
   if (!user) return { ok: false, status: 401, error: 'Giriş yapmalısınız.' };
   if (user.role !== 'competitor') {
@@ -73,33 +76,15 @@ export async function resolveUploaderTeam(
     };
   }
 
-  // Yarışma gerçekten var mı? İstemciden gelen kimliğe güvenilmiyor.
-  const { data: comp } = await db
-    .from('competitions')
-    .select('id')
-    .eq('id', competitionId)
-    .maybeSingle();
-  if (!comp) return { ok: false, status: 404, error: 'Yarışma bulunamadı.' };
-
-  const teamName = `${user.fullName?.trim() || user.email || 'Yarışmacı'} Takımı`;
-  const { data: created, error: ce } = await db
-    .from('teams')
-    .insert({ competition_id: competitionId, name: teamName })
-    .select('id')
-    .single();
-  if (ce) return { ok: false, status: 500, error: `Takım oluşturulamadı: ${ce.message}` };
-
-  const { error: me } = await db
-    .from('team_members')
-    .insert({ team_id: created.id, user_id: user.id });
-  if (me) {
-    await db.from('teams').delete().eq('id', created.id); // yetim takım bırakma
-    return { ok: false, status: 500, error: `Takıma eklenemedi: ${me.message}` };
-  }
-
+  // TAKIM YOKSA SESSİZCE AÇMIYORUZ. Önceki sürüm kullanıcı adına arka planda
+  // takım açıyordu; artık kullanıcı "Takım Oluştur" formunu doldurup
+  // onaylıyor (bkz. app/submissions/new/team-form.tsx). Rota bu durumu
+  // ayırt edilebilir bir kodla bildiriyor ki istemci formu gösterebilsin.
   return {
-    ok: true,
-    team: { userId: user.id, teamId: created.id, competitionId, teamCreated: true },
+    ok: false,
+    status: 409,
+    error: 'Bu yarışmada takımınız yok. Önce takım oluşturmalısınız.',
+    needsTeam: true,
   };
 }
 

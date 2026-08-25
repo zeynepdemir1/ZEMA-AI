@@ -40,6 +40,7 @@ export default async function NewSubmissionPage() {
         <UploadForm
           competitions={data.competitions}
           initialCompetitionId={data.activeCompetitionId ?? data.competitions[0]?.id ?? ''}
+          teamCompetitionIds={data.teamCompetitionIds}
         />
       </div>
     </div>

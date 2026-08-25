@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabaseBrowser } from '@/lib/supabase/browser';
+import { TeamForm } from './team-form';
 
 /**
  * PLAN.md §2.1 — analiz kuyruğunun ANA tetikleyicisi burası:
@@ -72,14 +73,21 @@ type Competition = {
 export function UploadForm({
   competitions,
   initialCompetitionId,
+  teamCompetitionIds,
 }: {
   competitions: Competition[];
   initialCompetitionId: string;
+  /** Kullanıcının takımı OLAN yarışmalar; diğerlerinde önce takım kurulur. */
+  teamCompetitionIds: string[];
 }) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState('');
   const [competitionId, setCompetitionId] = useState(initialCompetitionId);
+  // Bu turda kurulan takımlar; router.refresh() dönene kadar yerelde tutuluyor.
+  const [justCreated, setJustCreated] = useState<string[]>([]);
+  const hasTeam =
+    teamCompetitionIds.includes(competitionId) || justCreated.includes(competitionId);
   const active = competitions.find((c) => c.id === competitionId) ?? competitions[0];
   const categories = active?.categories ?? [];
   const [categoryId, setCategoryId] = useState(categories[0]?.id ?? '');
@@ -216,61 +224,82 @@ export function UploadForm({
         ))}
       </select>
 
-      <label className="text-ink/75 mb-2 block font-mono text-[10.5px] tracking-[.12em]" htmlFor="cat">
-        KATEGORİ
-      </label>
-      <select
-        id="cat"
-        value={categoryId}
-        disabled={busy}
-        onChange={(e) => setCategoryId(e.target.value)}
-        className="border-ink/[.18] text-ink mb-5 w-full border bg-white px-[14px] py-3 font-sans text-[14.5px] disabled:opacity-60"
-      >
-        {categories.map((c) => (
-          <option key={c.id} value={c.id}>{c.name}</option>
-        ))}
-      </select>
-      <div className="text-ink/75 mb-5 -mt-3 text-[12px] leading-[1.5]">
-        {categories.length === 0
-          ? 'Bu yarışmada tanımlı kategori yok — yarışma yöneticisi kategori eklemeli.'
-          : 'Kategori seçiminiz AI tarafından içerikle karşılaştırılır; uyumsuzluk hakeme bildirilir.'}
-      </div>
-
-      <label className="text-ink/75 mb-2 block font-mono text-[10.5px] tracking-[.12em]" htmlFor="file">
-        RAPOR DOSYASI
-      </label>
-      <input
-        id="file"
-        ref={fileRef}
-        type="file"
-        accept="application/pdf"
-        disabled={busy}
-        className="border-ink/[.28] bg-ink/[.02] mb-2 w-full border border-dashed px-4 py-5 text-[13px] disabled:opacity-60"
-      />
-      <div className="text-ink/75 mb-6 font-mono text-[11px]">
-        PDF · MAKS. 20 MB · metin katmanı içermeli (taranmış görüntü kabul edilmiyor)
-      </div>
-
-      {error && (
-        <div className="border-danger text-danger mb-5 border bg-[rgba(180,72,63,.06)] px-4 py-3 text-[13px] leading-[1.55]">
-          {error}
+      {/* Takımı olmayan bir yarışma seçildiyse önce takım kurulur.
+          Arka planda sessizce açmak yerine kullanıcı onaylıyor. */}
+      {!hasTeam && active && (
+        <div className="mb-2">
+          <TeamForm
+            competitionId={competitionId}
+            competitionName={active.name}
+            onCreated={(id) => {
+              setJustCreated((prev) => [...prev, id]);
+              router.refresh();
+            }}
+          />
         </div>
       )}
 
-      {phase === 'done' && reportId && (
-        <div className="border-success mb-5 border bg-[rgba(63,125,92,.06)] px-4 py-3 text-[13px] leading-[1.6]">
-          Raporunuz alındı, değerlendirme sürecine girdi. Sonuç hakem onayından geçip
-          yayımlandığında rapor sayfanızda görünecek — yönlendiriliyorsunuz…
+      {/* Takım kurulana kadar yükleme alanları gösterilmiyor —
+          aksi halde kullanıcı doldurup 409 alırdı. */}
+      {hasTeam && (
+        <>
+        <label className="text-ink/75 mb-2 block font-mono text-[10.5px] tracking-[.12em]" htmlFor="cat">
+          KATEGORİ
+        </label>
+        <select
+          id="cat"
+          value={categoryId}
+          disabled={busy}
+          onChange={(e) => setCategoryId(e.target.value)}
+          className="border-ink/[.18] text-ink mb-5 w-full border bg-white px-[14px] py-3 font-sans text-[14.5px] disabled:opacity-60"
+        >
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
+        <div className="text-ink/75 mb-5 -mt-3 text-[12px] leading-[1.5]">
+          {categories.length === 0
+            ? 'Bu yarışmada tanımlı kategori yok — yarışma yöneticisi kategori eklemeli.'
+            : 'Kategori seçiminiz AI tarafından içerikle karşılaştırılır; uyumsuzluk hakeme bildirilir.'}
         </div>
-      )}
 
-      <button
-        type="submit"
-        disabled={busy || phase === 'done'}
-        className="bg-t3-blue w-full cursor-pointer border-none py-[14px] font-sans text-[15px] font-semibold text-white disabled:opacity-50"
-      >
-        {phase === 'uploading' ? 'Yükleniyor…' : phase === 'done' ? 'Alındı ✓' : 'Raporu Yükle ve Analiz Et'}
-      </button>
+        <label className="text-ink/75 mb-2 block font-mono text-[10.5px] tracking-[.12em]" htmlFor="file">
+          RAPOR DOSYASI
+        </label>
+        <input
+          id="file"
+          ref={fileRef}
+          type="file"
+          accept="application/pdf"
+          disabled={busy}
+          className="border-ink/[.28] bg-ink/[.02] mb-2 w-full border border-dashed px-4 py-5 text-[13px] disabled:opacity-60"
+        />
+        <div className="text-ink/75 mb-6 font-mono text-[11px]">
+          PDF · MAKS. 20 MB · metin katmanı içermeli (taranmış görüntü kabul edilmiyor)
+        </div>
+
+        {error && (
+          <div className="border-danger text-danger mb-5 border bg-[rgba(180,72,63,.06)] px-4 py-3 text-[13px] leading-[1.55]">
+            {error}
+          </div>
+        )}
+
+        {phase === 'done' && reportId && (
+          <div className="border-success mb-5 border bg-[rgba(63,125,92,.06)] px-4 py-3 text-[13px] leading-[1.6]">
+            Raporunuz alındı, değerlendirme sürecine girdi. Sonuç hakem onayından geçip
+            yayımlandığında rapor sayfanızda görünecek — yönlendiriliyorsunuz…
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={busy || phase === 'done'}
+          className="bg-t3-blue w-full cursor-pointer border-none py-[14px] font-sans text-[15px] font-semibold text-white disabled:opacity-50"
+        >
+          {phase === 'uploading' ? 'Yükleniyor…' : phase === 'done' ? 'Alındı ✓' : 'Raporu Yükle ve Analiz Et'}
+        </button>
+        </>
+      )}
     </form>
   );
 }
