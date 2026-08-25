@@ -1,5 +1,94 @@
 # ZEMA — Yapılacaklar / Bilinen Eksikler
 
+## 🔑 TEST HESAPLARI — hepsinin şifresi `zema-test-2026`
+
+| e-posta | ad | rol | bağlam |
+|---|---|---|---|
+| `yarismaci@zema.test` | Mehmet Şahin | yarışmacı | GARO · 2026 İHA |
+| `yarismaci2@zema.test` | Burak Deniz Aslan | yarışmacı | VEGA_2026 · 2026 İHA (raporsuz) |
+| `yarismaci3@zema.test` | Selin Aydın | yarışmacı | ORION_2025 · 2025 Model Uydu (raporsuz) |
+| `yarismaci4@zema.test` | Kerem Doğan | yarışmacı | LYRA_2025 · 2025 Model Uydu (raporsuz) |
+| `hakem@zema.test` | Zeynep Demir | hakem | atanmış raporlar |
+| `hakem2@zema.test` | Mehmet Emre Çelebi | hakem | atanmış raporlar |
+| `hakem3@zema.test` | Adem Coşar | hakem | R-798F26 burada |
+| `hakem4@zema.test` | Elif Naz Bozkurt | hakem | atanmış raporlar |
+| `degerlendirme@zema.test` | Ayşe Yılmaz | değerlendirme yöneticisi | yayımlama yetkisi |
+| `yarisma@zema.test` | Mert Kaya | yarışma yöneticisi | şablon, kriter, kategori |
+
+Raporsuz takımlar bilinçli: katılım kuralı bir takıma bir yarışmada tek rapor
+izni veriyor, hangi raporun yükleneceği demo senaryosuna bağlı.
+`yarismaci3`/`yarismaci4` ile giriş, 2025 Model Uydu'da temiz bir yükleme
+akışı gösterir.
+
+## 🧹 Katılım kuralı temizliği (25 Ağustos)
+
+### Kural 1 ihlali çözüldü — 0009 artık uygulanabilir
+
+GARO takımının 2026'da 5 raporu vardı. Karar: en değerlisi (`R-798F26`,
+gerçek TEKNOFEST rapor+şablon çiftiyle test edilen) kalsın, diğerleri gitsin.
+
+| rapor | işlem | sebep |
+|---|---|---|
+| R-798F26 `zema` | **GARO'da kaldı** | en eksiksiz, gerçek TEKNOFEST çifti |
+| R-63406F `ZEMA` | **ZEMA_TEST takımına TAŞINDI** | silinmesi istenen 4'ün içindeydi ama "zema/ZEMA adlı verileri kaybetme" talimatıyla çelişiyordu — taşımak ikisini de karşılıyor |
+| R-175C22 Otonom Su Altı Aracı | silindi | demo verisi |
+| R-46A803 TESTMM 20-tabloA | silindi | asistan testi |
+| R-1A98F4 TESTMM 21-tabloB | silindi | asistan testi |
+
+Rapor sayısı 13 → 10. Demo seti 9 → 8 (R-175C22 gitti).
+
+### Kural 2 ihlali çözüldü
+
+Mehmet Şahin'in 9 üyeliği 1'e indi (yalnızca GARO). Sekiz üyelik silindi.
+
+**Sonuç:** 9 takım üyesiz kaldı (ATMACA, RÜZGÂR, PUSAT, SİMURG, KIVILCIM,
+BOZKURT, ŞAHİN, ALTAY, ZEMA_TEST) — raporları duruyor ve hakem/yönetici
+ekranlarında görünüyor, ama hiçbir yarışmacı hesabı onları "kendi raporum"
+olarak görmüyor. Demo için sorun değil: yarışmacı akışı GARO üzerinden,
+hakem/yönetici akışı sekiz rapor üzerinden gösterilir.
+
+### Denetim sonucu
+
+```
+KURAL 1 — (takım, yarışma) çifti: 10 · İHLAL: 0  → 0009 uygulanabilir
+KURAL 2 — kullanıcı+yarışma çoklu takım: 0
+```
+
+Canlı doğrulama: GARO ile ikinci katılım denemesi → **409**
+*"Bu yarışmaya takımınız adına zaten bir rapor gönderildi (\"zema\")"*.
+
+## ✅ R-798F26 — 6/6 tamamlandı (25 Ağustos)
+
+| kontrol | karar | skor | not |
+|---|---|---|---|
+| language_template | fail | 35 | 8 ÖTR bölümünden 4'ü eksik |
+| title_content | warn | 65 | **şablon düzeltmesinden ÖNCE koştu** |
+| category_fit | fail | — | içerik beyan edilen kategoriyle çelişiyor |
+| similarity | pass | 0 | eşik üstü aday yok |
+| criteria_scoring | fail | 33 | 6 kriter değerlendirildi |
+| feedback_synthesis | pass | — | — |
+
+### "Model Uydu kontaminasyonu" YANLIŞ ALARMDI
+
+Payload'larda "TÜRKSAT", "Model Uydu", "PDR", "İniş Hızı" geçiyor — ama bunlar
+şablondan DEĞİL, **raporun kendi içeriğinden** alıntılar. R-798F26 gerçekte
+bir Model Uydu PDR raporu (KONRUL takımı, 10. TÜRKSAT 2025) ve 2026 İHA
+yarışmasının "Serbest Görev" kategorisine yüklenmiş.
+
+Yani `category_fit`'in `is_consistent: false` demesi **doğru bir bulgu**:
+*"Rapor içeriği Türksat Model Uydu Yarışması ve model uydu tasarımına ait
+olup, İnsansız Hava Araçları Serbest Görev kategorisi isterleriyle tamamen
+çelişmektedir."* Sistem tam olarak yapması gerekeni yaptı.
+
+`language_template` de doğru şablona göre çalıştı: 8 ÖTR bölümü arandı
+(33 Model Uydu bölümü değil) ve biçim ölçümü ÖTR kurallarını denetledi
+(maks 15 sayfa, Arial 11 pt, "takım adı + sayfa numarası").
+
+**Tek gerçek kalıntı:** `title_content` 24 Ağustos 20:45'te, şablon
+düzeltilmeden ÖNCE koştu. Bulgusu raporun kendi başlığıyla ilgili olduğu için
+büyük olasılıkla geçerli, ama diğer beş kontrolle aynı bağlamda üretilmedi.
+Yeniden koşturmak 1 API çağrısı — kullanıcı kararı.
+
 ## 🚦 Katılım kuralı — iki katman (25 Ağustos)
 
 **Katman 1:** bir takım, bir yarışmaya KATEGORİDEN BAĞIMSIZ olarak en fazla
