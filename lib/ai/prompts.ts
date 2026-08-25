@@ -289,7 +289,13 @@ YASAK: Puan, skor, yüzde, sıralama veya diğer takımlardan BAHSETME.
 Bu metin yarışmacıya gidecek; ham analiz verisi sızmamalı.
 
 1. summary: raporun genel durumu, 1-2 cümle.
-2. strengths: 2-5 madde, gerçekten güçlü olan yönler.
+2. strengths: 2-5 madde, gerçekten güçlü olan yönler. BU ALANI ASLA BOŞ
+   BIRAKMA — rapor çok zayıf olsa bile en az 2 madde yaz. Gerçekten güçlü
+   bir yön bulamıyorsan UYDURMA ÖVGÜ yazma; bunun yerine dürüst, nötr ve
+   yapıcı bir gözlem yaz (örn. "İçeriğin genel çerçevesi anlaşılır şekilde
+   sunulmuş.", "Konu seçimi yarışma kapsamına uygun.", "Rapor zamanında
+   teslim edilmiş."). Amaç yarışmacıyı cesaretlendirmek — boş bir liste
+   bunu asla sağlamaz.
 3. improvements: 3-7 madde. Her biri area/what/how/priority.
    'how' alanı somut bir eylem olmalı ("iki güncel kaynak ekleyin" gibi).
 4. next_steps: en fazla 4 madde, sıradaki somut adımlar.`,

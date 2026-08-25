@@ -152,7 +152,7 @@ export const PROMPT_VERSIONS: Record<CheckType, string> = {
   category_fit: 'v1',
   similarity: 'v2', // v2: tablo/görsel örtüşmesi kapsama girdi
   criteria_scoring: 'v2', // v2: çok-modlu
-  feedback_synthesis: 'v1',
+  feedback_synthesis: 'v2', // v2: strengths ASLA boş bırakılmasın kuralı eklendi (26 Ağustos)
 };
 
 /**

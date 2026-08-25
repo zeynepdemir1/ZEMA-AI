@@ -57,10 +57,32 @@ export function compileFeedback(
     }
   }
 
-  const s = (synthesis ?? {}) as { summary?: string; next_steps?: string[] };
+  const s = (synthesis ?? {}) as { summary?: string; strengths?: string[]; next_steps?: string[] };
+
+  /**
+   * GÜÇLÜ YÖNLER ASLA BOŞ KALMASIN.
+   *
+   * Kriter kartlarından hiç "done" çıkmayabilir — erken aşamada (örn. Ön
+   * Tasarım Raporu) bu normal, kusur değil. Sahada yakalandı: bu durumda
+   * `strengths` boş dizi olarak yayımlama ekranına gidiyor, ekran "GÜÇLÜ
+   * YÖNLER · 0" gösteriyor ve publishFeedback boş listeyi reddediyor —
+   * hakem her seferinde elle bir şey uydurmak zorunda kalıyordu.
+   *
+   * Önce AI'nin kendi feedback_synthesis çıktısındaki strengths'e düş
+   * (o da rapor gerçekten zayıfsa nötr/yapıcı bir gözlem içerecek şekilde
+   * yazılıyor, bkz. lib/ai/prompts.ts), o da yoksa tek satırlık dürüst bir
+   * varsayılanla doldur — asla boş bırakma.
+   */
+  const finalStrengths =
+    strengths.length > 0
+      ? strengths
+      : s.strengths?.length
+        ? s.strengths
+        : ['Rapor zamanında ve eksiksiz bir doküman olarak teslim edilmiş.'];
+
   return {
     summary: s.summary ?? '',
-    strengths,
+    strengths: finalStrengths,
     improvements,
     next_steps: s.next_steps ?? [],
   };
