@@ -1,5 +1,70 @@
 # ZEMA — Yapılacaklar / Bilinen Eksikler
 
+## 🔒 0009 uygulandı — kısıt canlı doğrulandı (25 Ağustos)
+
+### Dosyadaki iki hata düzeltildi
+
+**1) Sözdizimi (`42601`).** `raise exception` içinde bitişik dize
+literalleri birleştirilmeye çalışılıyordu ve aralarında `E'...'` öneki
+vardı. PostgreSQL bitişik literal birleştirmesinde `E` önekini kabul
+etmiyor. Mesaj artık `raise exception '%', format(...)` biçiminde ve
+parçalar açık `||` operatörüyle bağlanıyor.
+
+**2) Tekrar çalıştırılamıyordu.** Kısıt bir kez eklendikten sonra dosya
+"constraint already exists" ile patlıyordu. Artık `pg_constraint`
+kontrolüyle sarıldı (0008'deki desenin aynısı), yani dosya güvenle
+yeniden çalıştırılabilir ve no-op olur.
+
+### Kısıt gerçekten aktif — service_role ile kanıtlandı
+
+RLS baypas eden `service_role` ile mükerrer `(team_id, competition_id)`
+INSERT denendi:
+
+```
+HTTP 409 · kod 23505
+duplicate key value violates unique constraint
+  "reports_one_entry_per_team_competition"
+Key (team_id, competition_id)=(d83cdbe4-…, 65c9a2f2-…) already exists.
+```
+
+RLS baypas edildiği için engel KESİNLİKLE DB kısıtından geliyor.
+Kapsam da doğru: **başka** bir takım aynı yarışmaya rapor ekleyebiliyor
+(kısıt fazla geniş değil).
+
+Uygulama katmanı da ayrıca 409 veriyor — kullanıcı ham duplicate-key
+hatası değil, açıklayıcı Türkçe mesaj görüyor.
+
+## 🔁 title_content yeniden çalıştırıldı (25 Ağustos)
+
+Şablon düzeltmesinden önce koşan tek kontroldü. Sonuç anlamlı biçimde
+değişti:
+
+| | öncesi | sonrası |
+|---|---|---|
+| karar | warn | **fail** |
+| uyum skoru | 65 | **25** |
+
+Yeni çıktı `category_fit` ile tutarlı: başlığın vaat ettiği (Model Uydu
+PDR, KONRUL, TÜRKSAT 2025) ile raporun İHA yarışmasına gönderilmiş olması
+arasındaki çelişki yakalanıyor. "Başlıkta olmayan içerik" olarak model uydu
+iniş hızı hesapları, paraşüt alanı, ayrılma mekanizması listeleniyor —
+raporun gerçekten içerdiği şeyler.
+
+**Not:** `feedback_synthesis` (13:30) ESKİ title_content çıktısından
+(warn/65) beslendi. Yenilemek 1 API çağrısı — kullanıcı kararı.
+
+### Yol boyunca bulunan denetlenebilirlik hatası
+
+`analysis_results` upsert'i `created_at` yazmıyordu. Kolonun
+`default now()` değeri yalnızca INSERT'te işliyor; satır güncellendiğinde
+zaman damgası ESKİ kalıyordu. title_content yeniden çalıştırıldığında
+verdict warn→fail ve payload tamamen değişti ama `created_at` 19 saat
+önceki değerde kaldı.
+
+Bu, PLAN §1'deki "her AI çıktısı için model ve zaman loglanır"
+iddiasını çürütüyordu. `writeResult` artık `created_at`'i açıkça yazıyor;
+mevcut bayat satır da düzeltildi.
+
 ## 🔑 TEST HESAPLARI — hepsinin şifresi `zema-test-2026`
 
 | e-posta | ad | rol | bağlam |

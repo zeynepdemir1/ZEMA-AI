@@ -425,6 +425,19 @@ async function writeResult(
       model: result.model,
       prompt_version: result.promptVersion,
       usage: result.usage,
+      /**
+       * created_at AÇIKÇA yazılıyor.
+       *
+       * Kolonun `default now()` değeri yalnızca INSERT'te işliyor; bu bir
+       * UPSERT ve satır güncellendiğinde zaman damgası ESKİ kalıyordu.
+       * Sahada görüldü: R-798F26'nın title_content kontrolü yeniden
+       * çalıştırıldı, verdict warn→fail ve payload tamamen değişti ama
+       * created_at 19 saat önceki değerde kaldı. Satırın tamamı (payload,
+       * verdict, model, usage) değiştiği için zaman damgası da sonucun
+       * GERÇEKTEN üretildiği anı göstermeli — aksi halde "her AI çıktısı
+       * için model ve zaman loglanır" denetlenebilirlik iddiası çürük olur.
+       */
+      created_at: new Date().toISOString(),
     },
     { onConflict: 'report_id,check_type' },
   );
