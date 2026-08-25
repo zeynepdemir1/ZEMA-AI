@@ -1,14 +1,22 @@
 import Link from 'next/link';
-import { loadAssignments } from '@/lib/reports/queries';
+import { loadAllCompetitions, loadAssignments } from '@/lib/reports/queries';
 import { requireRole } from '@/lib/supabase/server';
 import { AssignmentTable } from './assignment-table';
+import { CompetitionPicker } from '../competition-picker';
 
 export const dynamic = 'force-dynamic';
 
-export default async function AssignmentsPage() {
+export default async function AssignmentsPage({
+  searchParams,
+}: PageProps<'/evaluation/assignments'>) {
   // §3.1: assignments CRUD yalnızca Değerlendirme Yöneticisinde.
   await requireRole(['evaluation_admin']);
-  const data = await loadAssignments();
+  const sp = await searchParams;
+  const compParam = typeof sp.comp === 'string' ? sp.comp : undefined;
+  const [data, allCompetitions] = await Promise.all([
+    loadAssignments(compParam),
+    loadAllCompetitions(),
+  ]);
 
   if (!data) {
     return (
@@ -31,6 +39,10 @@ export default async function AssignmentsPage() {
         <Link href="/evaluation" className="text-t3-blue-ink mb-[18px] inline-block text-[13px] no-underline">
           ← Değerlendirme panosuna dön
         </Link>
+
+        <div className="mb-4">
+          <CompetitionPicker competitions={allCompetitions} activeId={data.competition.id} />
+        </div>
 
         <div className="mb-6">
           <div className="text-ink/75 mb-2 font-mono text-[10.5px] tracking-[.14em]">

@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { loadDashboard } from '@/lib/reports/queries';
+import { loadAllCompetitions, loadDashboard } from '@/lib/reports/queries';
+import { CompetitionPicker } from './competition-picker';
 
 import { requireRole } from '@/lib/supabase/server';
 
@@ -18,9 +19,13 @@ const BAR: Record<string, string> = {
   danger: '#B4483F',
 };
 
-export default async function EvaluationDashboard() {
+export default async function EvaluationDashboard({
+  searchParams,
+}: PageProps<'/evaluation'>) {
   await requireRole(['evaluation_admin','competition_admin']);
-  const data = await loadDashboard();
+  const sp = await searchParams;
+  const compParam = typeof sp.comp === 'string' ? sp.comp : undefined;
+  const [data, allCompetitions] = await Promise.all([loadDashboard(compParam), loadAllCompetitions()]);
 
   if (!data) {
     return (
@@ -46,6 +51,10 @@ export default async function EvaluationDashboard() {
   return (
     <div className="flex-1 px-6 pt-[38px] pb-[72px] lg:px-10">
       <div className="mx-auto max-w-[1180px]">
+        <div className="mb-4">
+          <CompetitionPicker competitions={allCompetitions} activeId={competition.id} />
+        </div>
+
         <div className="mb-[26px] flex flex-wrap items-end justify-between gap-4">
           <div>
             <div className="text-ink/75 mb-2 font-mono text-[10.5px] tracking-[.14em]">
@@ -57,7 +66,7 @@ export default async function EvaluationDashboard() {
           </div>
           <div className="flex flex-wrap items-center gap-4">
             <Link
-              href="/evaluation/assignments"
+              href={`/evaluation/assignments?comp=${competition.id}`}
               className="border-ink/[.22] text-ink cursor-pointer border px-4 py-2 font-sans text-[13px] no-underline"
             >
               Hakem ataması →

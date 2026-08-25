@@ -541,15 +541,22 @@ export type DashData = {
   updatedAt: string | null;
 };
 
-export async function loadDashboard(): Promise<DashData | null> {
+/**
+ * competitionId verilirse o yarışmanın panosu yüklenir (bkz.
+ * app/evaluation/competition-picker.tsx). Verilmezse İLK oluşturulan
+ * yarışmaya düşülür (bkz. 0007_competitions_created_at.sql) — geriye
+ * dönük uyumluluk için: picker'dan önce bu ekran hep demo yarışmasını
+ * gösteriyordu, yeni yarışma açıldığında raporları HİÇ görünmüyordu
+ * (sahada yaşandı: İYT yarışmasına yüklenen rapor pano/atama ekranında
+ * çıkmadı, çünkü ikisi de sabit "ilk yarışma"ya bakıyordu).
+ */
+export async function loadDashboard(competitionId?: string): Promise<DashData | null> {
   const db = await supabaseServer();
 
-  // İLK oluşturulan yarışma (bkz. 0007_competitions_created_at.sql) —
-  // /admin/competitions'ta yeni bir yarışma açılsa bile bu ekran demo
-  // yarışmasını göstermeye devam eder. Burada henüz bir yarışma seçici
-  // yok; "en yüksek yıl" ile seçmek, kullanıcının yılını değiştirdiği
-  // AYNI yarışmayı farklı bir kayıt sanmasına yol açmıştı.
-  const raw = await firstCompetition(db, 'id, name, year');
+  const SELECT = 'id, name, year';
+  const raw = competitionId
+    ? (await db.from('competitions').select(SELECT).eq('id', competitionId).maybeSingle()).data
+    : await firstCompetition(db, SELECT);
   if (!raw) return null;
   const competition = raw as { id: string; name: string; year: number };
 
@@ -1133,11 +1140,14 @@ export type AssignmentRow = {
 
 export type JudgeLoad = { id: string; name: string; assigned: number };
 
-export async function loadAssignments() {
+/** competitionId verilirse o yarışmanın atamaları yüklenir — bkz. loadDashboard(). */
+export async function loadAssignments(competitionId?: string) {
   const db = await supabaseServer();
 
-  // bkz. loadDashboard() — ilk oluşturulan yarışma, "en yüksek yıl" değil.
-  const raw = await firstCompetition(db, 'id, name');
+  const SELECT = 'id, name';
+  const raw = competitionId
+    ? (await db.from('competitions').select(SELECT).eq('id', competitionId).maybeSingle()).data
+    : await firstCompetition(db, SELECT);
   if (!raw) return null;
   const competition = raw as { id: string; name: string };
 
