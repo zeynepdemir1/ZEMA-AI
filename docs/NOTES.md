@@ -1765,3 +1765,40 @@ değil. Bunun yerine R-C63ADE'nin (ZEMA-İYT-Ortaokul) 3+ saattir terk
 edilmiş `running` işleri (title_content/category_fit/criteria_scoring)
 `pending`'e çekilip yeniden çalıştırıldı — `category_fit` bu kez gerçekten
 anahtar #3'e düşerek tamamlandı. Rapor artık 8/8, `status: analyzed`.
+
+### 26 Ağustos — turuncu (gold) kartların zemini sabitlendi (light/dark bağımsız)
+
+Talep: kenarları turuncu çizgili kart/kutu bileşenlerinin İÇİ de aynı
+turuncuya dönsün, mod bağımsız. Önce bulundu: `.dark` sınıfı bu uygulamada
+HİÇBİR YERDE uygulanmıyor (next-themes yalnızca sonner/toast'ta, tema
+değiştirici yok, `<html>`'e hiç `dark` eklenmiyor) — yani "kartlar mod'a
+göre değişiyor" şüphesi zaten pratikte gerçekleşmiyordu. Turuncu ton
+kod tabanında `--color-gold: #C98A3E` (app/globals.css) — `@theme inline`
+içinde sabit tanımlı, `.dark` altında hiç ezilmiyor.
+
+Gerçek "kutu" (dolgu + kenarlık + metin) desenini taşıyan 6 yer bulundu
+(soluk `rgba(201,138,62,.06-.12)` zeminler → solid `bg-gold`'a çevrildi;
+küçük rozet/etiket ve logo hariç tutuldu, onlar kutu değil):
+
+- `app/page.tsx`: hero mini-kart, STEPS "02" kartı, ROLES "Değerlendirme
+  Yöneticisi" kartı (ikisi de accent'e göre koşullu)
+- `app/review/[id]/check-panels.tsx`: JudgeNote ("HAKEM GERİ BİLDİRİMİ")
+  ve AI Değerlendirme Özeti giriş kutusu
+- `app/review/[id]/review-panel.tsx`: CriterionCard'ın "hakem metni" alt
+  kutusu (editing/approved) VE onaylı kriter kartının kendisi (approved
+  olunca `border-l-gold bg-gold`)
+
+KONTRAST ÖLÇÜLDÜ (WCAG, kod içindeki mevcut ölçüm kültürüne uyularak):
+`text-gold-ink` (#96652A) solid gold zeminde yalnızca **1.71:1** —
+AA'yı ciddi şekilde kaçırıyor (bu renk soluk zemin için tasarlanmıştı,
+solid zemin için değil). `text-teal-ink` de **1.99:1**. Opak `text-ink`
+(#1B2A4A) ise **4.87:1** — AA geçer. Bu yüzden gold zemine oturan HER
+metin (başlıklar, gövde, rozet/kayıt-kodu etiketi) `text-ink`'e çevrildi;
+CriterionCard'da approved && status==='partial' çakışması (rozet zaten
+gold-ink/border-gold kullanıyordu) da ink'e düşürülerek önlendi.
+
+Doğrulama: Playwright ile giriş yapılıp gerçek DOM'da
+`getComputedStyle(...).backgroundColor` ölçüldü → `rgb(201,138,62)`
+doğrulandı. `.dark` sınıfı elle eklenip aynı elemanların screenshot'ı
+alındı — dosyalar **byte-for-byte özdeş** (md5 eşleşti), yani zemin
+gerçekten mod'dan bağımsız.

@@ -147,16 +147,16 @@ function JudgeNote({
   const dirty = text !== initial;
 
   return (
-    <section className="border-gold border-ink/10 border border-l-[3px] bg-[rgba(201,138,62,.06)] px-4 py-4">
+    <section className="border-gold bg-gold border-ink/10 border border-l-[3px] px-4 py-4">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <h4 className="text-gold-ink m-0 font-mono text-[11px] tracking-[.1em]">
+        <h4 className="text-ink m-0 font-mono text-[11px] tracking-[.1em]">
           HAKEM GERİ BİLDİRİMİ · YARIŞMACIYA GİDECEK
         </h4>
         {saved && !dirty && (
           <span className="text-success font-mono text-[11px]">✓ kaydedildi</span>
         )}
       </div>
-      <p className="text-ink/75 m-0 mb-3 text-[13px] leading-[1.6]">
+      <p className="text-ink m-0 mb-3 text-[13px] leading-[1.6]">
         AI önerisi ön dolu geldi. Serbestçe değiştirebilirsiniz; bu metin nihai geri
         bildirim taslağına girer.
       </p>
@@ -851,7 +851,7 @@ function FeedbackCompiler({
 
   return (
     <>
-      <div className="border-l-gold border-ink/10 border border-l-[3px] bg-[rgba(201,138,62,.07)] px-4 py-3">
+      <div className="border-l-gold bg-gold border-ink/10 border border-l-[3px] px-4 py-3">
         <div className="text-ink text-[14px] leading-[1.7]">
           Aşağıdaki taslak, kontroller için yazdığınız metinler ve kriter kartlarından
           <strong> otomatik derlendi</strong>. Son hâlini düzenleyip yayıma gönderin.
