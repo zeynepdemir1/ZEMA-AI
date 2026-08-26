@@ -265,30 +265,22 @@ function CriterionCard({
   const status = STATUS_META[card.status];
   const verified = card.evidence.filter((e) => e.verified).length;
 
-  // Hakem onaylı kart zemini de kenarlığıyla aynı sabit turuncuya dönüyor
-  // (light/dark bağımsız) — bu durumda üstündeki tüm metinler AA kontrastı
-  // için opak ink'e, "partial" rozeti de gold-ink çakışmaması için ink'e
-  // geçiyor (ölçüldü: gold-ink/teal-ink turuncu zemin üzerinde AA'yı geçmiyor).
-  const muted = approved ? 'text-ink' : 'text-ink/75';
-  const aiLabel = approved ? 'text-ink' : 'text-teal-ink';
-  const statusTone = approved && card.status === 'partial' ? 'text-ink border-ink/40' : status.tone;
-
   return (
     <article
-      className={`border-ink/15 border border-l-4 px-7 pt-6 pb-6 ${
-        approved ? 'border-l-gold bg-gold' : 'border-l-teal bg-white'
+      className={`border-ink/15 border border-l-4 bg-white px-7 pt-6 pb-6 ${
+        approved ? 'border-l-gold' : 'border-l-teal'
       }`}
     >
       {/* Başlık + rubrik referansı (kat değil) */}
       <header className="mb-5">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
-            <span className={`${muted} font-mono text-[12px]`}>{card.code}</span>
+            <span className="text-ink/75 font-mono text-[12px]">{card.code}</span>
             <h3 className="font-heading text-ink m-0 text-[19px] leading-[1.3] font-semibold">
               {card.title}
             </h3>
             <span
-              className={`border px-2 py-1 font-mono text-[10px] tracking-[.08em] ${statusTone}`}
+              className={`border px-2 py-1 font-mono text-[10px] tracking-[.08em] ${status.tone}`}
             >
               {status.label}
             </span>
@@ -301,7 +293,7 @@ function CriterionCard({
             {approved ? '✓ HAKEM ONAYLI' : 'AI TASLAĞI · ONAY BEKLİYOR'}
           </span>
         </div>
-        <p className={`${muted} m-0 text-[13px] leading-[1.6]`}>
+        <p className="text-ink/75 m-0 text-[13px] leading-[1.6]">
           <span className="font-mono text-[11px] tracking-[.08em]">BEKLENTİ:</span>{' '}
           {card.beklenti}
         </p>
@@ -310,16 +302,16 @@ function CriterionCard({
       {/* KAT 1 — AI değerlendirmesi (nötr) */}
       <section className="mb-4">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <h4 className={`${aiLabel} m-0 font-mono text-[11px] tracking-[.1em]`}>
+          <h4 className="text-teal-ink m-0 font-mono text-[11px] tracking-[.1em]">
             AI DEĞERLENDİRMESİ · YARIŞMACIYA GÖRÜNMÜYOR
           </h4>
           <div className="flex items-center gap-3">
             {card.confidence !== null && (
-              <span className={`${muted} font-mono text-[11px]`}>
+              <span className="text-ink/75 font-mono text-[11px]">
                 GÜVEN {card.confidence.toFixed(2)}
               </span>
             )}
-            <span className={`${muted} font-mono text-[11px]`}>{card.ref}</span>
+            <span className="text-ink/75 font-mono text-[11px]">{card.ref}</span>
           </div>
         </div>
         <p className="text-ink m-0 text-[14px] leading-[1.75]">
@@ -330,7 +322,7 @@ function CriterionCard({
       {/* KAT 2 — Kanıt */}
       {card.evidence.length > 0 && (
         <section className="mb-4">
-          <h4 className={`${muted} mb-2 m-0 font-mono text-[11px] tracking-[.1em]`}>
+          <h4 className="text-ink/75 mb-2 m-0 font-mono text-[11px] tracking-[.1em]">
             KANIT · {verified}/{card.evidence.length} DOĞRULANDI
           </h4>
           <div className="flex flex-col gap-2">
@@ -366,11 +358,11 @@ function CriterionCard({
 
       {/* KAT 3 — Hakem metni / düzenleme (belirgin ayrı kart) */}
       {editing ? (
-        <section className="border-gold bg-gold mb-4 border-2 px-4 py-4">
-          <h4 className="text-ink mb-2 m-0 font-mono text-[11px] tracking-[.1em]">
+        <section className="border-gold bg-[rgba(201,138,62,.07)] mb-4 border-2 px-4 py-4">
+          <h4 className="text-gold-ink mb-2 m-0 font-mono text-[11px] tracking-[.1em]">
             HAKEM METNİ · DÜZENLENİYOR
           </h4>
-          <p className="text-ink mb-3 m-0 text-[13px] leading-[1.6]">
+          <p className="text-ink/75 mb-3 m-0 text-[13px] leading-[1.6]">
             Kaydettiğinizde bu metin hakem onaylı sayılır ve yarışmacıya bu hâliyle gider.
           </p>
           <textarea
@@ -396,8 +388,8 @@ function CriterionCard({
           </div>
         </section>
       ) : approved ? (
-        <section className="border-gold bg-gold mb-4 border-2 px-4 py-4">
-          <h4 className="text-ink mb-2 m-0 font-mono text-[11px] tracking-[.1em]">
+        <section className="border-gold bg-[rgba(201,138,62,.07)] mb-4 border-2 px-4 py-4">
+          <h4 className="text-gold-ink mb-2 m-0 font-mono text-[11px] tracking-[.1em]">
             HAKEM METNİ · YARIŞMACIYA GÖNDERİLECEK
           </h4>
           <p className="text-ink m-0 text-[14px] leading-[1.75]">{card.text}</p>

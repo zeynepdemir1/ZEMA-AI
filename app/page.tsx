@@ -105,11 +105,11 @@ export default function LandingPage() {
               </div>
             </div>
             <div className="mx-0 mt-1 mb-2 flex justify-center text-base text-white/[.62]">↓</div>
-            <div className="border-gold bg-gold border-l-[3px] px-[14px] py-3">
-              <div className="text-ink mb-[7px] font-mono text-[10px] tracking-[.12em]">
+            <div className="border-gold border-l-[3px] bg-[rgba(201,138,62,.12)] px-[14px] py-3">
+              <div className="text-gold-pale mb-[7px] font-mono text-[10px] tracking-[.12em]">
                 HAKEM ONAYLI · YAYINLANDI
               </div>
-              <div className="text-ink text-[13.5px] leading-[1.6]">
+              <div className="text-[13.5px] leading-[1.6] text-white/90">
                 Test senaryolarınız iyi kurgulanmış. Her senaryo için sayısal bir başarı ölçütü
                 eklerseniz bölüm tam puana ulaşır.
               </div>
@@ -127,20 +127,16 @@ export default function LandingPage() {
           Üç adım, tek karar mercii
         </h2>
         <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
-          {STEPS.map((s) => {
-            const gold = s.accent === 'border-t-gold';
-            const muted = gold ? 'text-ink' : 'text-ink/75';
-            return (
-              <div
-                key={s.n}
-                className={`border-ink/10 ${s.accent} border border-t-[3px] px-6 pt-[26px] pb-7 ${gold ? 'bg-gold' : 'bg-white'}`}
-              >
-                <div className={`${muted} mb-[14px] font-mono text-[26px]`}>{s.n}</div>
-                <h3 className="font-heading m-0 mb-[10px] text-[19px] font-semibold">{s.title}</h3>
-                <p className={`${muted} m-0 text-[14.5px] leading-[1.62]`}>{s.body}</p>
-              </div>
-            );
-          })}
+          {STEPS.map((s) => (
+            <div
+              key={s.n}
+              className={`border-ink/10 ${s.accent} border border-t-[3px] bg-white px-6 pt-[26px] pb-7`}
+            >
+              <div className="text-ink/75 mb-[14px] font-mono text-[26px]">{s.n}</div>
+              <h3 className="font-heading m-0 mb-[10px] text-[19px] font-semibold">{s.title}</h3>
+              <p className="text-ink/75 m-0 text-[14.5px] leading-[1.62]">{s.body}</p>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -155,27 +151,22 @@ export default function LandingPage() {
           hesapları yalnızca yarışma yönetiminin verdiği kayıt koduyla açılır.
         </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {ROLES.map((r) => {
-            const gold = r.accent === 'border-l-gold';
-            return (
+          {ROLES.map((r) => (
+            <div
+              key={r.name}
+              className={`border-ink/10 ${r.accent} border border-l-[3px] bg-white px-5 pt-5 pb-6`}
+            >
+              <div className="font-heading mb-2 text-[16px] font-semibold">{r.name}</div>
+              <p className="text-ink/75 m-0 mb-3 text-[13.5px] leading-[1.6]">{r.body}</p>
               <div
-                key={r.name}
-                className={`border-ink/10 ${r.accent} border border-l-[3px] px-5 pt-5 pb-6 ${gold ? 'bg-gold' : 'bg-white'}`}
+                className={`font-mono text-[10px] tracking-[.12em] ${
+                  r.code ? 'text-gold-ink' : 'text-teal-ink'
+                }`}
               >
-                <div className="font-heading mb-2 text-[16px] font-semibold">{r.name}</div>
-                <p className={`${gold ? 'text-ink' : 'text-ink/75'} m-0 mb-3 text-[13.5px] leading-[1.6]`}>
-                  {r.body}
-                </p>
-                <div
-                  className={`font-mono text-[10px] tracking-[.12em] ${
-                    gold ? 'text-ink' : r.code ? 'text-gold-ink' : 'text-teal-ink'
-                  }`}
-                >
-                  {r.code ? 'KAYIT KODU GEREKLİ' : 'SERBEST KAYIT'}
-                </div>
+                {r.code ? 'KAYIT KODU GEREKLİ' : 'SERBEST KAYIT'}
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       </div>
 
