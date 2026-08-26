@@ -1,5 +1,27 @@
 # ZEMA — Yapılacaklar / Bilinen Eksikler
 
+## 🔑 Anahtar sağlık kontrolü — `/api/diagnostics/keys` (26 Ağustos)
+
+**Neden var:** Vercel ortam değişkenlerinin DEĞERLERİ panelde
+görüntülenemiyor. Ad listesi doğru olsa bile değerin geçerli bir anahtar
+olup olmadığı dışarıdan bilinemez — ve bunu demo günü `MOCK_AI=false`
+yapıldığında öğrenmek çok geç olur.
+
+Uç, çağrıyı **sunucunun kendisine** yaptırır; yani Vercel'in gerçekten
+sahip olduğu anahtarlarla konuşur. Yerelden test etmek yalnızca yerel
+`.env.local`'i doğrular, işe yaramaz.
+
+- **Kota harcamaz:** `models.list()` metadata çağrısıdır, günlük
+  20 istek/model/proje üretim kotasından hiçbir şey düşmez.
+- **Gizlilik:** anahtar değeri hiçbir biçimde döndürülmez — ne tamamı,
+  ne bir parçası, ne karması. Yalnızca sıra numarası, geçerlilik ve
+  erişilen modeller.
+- **Yetki:** yalnızca Yarışma Yöneticisi (anonim 307, hakem 403).
+  Harici servise istek yaptırdığı için açık bırakılamaz.
+
+Demo günü `MOCK_AI=false` yapmadan ÖNCE bu uca bakılmalı:
+`keys_healthy` ve `daily_capacity` beklenen değerde mi?
+
 ## 🚀 CANLI DOĞRULAMA (26 Ağustos) — zema-ai.vercel.app
 
 Vercel CLI, proje bağlantısı ve token bu ortamda YOK; deploy geçmişi ve env
