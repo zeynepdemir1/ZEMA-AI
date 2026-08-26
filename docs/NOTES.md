@@ -70,16 +70,40 @@ aşama seçici canlıda çalışıyor.
 | `REGISTRATION_CODE_COMPETITION_ADMIN` | ✓ | ✓ | `valid · Yarışma Yöneticisi` |
 | `REGISTRATION_CODE_EVALUATION_ADMIN` | ✓ | ✓ | `valid · Değerlendirme Yöneticisi` |
 | `NEXT_PUBLIC_DEMO_MODE` | **false** | **true** | `/demo` yerel 404, canlı 200 |
-| `GOOGLE_API_KEY` | ✓ | **?** | MOCK_AI=true iken gözlemlenemez |
-| `GOOGLE_API_KEY_1/2/3` | ✓ | **?** | aynı |
-| `GEMINI_MODEL` | ✓ | **?** | aynı |
-| `MOCK_AI` | true | **?** | aynı |
+| `GOOGLE_API_KEY` | ✓ | ✓ | `/api/diagnostics/keys` → anahtar #1 geçerli |
+| `GOOGLE_API_KEY_1/2/3` | ✓ | ✓ | aynı uç → #2, #3, #4 geçerli |
+| `GEMINI_MODEL` | ✓ | ✓ | zincir beklenen üç modeli döndürdü |
+| `MOCK_AI` | true | ✓ **true** | uç `"mock_ai": true` bildirdi |
 | `ANTHROPIC_API_KEY` | boş | — | kullanılmıyor |
 
-**Doğrulanamayan dördü tam olarak AI değişkenleri** ve yalnızca demo günü
-`MOCK_AI=false` yapıldığında devreye giriyorlar. Panelden gözle teyit
-edilmeli — özellikle `GOOGLE_API_KEY_1/2/3`: eksiklerse havuz tek anahtara
-düşer ve günlük kapasite **240 → 60 isteğe** iner.
+### AI değişkenleri CANLIDA doğrulandı (26 Ağustos)
+
+Vercel değerleri panelde görünmediği için `/api/diagnostics/keys` ucu
+yazıldı; çağrıyı sunucunun kendisi yapıyor. Canlı sonuç:
+
+```
+MOCK_AI          : true
+bulunan anahtar  : 4
+SAĞLIKLI anahtar : 4/4
+model zinciri    : gemini-3.5-flash, gemini-3.5-flash-lite, gemini-3.7-flash
+günlük kapasite  : 240 istek/gün
+  ✓ anahtar #1  50 model · zincir 3/3
+  ✓ anahtar #2  50 model · zincir 3/3
+  ✓ anahtar #3  50 model · zincir 3/3
+  ✓ anahtar #4  50 model · zincir 3/3
+```
+
+Yetki canlıda da sıkı: anonim 307, hakem 403, yalnızca yarışma yöneticisi
+200. Çağrı `models.list()` metadata'sı olduğu için üretim kotasından
+hiçbir şey harcanmadı.
+
+### Demo modu kapatıldı
+
+`NEXT_PUBLIC_DEMO_MODE=false`. Yerel `.env.local` ve `.env.example` zaten
+false; **Vercel'de değiştirilip redeploy edilmesi gerekiyor** (bu not
+yazılırken canlı hâlâ 200 döndürüyordu). `/demo` tek tüketici, hiçbir sayfa
+ona link vermiyor — kapatmak başka hiçbir şeyi etkilemiyor. Rol geçişi
+artık gerçek girişle yapılacak (test hesapları tablosuna bakın).
 
 ## ⚠️ K2/K3 kriterleri rapor içeriğinden değerlendirilemez (26 Ağustos)
 
@@ -1618,13 +1642,13 @@ modelden** (`gemini-3.5-flash`) 2. anahtarla alındı.
 
 ### Diğer kurallar
 
-- `NEXT_PUBLIC_DEMO_MODE=true` kalıyor — `/demo` rol geçişinin tek yolu.
+- ~~`NEXT_PUBLIC_DEMO_MODE=true` kalıyor~~ → **KARAR DEĞİŞTİ (26 Ağustos): demo modu kapatıldı.** Rol geçişi artık gerçek girişle yapılıyor; `/demo` 404 döndürüyor.
 - Kalibrasyon panosu senaryodan çıkarıldı.
 
 - **Canlı yükleme yok** (PLAN §9). `MOCK_AI=true` kalıyor.
 - **Kota: proje × model başına günde 20 istek.** Demo öncesi 2-3 AI Studio
   projesinden anahtar üretip `GOOGLE_API_KEY_1..10`'a Vercel'de de ekle.
-- `NEXT_PUBLIC_DEMO_MODE=true` kalıyor — `/demo` rol geçişinin tek yolu.
+- ~~`NEXT_PUBLIC_DEMO_MODE=true` kalıyor~~ → **KARAR DEĞİŞTİ (26 Ağustos): demo modu kapatıldı.** Rol geçişi artık gerçek girişle yapılıyor; `/demo` 404 döndürüyor.
   Auth bağlandı ama rol başına ayrı giriş yapmak demoyu yavaşlatır.
 
 - [ ] **Canlıda Türkçe glifleri gözle kontrol et** (ş ğ ı İ ç ö ü).
