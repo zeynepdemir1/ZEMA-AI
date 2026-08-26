@@ -1740,3 +1740,28 @@ Not: bu, arka plan script'i (nohup + `&`) bir ara oturumda sessizce
 başlatılan ikinci tur DB'den doğrulanan kalan 18 çağrıyı bitirdi. Uzun
 süren tek-seferlik script'ler için harness'in kendi arka plan takibi
 kullanılmalı, elle `nohup &` değil.
+
+### 26 Ağustos (devam) — anahtar-fallback şüphesi araştırıldı: bug YOK
+
+Google AI Studio'da ana anahtarın ~300 istek/çok hata, Project 2/3'ün
+yalnızca 3-4 istek gösterdiği gözlemlenip "429'da anahtar değil model mi
+değişiyor" şüphesi geldi. Kod okunarak VE canlı kanıtla doğrulandı —
+**fallback kodu doğru çalışıyor, düzeltme YAPILMADI:**
+
+- `lib/ai/client.ts:57-71` `genai(keyIndex)` gerçekten `pool[keyIndex]`
+  dizesine bağlanıyor; `lib/ai/key-pool.ts` `attemptPlan()` model-baskın/
+  anahtar-ikincil sırayı doğru kuruyor; `fallthrough` 429'u zaten
+  kapsıyordu (bugünkü 5xx eklentisinden önce de).
+- `grep -rn "genai(" lib app` → tek çağrı yeri `call-claude-for-check.ts`,
+  bypass yok.
+- Bu oturumun kendi batch log'unda "→ gemini-3.5-flash / anahtar #2/#3"
+  ile BAŞARIYLA tamamlanan gerçek çağrılar zaten var (yukarıdaki 12
+  rapor koşusunda).
+
+Sonuç: AI Studio'daki çarpıklık, Project 2/3'ün havuza çok daha yakın
+zamanda eklenmiş olması (kümülatif geçmişleri kısa) + havuzun bilinçli
+olarak anahtar #1'i önce denemesiyle açıklanıyor — tasarım gereği, bug
+değil. Bunun yerine R-C63ADE'nin (ZEMA-İYT-Ortaokul) 3+ saattir terk
+edilmiş `running` işleri (title_content/category_fit/criteria_scoring)
+`pending`'e çekilip yeniden çalıştırıldı — `category_fit` bu kez gerçekten
+anahtar #3'e düşerek tamamlandı. Rapor artık 8/8, `status: analyzed`.
