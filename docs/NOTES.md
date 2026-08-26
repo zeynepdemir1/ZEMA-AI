@@ -1,5 +1,64 @@
 # ZEMA — Yapılacaklar / Bilinen Eksikler
 
+## 🚀 CANLI DOĞRULAMA (26 Ağustos) — zema-ai.vercel.app
+
+Vercel CLI, proje bağlantısı ve token bu ortamda YOK; deploy geçmişi ve env
+listesi **doğrudan okunamadı**. Bunun yerine canlı davranış ölçüldü.
+
+### Kod güncel mi — kanıt
+
+| kanıt | sonuç |
+|---|---|
+| Ortak Header, T3 logosu `h=40px`, T3 mavisi/turuncusu | ✓ ≥ v0.22 |
+| Şartname kartı + "KURALLAR HANGİ BELGEDEN GELDİ" künyesi | ✓ ≥ v0.31 |
+| Yarışma kurulumunda **aşama seçici** | ✓ ≥ v0.33 |
+| `409`: *"Ön Tasarım Raporu aşaması için… zaten rapor gönderildi"* | ✓ aşama tabanlı katılım kuralı canlıda çalışıyor |
+| Hakem ekranında **Zorunlu Başlıklar / Şablona Uygunluk / Rapor Dili** | ✓ ≥ v0.37 |
+| `compile-feedback` yedek metni deploy edilen JS paketinde | ✓ **≥ v0.38 kanıtlandı** |
+
+**v0.39 kanıtlanamadı** çünkü tamamen sunucu tarafı: yalnızca
+`RULEBOOK_PROMPT_VERSION` / `TEMPLATE_PROMPT_VERSION` sabitleri, prompt
+metni ve NOTES değişti — dışarıdan gözlemlenebilir yüzeyi yok. Kesin teyit
+için Vercel panelinde **Deployments → en üstteki deploy'un commit SHA'sı**
+`953b090` mı diye bakılmalı.
+
+### Migration durumu — 0010 ZATEN UYGULANMIŞ
+
+Canlı ve yerel AYNI Supabase projesini kullanıyor. Tüm migration'lar
+uygulanmış durumda:
+
+```
+✓ 0006 judge_note        ✓ 0010 report_stages (4 aşama)
+✓ 0007 created_at        ✓ 0010 reports.stage_id / criteria.stage_id
+✓ 0008 founded_year      ✓ 0011 is_published
+✓ 0009 katılım kısıtı    ✓ 0012/0013 yeni check_type değerleri
+```
+
+`report_stages` çalıştırılması gereken bir iş DEĞİL — 4 aşama mevcut ve
+aşama seçici canlıda çalışıyor.
+
+### Ortam değişkenleri
+
+| değişken | yerel | Vercel | nasıl doğrulandı |
+|---|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | ✓ | ✓ | canlıda giriş çalışıyor |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✓ | ✓ | aynı |
+| `SUPABASE_SERVICE_ROLE_KEY` | ✓ | ✓ | `upload-url` 409 döndü → admin istemci DB'ye ulaştı |
+| `REGISTRATION_CODE_JUDGE` | ✓ | ✓ | `{"state":"valid","roleLabel":"Hakem"}` |
+| `REGISTRATION_CODE_COMPETITION_ADMIN` | ✓ | ✓ | `valid · Yarışma Yöneticisi` |
+| `REGISTRATION_CODE_EVALUATION_ADMIN` | ✓ | ✓ | `valid · Değerlendirme Yöneticisi` |
+| `NEXT_PUBLIC_DEMO_MODE` | **false** | **true** | `/demo` yerel 404, canlı 200 |
+| `GOOGLE_API_KEY` | ✓ | **?** | MOCK_AI=true iken gözlemlenemez |
+| `GOOGLE_API_KEY_1/2/3` | ✓ | **?** | aynı |
+| `GEMINI_MODEL` | ✓ | **?** | aynı |
+| `MOCK_AI` | true | **?** | aynı |
+| `ANTHROPIC_API_KEY` | boş | — | kullanılmıyor |
+
+**Doğrulanamayan dördü tam olarak AI değişkenleri** ve yalnızca demo günü
+`MOCK_AI=false` yapıldığında devreye giriyorlar. Panelden gözle teyit
+edilmeli — özellikle `GOOGLE_API_KEY_1/2/3`: eksiklerse havuz tek anahtara
+düşer ve günlük kapasite **240 → 60 isteğe** iner.
+
 ## ⚠️ K2/K3 kriterleri rapor içeriğinden değerlendirilemez (26 Ağustos)
 
 **Bildirilen sorun:** "TEKNOFEST 2025 — İnsanlık Yararına Teknolojiler"
