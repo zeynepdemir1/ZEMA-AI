@@ -32,6 +32,14 @@ const INVALID_KEY_COOLDOWN_MS = 365 * 24 * 60 * 60_000;
  * dakika sonra geçerli olacak bir anahtarı kalıcı olarak kaybetmek olurdu.
  */
 const KEY_BLOCKED_COOLDOWN_MS = 15 * 60_000;
+/**
+ * 5xx (özellikle 504 DEADLINE_EXCEEDED) için KISA soğuma. Sahada görüldü:
+ * ağır çok-modlu isteklerde (template_compliance) gemini-3.5-flash sürekli
+ * 504 veriyordu, flash-lite aynı isteği sorunsuz tamamladı — anahtara değil
+ * modelin o anki yüküne özgü. 429/403'ten daha kısa: aşırı yük dakikalar
+ * içinde geçebilir, saatlerce elemek gereksiz kota kaybı olurdu.
+ */
+const SERVER_OVERLOAD_COOLDOWN_MS = 3 * 60_000;
 
 const coolingUntil = new Map<string, number>();
 
@@ -62,6 +70,7 @@ export function markKeyInvalid(
 }
 
 export const KEY_BLOCKED_MS = KEY_BLOCKED_COOLDOWN_MS;
+export const SERVER_OVERLOAD_MS = SERVER_OVERLOAD_COOLDOWN_MS;
 
 export function attemptPlan(models: string[], keys = keyCount()): Attempt[] {
   const pairs: Attempt[] = [];

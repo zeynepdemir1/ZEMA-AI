@@ -11,6 +11,7 @@ import {
   markKeyInvalid,
   poolStatus,
   retryAfterMs,
+  SERVER_OVERLOAD_MS,
   type Attempt,
 } from './key-pool';
 import { geminiSchemaFromZod } from './gemini-schema';
@@ -45,6 +46,9 @@ const FIXTURES: Record<CheckType, unknown> = {
   criteria_scoring: criteriaScoring,
   feedback_synthesis: feedbackSynthesis,
 };
+
+/** Tek bir generateContent denemesi için üst sınır — aşılırsa sıradaki model/anahtara geçilir. */
+const REQUEST_TIMEOUT_MS = 100_000;
 
 /**
  * Dönüş tipi analysis_results kolonlarıyla eşleştirildi (PLAN.md §3):
@@ -257,7 +261,16 @@ export async function callModel<S extends z.ZodType = z.ZodType<unknown>>(
         }
       }
 
-      const fallthrough = status === 429 || status === 404 || badKey || keyBlocked;
+      // 5xx (aşırı yük, 504 DEADLINE_EXCEEDED dahil) VE ApiError olmayan
+      // hatalar (zaman aşımı/ağ) da anahtara/modele özgü değil — sahada
+      // template_compliance gibi ağır çok-modlu isteklerde 504 görüldü ve
+      // eskiden zinciri olduğu yerde kesiyordu, oysa başka model/anahtar
+      // aynı isteği tamamlayabiliyordu.
+      const serverOverload = status !== undefined && status >= 500;
+      if (serverOverload) markExhausted(attempt, SERVER_OVERLOAD_MS);
+      const timedOutOrNetwork = !(e instanceof ApiError);
+      const fallthrough =
+        status === 429 || status === 404 || badKey || keyBlocked || serverOverload || timedOutOrNetwork;
       if (!fallthrough || i === plan.length - 1) break;
     }
   }
@@ -301,6 +314,11 @@ export async function callModel<S extends z.ZodType = z.ZodType<unknown>>(
         responseMimeType: 'application/json',
         responseJsonSchema,
         thinkingConfig,
+        // Sahada görüldü: büyük çok-modlu istekte (rapor PDF'i + şablon metni,
+        // template_compliance) SDK'nın altındaki istek 280s+ hiç yanıt vermeden
+        // askıda kaldı — ne hata ne sonuç. AbortSignal/timeout yoksa bu tek
+        // deneme sonsuza dek sürer ve model/anahtar zinciri hiç ilerlemez.
+        httpOptions: { timeout: REQUEST_TIMEOUT_MS },
       },
     });
   }

@@ -1683,3 +1683,60 @@ modelden** (`gemini-3.5-flash`) 2. anahtarla alındı.
 - [ ] **`@anthropic-ai/sdk` paketi kurulu ama kullanılmıyor.** Sağlayıcı geri
       alınabilsin diye bırakıldı; hiçbir yerden import edilmediği için
       bundle'a girmiyor. Kalıcı karar verilince kaldırılabilir.
+
+---
+
+## 🧹 26 Ağustos — check_type bölünmesinden kalan 12 rapor tamamlandı
+
+Bölünme (required_sections/template_compliance/language_check) sonrası
+demo verisinde 3 gerçek arıza + 12 rapor eksik kalmıştı (paralel oturumdan
+devralındı, ayrıntı için bkz. görev talimatı). Hepsi DB'den kanıtlanarak
+çözüldü:
+
+- **9 demo raporu** (ATMACA…ALTAY + GARO) + **3 test raporu**
+  (ZEMA_TEST/"ZEMA", ZEMA-İYT/"Proje Sunum Raporu",
+  ZEMA-İYT2/"Proje Detay Raporu") — üçü de yeni check_type'lara sahip
+  DEĞİLDİ (bölünmeden önce üretilmişlerdi). `enqueue_report_checks` ile
+  eksik job'lar açıldı, 40 gerçek Gemini çağrısıyla tamamlandı.
+  `feedback_synthesis`'e KASITLA dokunulmadı (9 demo raporunda zaten
+  `done`) — yalnızca eksik olan 3 test raporunda tamamlandı.
+- **ZEMA-İYT2'de yetim `language_template` işi** (check_type artık kod
+  yolu yok, 3 denemede `failed` kalmıştı) silindi, yerine yeni üçlü job
+  açıldı.
+- **ZEMA_TEST'in `category_fit` işi** (geçmiş bir gerçek-model
+  tekilliğiyle `is_consistent` alanını boş döndürmüştü) sıfırlanıp
+  yeniden denendi, bu sefer geçti.
+- **"dsvsvs" yarışması silindi** — 0 takım, 0 rapor, yayımlanmamış,
+  doğrulanmış test kalıntısıydı.
+- **Kanıt:** tüm 12 rapor `analysis_results`'ta 8/8 (bazılarında ayrıca
+  donmuş eski `language_template` satırı da duruyor — hiçbir ekran
+  okumuyor, zararsız). 3 test raporunun `reports.status`'u da
+  `analyzed`'a çekildi (tüm job'lar bitince ilerletilmedi, elle
+  düzeltildi).
+
+### Bulunan gerçek bug: 504 hiç yanıt vermeden askıda kalıyordu
+
+`template_compliance` gibi ağır çok-modlu istekler (rapor PDF'i + şablonun
+14K karakterlik metni) `gemini-3.5-flash`'ta düzenli olarak
+`504 DEADLINE_EXCEEDED` alıyordu — ama `callOnce()`'ta `httpOptions.timeout`
+YOKTU, üstelik eski `fallthrough` mantığı yalnızca 429/404/anahtar
+hatalarında sıradaki model/anahtara geçiyordu. Sonuç: ilk denemede 504
+alan tek bir (model, anahtar) çifti TÜM kontrolü `retryable: true` ile
+başarısız kılıyor, sahada bir örnekte istek **280s+ hiç dönmeden** askıda
+kaldı (muhtemelen SDK'nın varsayılan ~300s undici zaman aşımına
+yaklaşıyordu).
+
+İki düzeltme (`lib/ai/call-claude-for-check.ts`, `lib/ai/key-pool.ts`):
+1. Her denemeye `httpOptions.timeout = 100_000` ms sınırı kondu.
+2. `fallthrough` artık 5xx VE ApiError-olmayan (zaman aşımı/ağ) hataları
+   da kapsıyor — 504 alan (model,anahtar) çifti 3 dk soğumaya alınıp
+   (`SERVER_OVERLOAD_MS`) hemen sıradaki denenir. Sahada doğrulandı:
+   ilk `template_compliance` çağrısı 4 flash denemesi 504 verip
+   flash-lite'a düştü (416s); soğuma devreye girince sıradaki raporlarda
+   başarısız deneme sayısı 3→2→1'e düştü.
+
+Not: bu, arka plan script'i (nohup + `&`) bir ara oturumda sessizce
+öldüğü için iki turda tamamlandı — `run_in_background: true` ile yeniden
+başlatılan ikinci tur DB'den doğrulanan kalan 18 çağrıyı bitirdi. Uzun
+süren tek-seferlik script'ler için harness'in kendi arka plan takibi
+kullanılmalı, elle `nohup &` değil.
