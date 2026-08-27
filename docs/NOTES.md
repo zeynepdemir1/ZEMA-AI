@@ -1799,3 +1799,14 @@ için `MAX_ATTEMPTS`'e asla ulaşmıyor, sonsuz döngü.
 Vercel plan tipi (Hobby/Pro) doğrulanamadı (CLI erişimi yok) — ama kod
 artık HANGİ plan olursa olsun 45s+DB payı ile 60s tavanının güvenle
 altında. maxDuration=60'ı artırmaya gerek kalmadı.
+
+**Canlı doğrulama (27 Ağustos, gerçek Gemini çağrılarıyla, hakem@zema.test
+girişiyle):** R-2915FC, tick'i 11 kez ardışık çağırarak 8/8'e tamamlandı.
+Hiçbir çağrı platform 504'ü almadı. Ama bir çağrı (`criteria_scoring`,
+12 denemenin tamamı tükendi) **59056ms** sürdü — 60s tavanına yalnızca 1s
+kalmıştı, çünkü TOTAL_BUDGET_MS(45s) dolduktan sonra son BAŞLAMIŞ deneme
+yine de kendi REQUEST_TIMEOUT_MS(20s) kadar sürebiliyordu (45+20=65s
+teorik tavan). Düzeltme: deneme başına zaman aşımı artık `min(20s, KALAN
+bütçe)` — döngü kendi TOTAL_BUDGET_MS'ini asla aşamaz. Bütçe de 45s→30s
+düşürüldü (DB/rubrik yükleme payı için daha fazla marj). Yeniden
+derlendi/lint edildi, tekrar push edildi.
