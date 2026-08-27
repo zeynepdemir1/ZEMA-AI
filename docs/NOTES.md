@@ -1765,3 +1765,37 @@ değil. Bunun yerine R-C63ADE'nin (ZEMA-İYT-Ortaokul) 3+ saattir terk
 edilmiş `running` işleri (title_content/category_fit/criteria_scoring)
 `pending`'e çekilip yeniden çalıştırıldı — `category_fit` bu kez gerçekten
 anahtar #3'e düşerek tamamlandı. Rapor artık 8/8, `status: analyzed`.
+
+### 27 Ağustos — prod'da tekrarlayan tick 504'ü: kök sebep bulundu ve düzeltildi
+
+R-2915FC (ZEMA-İYT-22) 3/8'de takılıydı, 5 iş `running`de 11+ dakikadır
+asılıydı. `/api/jobs/tick`'in `maxDuration=60` (Hobby'nin tavanı) tanımlı
+ama bir önceki oturumda template_compliance için eklenen 100_000ms'lik iç
+zaman aşımı bunun ÇOK üzerindeydi — üstelik `@google/genai` SDK'sının
+KENDİ iç retry'ı (varsayılan 5 deneme, 429/5xx'te 60s'ye kadar üstel
+bekleme, AYNI anahtar/modeli tekrar tekrar deniyor) bizim model/anahtar
+fallback'imizle çakışıp TEK bir "deneme"yi 80-90s'ye çıkarıyordu (sahadaki
+416s'lik 5-deneme ölçümü muhtemelen buydu). BATCH=2 ile iki iş art arda
+bunu ikiye katlıyordu.
+
+Sonuç: Vercel fonksiyonu platform seviyesinde 504 ile ÖLDÜRÜYOR, bizim
+`catch` bloğumuz hiç çalışmıyor, iş DB'de 'running' kalıyor. Yalnızca
+5 dakikalık stale-reclaim (0004 migration, `claim_analysis_jobs`)
+yeniden kapıyor — ve `attempts` sayacı bizim kodumuzda hiç artmadığı
+için `MAX_ATTEMPTS`'e asla ulaşmıyor, sonsuz döngü.
+
+Üç düzeltme:
+1. `lib/ai/call-claude-for-check.ts`: SDK'nın iç retry'ı kapatıldı
+   (`retryOptions: { attempts: 1 }`) — tek gerçek HTTP round-trip,
+   öngörülebilir süre.
+2. Aynı dosya: `REQUEST_TIMEOUT_MS` 100_000 → 20_000; YENİ
+   `TOTAL_BUDGET_MS = 45_000` eklendi — `callModel`'in TÜM model×anahtar
+   zinciri toplamda 45s'yi geçemiyor, bütçe dolunca yeni deneme
+   BAŞLATILMIYOR, temiz bir retryable hata dönüyor (iş 'pending'e düşüyor,
+   'running'de asılı kalmıyor).
+3. `app/api/jobs/tick/route.ts`: `BATCH` 2 → 1 — tek istek artık en fazla
+   TEK kontrolün 45s'lik bütçesini taşıyor, 60s'nin altında güvenli marj.
+
+Vercel plan tipi (Hobby/Pro) doğrulanamadı (CLI erişimi yok) — ama kod
+artık HANGİ plan olursa olsun 45s+DB payı ile 60s tavanının güvenle
+altında. maxDuration=60'ı artırmaya gerek kalmadı.

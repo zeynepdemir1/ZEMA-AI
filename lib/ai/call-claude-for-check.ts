@@ -47,8 +47,25 @@ const FIXTURES: Record<CheckType, unknown> = {
   feedback_synthesis: feedbackSynthesis,
 };
 
-/** Tek bir generateContent denemesi için üst sınır — aşılırsa sıradaki model/anahtara geçilir. */
-const REQUEST_TIMEOUT_MS = 100_000;
+/**
+ * Tek bir generateContent denemesi için üst sınır — aşılırsa sıradaki
+ * model/anahtara geçilir.
+ *
+ * Vercel'de /api/jobs/tick maxDuration=60 (Hobby planının tavanı). Eskiden
+ * bu 100_000 idi ve SDK'nın KENDİ iç retry'ı (aşağıya bak) ile birleşince
+ * TEK bir deneme rahatlıkla 60s'yi aşabiliyordu — bu durumda Vercel
+ * fonksiyonu platform seviyesinde 504 ile ÖLDÜRÜYOR, bizim kendi
+ * catch/finally kodumuz hiç çalışmıyor, iş 'running'de asılı kalıyor ve
+ * yalnızca 5 dakikalık stale-reclaim'le (0004 migration) tekrar deneniyor
+ * — sonsuz döngü. 20s + TOTAL_BUDGET_MS ile toplam süre garantili sınırlı.
+ */
+const REQUEST_TIMEOUT_MS = 20_000;
+/**
+ * callModel() için TÜM deneme zincirinin (model × anahtar) toplam üst
+ * sınırı. maxDuration=60'ın altında güvenli marj bırakır (DB yazımı,
+ * PDF indirme/çıkarma, JSON serileştirme için ~15s pay).
+ */
+const TOTAL_BUDGET_MS = 45_000;
 
 /**
  * Dönüş tipi analysis_results kolonlarıyla eşleştirildi (PLAN.md §3):
@@ -214,8 +231,16 @@ export async function callModel<S extends z.ZodType = z.ZodType<unknown>>(
   let response: Awaited<ReturnType<ReturnType<typeof genai>['models']['generateContent']>> | undefined;
   let lastError: unknown = null;
   let servedBy = models[0];
+  const loopStartedAt = Date.now();
 
   for (let i = 0; i < plan.length; i++) {
+    // Toplam bütçe dolduysa YENİ bir deneme BAŞLATMA — Vercel'in kendi
+    // fonksiyon süresi bizden önce dolup platformun 504'üyle işi 'running'de
+    // asılı bırakmasındansa, işi TEMİZ bir retryable hatayla geri ver.
+    if (i > 0 && Date.now() - loopStartedAt >= TOTAL_BUDGET_MS) {
+      lastError = lastError ?? new Error('toplam deneme bütçesi doldu');
+      break;
+    }
     const attempt = plan[i];
     try {
       response = await callOnce(attempt);
@@ -318,7 +343,16 @@ export async function callModel<S extends z.ZodType = z.ZodType<unknown>>(
         // template_compliance) SDK'nın altındaki istek 280s+ hiç yanıt vermeden
         // askıda kaldı — ne hata ne sonuç. AbortSignal/timeout yoksa bu tek
         // deneme sonsuza dek sürer ve model/anahtar zinciri hiç ilerlemez.
-        httpOptions: { timeout: REQUEST_TIMEOUT_MS },
+        httpOptions: {
+          timeout: REQUEST_TIMEOUT_MS,
+          // SDK varsayılanı: 5 deneme, aralarda 60s'ye kadar üstel bekleme
+          // (429/5xx için) — AYNI anahtar/modeli tekrar tekrar deniyor.
+          // Bizim KENDİ model/anahtar fallback'imizle çakışıyor ve tek bir
+          // "deneme" burada 80-90s'ye çıkabiliyor (416s'lik sahadaki 5
+          // "deneme" ölçümü büyük ihtimalle buydu). Kapatılıp retry SADECE
+          // bizim döngümüzde (farklı model/anahtarla, beklemesiz) yapılıyor.
+          retryOptions: { attempts: 1 },
+        },
       },
     });
   }

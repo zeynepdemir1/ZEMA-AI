@@ -15,10 +15,18 @@ import type { CheckType } from '@/lib/ai/config';
  *
  * Tek istekte 6 kontrolü çalıştırmıyoruz: Vercel'in fonksiyon süre limiti
  * demo günü timeout'a yol açardı. Küçük turlar + kısmi sonuç gösterimi.
+ *
+ * BATCH=1 (26 Ağustos, prod'da tekrarlayan 504): maxDuration=60 (Hobby
+ * tavanı) ve tek bir ağır kontrolün (template_compliance gibi) kendi
+ * model/anahtar zinciri TEK BAŞINA 45s'e kadar sürebiliyor (bkz.
+ * lib/ai/call-claude-for-check.ts TOTAL_BUDGET_MS). 2 iş art arda bu
+ * bütçeyi ikiye katlayıp 60s'yi güvenle aşıyordu — Vercel fonksiyonu
+ * platform seviyesinde 504 ile öldürüyor, bizim kendi hata/durum
+ * güncelleme kodumuz hiç çalışmıyor, iş 'running'de asılı kalıp yalnızca
+ * 5 dakikalık stale-reclaim'le (0004 migration) tekrar deneniyor —
+ * MAX_ATTEMPTS sayacı da hiç işlemediği için sonsuz döngü.
  */
-
-/** Bir turda kaç iş — küçük tut, süre limitine yaklaşma. */
-const BATCH = 2;
+const BATCH = 1;
 /** PLAN.md §2.1: 3 denemeden sonra failed. */
 const MAX_ATTEMPTS = 3;
 
