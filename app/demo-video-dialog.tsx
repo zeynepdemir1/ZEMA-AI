@@ -1,11 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { GridTexture } from '@/components/zema/brand';
+
+/** YouTube video ID — https://youtu.be/PnqQAStG5T4 */
+const DEMO_VIDEO_ID = 'PnqQAStG5T4';
 
 /**
- * "Demo Videosunu İzle" — PLAN.md §6: video hazır olana kadar "yakında"
- * placeholder'ı gösterilir. Tasarımdaki modal birebir korundu.
+ * "Demo Videosunu İzle" — YouTube'daki ürün demosunu modal içinde oynatır.
+ * Iframe yalnızca modal açıkken mount edilir (gereksiz YouTube script'i
+ * ana sayfa yüklenirken çekilmesin).
  */
 export function DemoVideoDialog() {
   const [open, setOpen] = useState(false);
@@ -44,25 +47,18 @@ export function DemoVideoDialog() {
               </button>
             </div>
 
-            <div className="bg-ink relative flex aspect-video flex-col items-center justify-center gap-[18px] overflow-hidden">
-              <GridTexture cell={48} />
-              <div className="relative flex h-[74px] w-[74px] items-center justify-center border border-white/[.35] pl-1 text-xl text-white/[.75]">
-                ▶
-              </div>
-              <div className="relative text-center">
-                <div className="font-heading mb-1.5 text-[19px] font-semibold text-white">
-                  Demo videosu yakında
-                </div>
-                <div className="font-mono text-[11px] tracking-[.12em] text-white/[.62]">
-                  HAKEM İNCELEME AKIŞI · ~2 DK
-                </div>
-              </div>
+            <div className="bg-ink relative aspect-video overflow-hidden">
+              <iframe
+                src={`https://www.youtube.com/embed/${DEMO_VIDEO_ID}?autoplay=1`}
+                title="ZEMA ürün demosu"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                className="absolute inset-0 h-full w-full border-none"
+              />
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-6 px-[22px] py-4">
-              <span className="text-ink/75 text-[13px]">
-                Video hazır olduğunda bu alanda oynatılacak.
-              </span>
+              <span className="text-ink/75 text-[13px]">HAKEM İNCELEME AKIŞI · ~2 DK</span>
               <button
                 onClick={() => setOpen(false)}
                 className="bg-t3-blue cursor-pointer border-none px-[22px] py-[11px] text-[13.5px] font-semibold text-white"
