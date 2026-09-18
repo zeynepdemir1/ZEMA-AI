@@ -10,7 +10,10 @@ import { NextResponse, type NextRequest } from 'next/server';
  */
 
 /** Girişsiz erişilebilen rotalar. */
-const PUBLIC = ['/', '/auth', '/gizlilik', '/demo'];
+// /api/ping dahil: Supabase'i uyanık tutan harici cron/uptime servisinin
+// oturum çerezi yok — açık kalmazsa her çağrı /auth'a yönlenir ve ping işe
+// yaramaz.
+const PUBLIC = ['/', '/auth', '/gizlilik', '/demo', '/api/ping'];
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
