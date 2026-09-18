@@ -43,10 +43,5 @@ export async function GET() {
 
   const { error } = await supabase.from('competitions').select('id').limit(1);
 
-return Response.json({
-  ok: !error,
-  code: error?.code ?? null,
-  msg: error?.message ?? null,
-  t: new Date().toISOString()
-})
+  return NextResponse.json({ ok: !error, t: new Date().toISOString() });
 }
