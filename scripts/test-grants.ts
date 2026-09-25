@@ -296,10 +296,16 @@ async function main() {
       'team_members', 'teams',
     ];
     for (const t of allTables) {
-      // count-only + head:true: hiçbir tablonun kolon adını bilmeye gerek
-      // kalmaz (team_members'ta 'id' yok, bileşik PK var) ve satır dönmez.
+      // '*' seçiyoruz ki tablonun kolon adlarını bilmeye gerek kalmasın
+      // (team_members'ta 'id' yok, bileşik PK var). head:true KULLANMIYORUZ:
+      // HEAD isteğinde PostgREST gövde döndürmüyor, bu yüzden supabase-js
+      // error.message'ı boş bırakıyor ve expectDeny'nin "yetki hatası mı"
+      // sınıflandırması yanlış negatif veriyor — canlıda doğrulandı (ham
+      // curl: HTTP 401, code 42501, mesaj dolu; head:true'lu istekte aynı
+      // hata ama mesaj boş). limit(1) ile normal GET kullanıyoruz, gövde
+      // (ve dolayısıyla gerçek hata mesajı) garanti geliyor.
       await expectDeny(`anon select ${t} reddedilmeli`, t, 'anon', () =>
-        anon.from(t).select('*', { count: 'exact', head: true }),
+        anon.from(t).select('*').limit(1),
       );
     }
     // anon yazma denemesi de reddedilmeli — en görünür tablo: competitions.
