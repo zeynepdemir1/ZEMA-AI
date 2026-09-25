@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 import { authorize, supabaseServer } from '@/lib/supabase/server';
 
 /**
@@ -10,6 +11,15 @@ import { authorize, supabaseServer } from '@/lib/supabase/server';
  * Böylece iki katman koruyor: authorize() net hata mesajı veriyor,
  * assignments_write_eval_admin politikası da Postgres tarafında engelliyor.
  * Yetki kontrolü unutulsa bile veri korunur.
+ *
+ * TEK İSTİSNA: audit_log. `authenticated` rolü için audit_log'a hiç INSERT
+ * politikası yok (yalnızca audit_log_select_staff var, bkz. 0002_rls.sql) —
+ * bu dosya daha önce audit_log'a da oturumlu istemciyle yazmayı deniyordu ve
+ * bu satırlar RLS'e takılıp SESSİZCE başarısız oluyordu (hata kontrol
+ * edilmiyordu). audit_log yazımı, projenin geri kalanındaki her yerle aynı
+ * desene çekildi: supabaseAdmin(). Asıl işlem (assignments) hâlâ oturumlu
+ * istemciyle — yukarıdaki iki katmanlı koruma değişmedi, yalnızca audit
+ * kaydı service_role ile atılıyor.
  */
 
 type Result = { ok: boolean; error?: string; changed?: number };
@@ -29,6 +39,29 @@ function badId(...ids: Array<string | undefined | null>): string | null {
   return ids.some((id) => !id || !UUID.test(id)) ? 'Geçersiz kimlik.' : null;
 }
 
+/**
+ * audit_log'a service_role ile yazar ve hatayı KONSOLA basar — önceki
+ * sürüm hatayı yutuyordu, bu yüzden atama günlüğü tutuluyor sanılıp aslında
+ * hiç yazılmıyordu. Audit kaydı asıl işlemi (atama) BAŞARISIZ KILMAZ; o
+ * zaten üstte kendi hatasıyla dönmüş olur — burada yalnızca gözlemlenebilirlik
+ * için logluyoruz.
+ */
+async function logAudit(entry: {
+  actor: string;
+  action: string;
+  entity: string;
+  entity_id?: string;
+  meta?: Record<string, unknown>;
+}): Promise<void> {
+  const { error } = await supabaseAdmin().from('audit_log').insert(entry);
+  if (error) {
+    console.error(`[zema:audit_log] ${entry.action} yazılamadı: ${error.message}`, {
+      entity: entry.entity,
+      entity_id: entry.entity_id,
+    });
+  }
+}
+
 export async function assignReport(reportId: string, judgeId: string): Promise<Result> {
   const auth = await guard();
   if ('error' in auth) return { ok: false, error: auth.error };
@@ -43,7 +76,7 @@ export async function assignReport(reportId: string, judgeId: string): Promise<R
     .insert({ report_id: reportId, judge_id: judgeId, assigned_by: auth.user.id, status: 'pending' });
   if (error) return { ok: false, error: error.message };
 
-  await db.from('audit_log').insert({
+  await logAudit({
     actor: auth.user.id,
     action: 'assignment.created',
     entity: 'assignments',
@@ -65,7 +98,7 @@ export async function unassignReport(reportId: string): Promise<Result> {
   const { error } = await db.from('assignments').delete().eq('report_id', reportId);
   if (error) return { ok: false, error: error.message };
 
-  await db.from('audit_log').insert({
+  await logAudit({
     actor: auth.user.id,
     action: 'assignment.removed',
     entity: 'assignments',
@@ -171,7 +204,7 @@ export async function distributeBalanced(
     changed++;
   }
 
-  await db.from('audit_log').insert({
+  await logAudit({
     actor: auth.user.id,
     action: 'assignment.distributed',
     entity: 'assignments',
