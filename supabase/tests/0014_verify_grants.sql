@@ -5,10 +5,12 @@
 -- DML çalıştırmaz, veritabanında hiçbir şeyi değiştirmez.
 --
 -- GÜNCELLEME (0015_test_cleanup_grants.sql sonrası): competitions ve
--- audit_log için service_role/DELETE beklentisi false→true çevrildi —
--- bu dosya "şu an doğru olması gereken toplam durumu" yansıtan CANLI bir
+-- audit_log için service_role/DELETE beklentisi false→true çevrildi.
+-- GÜNCELLEME (0016_test_cleanup_grants_select.sql sonrası): audit_log
+-- için service_role/SELECT de false→true (DELETE...WHERE'in ön koşulu).
+-- Bu dosya "şu an doğru olması gereken toplam durumu" yansıtan CANLI bir
 -- referans, 0014'ün donmuş bir tarihsel görüntüsü değil. Yeni bir grant
--- migration'ı (0016, 0017, …) geldiğinde bu matris yine güncellenmeli.
+-- migration'ı geldiğinde bu matris yine güncellenmeli.
 --
 -- KULLANIM: Supabase SQL Editor'e yapıştırıp çalıştırın.
 --   - Sonuç BOŞSA  → geçti, matris canlıyla birebir uyuşuyor.
@@ -84,7 +86,7 @@ with expected(tbl, role, priv, expected) as (
     ('audit_log', 'authenticated', 'INSERT', false),
     ('audit_log', 'authenticated', 'UPDATE', false),
     ('audit_log', 'authenticated', 'DELETE', false),
-    ('audit_log', 'service_role', 'SELECT', false),
+    ('audit_log', 'service_role', 'SELECT', true), -- 0016: DELETE...WHERE'in ön koşulu (test/ops temizliği)
     ('audit_log', 'service_role', 'INSERT', true),
     ('audit_log', 'service_role', 'UPDATE', false),
     ('audit_log', 'service_role', 'DELETE', true), -- 0015: yalnızca test/ops temizliği için

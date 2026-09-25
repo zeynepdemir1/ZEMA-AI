@@ -1,0 +1,24 @@
+-- ZEMA — 0016_test_cleanup_grants_select.sql
+--
+-- 0015_test_cleanup_grants.sql service_role'e competitions + audit_log'da
+-- DELETE verdi. competitions'ta işe yaradı (service_role'ün 0014'ten zaten
+-- SELECT'i vardı) ama audit_log'da HÂLÂ "permission denied" verdi.
+--
+-- SEBEP: PostgreSQL'de `DELETE ... WHERE kolon = değer` yalnızca DELETE
+-- yetkisiyle çalışmaz — WHERE koşulunu değerlendirmek (hangi satırların
+-- silineceğine karar vermek) o kolon(lar)da SELECT yetkisi de gerektirir.
+-- scripts/test-grants.ts'in temizliği `delete from audit_log where actor
+-- in (...)` şeklinde FİLTRELİ — bilerek: yalnızca kendi ürettiği test
+-- satırlarını silsin, gerçek audit kayıtlarına asla dokunmasın. Bu filtre
+-- SELECT olmadan değerlendirilemiyor.
+--
+-- Canlıda doğrulandı (curl ile ham istek): PostgREST'in kendi hata ipucu
+-- bile bunu söylüyor — "hint":"...GRANT SELECT ON public.audit_log TO
+-- service_role;". competitions'ta aynı sorun YOK çünkü service_role'ün
+-- orada zaten 0014'ten SELECT'i vardı.
+--
+-- Aynı 0015/0016 gerekçesi geçerli: uygulama kodu audit_log'u hiçbir
+-- yerde okumuyor (bkz. 0014'teki tarama) — bu SELECT yalnızca test/ops
+-- temizliği için, DELETE'in filtreli çalışabilmesinin ön koşulu.
+
+grant select on audit_log to service_role;
