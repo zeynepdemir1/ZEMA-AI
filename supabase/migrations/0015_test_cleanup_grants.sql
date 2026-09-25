@@ -1,0 +1,32 @@
+-- ZEMA — 0015_test_cleanup_grants.sql
+--
+-- BAĞLAM: 0014_add_explicit_grants.sql, service_role'ü GERÇEK uygulama
+-- kullanımına göre daraltırken `competitions` ve `audit_log`'a DELETE
+-- vermedi — çünkü uygulama kodu bu iki tabloyu HİÇ silmiyor (bkz. 0014'ün
+-- kendi yorumları). Bu doğru bir karardı ve KALIYOR.
+--
+-- SORUN: scripts/test-grants.ts (0014'ün grant matrisini canlıya karşı
+-- uçtan uca doğrulayan test) kendi ürettiği test verisini (1 yarışma +
+-- cascade + birkaç audit_log satırı) service_role ile temizliyor. 0014
+-- sonrası bu temizlik "permission denied for table competitions/audit_log"
+-- ile başarısız oldu ve canlıda gerçek test kalıntısı bıraktı (elle SQL
+-- Editor'de temizlendi — bkz. proje geçmişi).
+--
+-- KARAR (kullanıcı onayladı — 3 seçenek sunuldu: bu grant'i ekle / matrisi
+-- aynen bırak, elle temizle / ayrı bir DB bağlantısı kullan): service_role'e
+-- YALNIZCA bu iki tabloda, YALNIZCA test/ops temizliği için DELETE ekleniyor.
+--
+-- ⚠️ BU İKİ DELETE UYGULAMA KODU TARAFINDAN KULLANILMIYOR. app/, lib/,
+-- scripts/seed*.ts hiçbir yerde `.from('competitions').delete(...)` veya
+-- `.from('audit_log').delete(...)` çağırmıyor (0014'teki tarama hâlâ
+-- geçerli). Bu satırlar YALNIZCA scripts/test-grants.ts'in kendi ürettiği
+-- veriyi temizlemesi için var. İleride uygulamaya gerçek bir "yarışmayı
+-- sil" özelliği eklenirse zaten burada grant hazır olur; eklenmezse de
+-- zararı yok — service_role zaten RLS'i baypas eden, yalnızca sunucu
+-- tarafında kullanılan bir anahtar, iki ek DELETE saldırı yüzeyini
+-- ölçülebilir şekilde büyütmüyor.
+--
+-- İDEMPOTENT: GRANT tekrar çalıştırılabilir.
+
+grant delete on competitions to service_role;
+grant delete on audit_log to service_role;

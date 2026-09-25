@@ -4,6 +4,12 @@
 -- CANLI veritabanına karşı doğrular. YALNIZCA OKUR — hiçbir GRANT/REVOKE/
 -- DML çalıştırmaz, veritabanında hiçbir şeyi değiştirmez.
 --
+-- GÜNCELLEME (0015_test_cleanup_grants.sql sonrası): competitions ve
+-- audit_log için service_role/DELETE beklentisi false→true çevrildi —
+-- bu dosya "şu an doğru olması gereken toplam durumu" yansıtan CANLI bir
+-- referans, 0014'ün donmuş bir tarihsel görüntüsü değil. Yeni bir grant
+-- migration'ı (0016, 0017, …) geldiğinde bu matris yine güncellenmeli.
+--
 -- KULLANIM: Supabase SQL Editor'e yapıştırıp çalıştırın.
 --   - Sonuç BOŞSA  → geçti, matris canlıyla birebir uyuşuyor.
 --   - Sonuç DOLUYSA → her satır bir uyuşmazlık: ya olması gereken bir
@@ -81,7 +87,7 @@ with expected(tbl, role, priv, expected) as (
     ('audit_log', 'service_role', 'SELECT', false),
     ('audit_log', 'service_role', 'INSERT', true),
     ('audit_log', 'service_role', 'UPDATE', false),
-    ('audit_log', 'service_role', 'DELETE', false),
+    ('audit_log', 'service_role', 'DELETE', true), -- 0015: yalnızca test/ops temizliği için
     ('categories', 'anon', 'SELECT', false),
     ('categories', 'anon', 'INSERT', false),
     ('categories', 'anon', 'UPDATE', false),
@@ -105,7 +111,7 @@ with expected(tbl, role, priv, expected) as (
     ('competitions', 'service_role', 'SELECT', true),
     ('competitions', 'service_role', 'INSERT', true),
     ('competitions', 'service_role', 'UPDATE', true),
-    ('competitions', 'service_role', 'DELETE', false),
+    ('competitions', 'service_role', 'DELETE', true), -- 0015: yalnızca test/ops temizliği için
     ('correction_log', 'anon', 'SELECT', false),
     ('correction_log', 'anon', 'INSERT', false),
     ('correction_log', 'anon', 'UPDATE', false),

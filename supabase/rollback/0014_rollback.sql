@@ -3,6 +3,9 @@
 -- 0014_add_explicit_grants.sql'i geri alır: 0003_grants.sql'in verdiği
 -- GENİŞ yetkiyi (anon dahil her role her tabloda ALL) birebir geri getirir.
 --
+-- 0015_test_cleanup_grants.sql'i de KAPSAR — ALL, DELETE dahil her şeyin
+-- üst kümesi olduğu için ayrı bir adım gerekmez.
+--
 -- ⚠️ BU DOSYA supabase/migrations/ İÇİNDE DEĞİL — BİLEREK. Migration
 -- klasöründeki her şey otomatik/sırayla uygulanabilir varsayılıyor; bu
 -- dosya YALNIZCA elle, bilinçli bir geri alma kararıyla SQL Editor'e
