@@ -1,47 +1,41 @@
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
 /**
- * GET /api/ping — Supabase projesini uyanık tutmak için hafif bir "dokunma".
+ * GET /api/ping — Supabase projesini uyanık tutmak için gerçek bir YAZMA.
  *
  * NEDEN GEREKLİ: ücretsiz katmanda bir Supabase projesi bir süre trafik
  * almazsa duraklatılıyor (pause). Bu uç harici bir cron/uptime servisinin
- * (ör. cron-job.org, UptimeRobot) düzenli çağırabileceği, minimum maliyetli
- * bir yoklama — middleware.ts'te PUBLIC listesine eklendi ki oturumsuz
- * çağrı /auth'a yönlenmesin.
+ * (ör. cron-job.org) düzenli çağırabileceği bir yoklama — middleware.ts'te
+ * PUBLIC listesine eklendi ki oturumsuz çağrı /auth'a yönlenmesin.
  *
- * ANAHTAR: yalnızca publishable (anon) anahtar kullanılır — supabaseAdmin()
- * (service_role) BİLEREK kullanılmıyor; bu genel/korumasız uca hiçbir gizli
- * anahtar bulaşmıyor. Zaten NEXT_PUBLIC_SUPABASE_ANON_KEY tarayıcıya da
- * gidiyor, yani "gizli" değil.
+ * ANAHTAR: service_role kullanılır (supabaseAdmin()) — SELECT'in aksine
+ * upsert RLS'i baypas etmeden `authenticated`/`anon` ile çalışmaz, çünkü
+ * `keepalive` tablosunda oturumsuz bir yazma politikası yok ve olmamalı.
+ * Anahtar yalnızca sunucu tarafında kullanılır, response'a hiçbir zaman
+ * yazılmaz.
  *
- * TABLO SEÇİMİ: `competitions` — şemadaki en küçük tablo (bkz.
- * supabase/migrations/0011_competition_published.sql yorumu: "mevcut 3
- * gerçek yarışma").
- *
- * ⚠️ NOT: supabase/migrations/0002_rls.sql ve 0011_competition_published.sql
- * incelendiğinde public şemadaki HİÇBİR `select` politikası `anon` rolüne
- * tanımlı değil — hepsi `to authenticated`. Yani bu sorgu anon anahtarla
- * satır DÖNDÜRMEZ (RLS boş sonuç verir, hata değil); ama Postgres'e gerçek
- * bir bağlantı + sorgu çalıştırdığı için projeyi uyanık tutmaya yetiyor, ve
- * anon rolünün RLS'i baypas edememesi sayesinde bu uç hiçbir veriyi sızdırma
- * riski taşımıyor.
+ * TABLO: `public.keepalive` — supabase/migrations/0017_keepalive.sql ile
+ * repo'da tanımlı (tablo veritabanında elle açıldı, migration uygulanmadı).
  */
 export async function GET() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const t = new Date().toISOString();
 
-  if (!url || !key) {
-    return NextResponse.json({ ok: false, t: new Date().toISOString() }, { status: 500 });
+  try {
+    const { error } = await supabaseAdmin()
+      .from('keepalive')
+      .upsert({ id: 1, last_ping: t });
+
+    if (error) {
+      console.error('[api/ping] keepalive upsert başarısız:', error.message);
+      return NextResponse.json({ ok: false }, { status: 500 });
+    }
+
+    return NextResponse.json({ ok: true, t });
+  } catch (err) {
+    console.error('[api/ping] beklenmeyen hata:', err);
+    return NextResponse.json({ ok: false }, { status: 500 });
   }
-
-  const supabase = createClient(url, key, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-
-  const { error } = await supabase.from('competitions').select('id').limit(1);
-
-  return NextResponse.json({ ok: !error, t: new Date().toISOString() });
 }
