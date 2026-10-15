@@ -3,7 +3,8 @@
  *
  * Auth bağlandı — bunlar artık "giriş yapılmış kullanıcı" taklidi DEĞİL,
  * yalnızca seed'in ve manuel testin kullandığı bilinen hesaplar.
- * Şifreleri seed sırasında `zema-test-2026` olarak ayarlanır.
+ * Şifreleri seed sırasında DEMO_PASSWORD env değişkenine ayarlanır —
+ * şifre repoda YOK (bkz. demoPassword()).
  *
  * Şartname 4 farklı kullanıcı rolü istiyor; dördü de burada.
  */
@@ -23,7 +24,7 @@ export const DEV_USERS = {
  * destekliyordu (hakem yükü tablosu, rapor başına açılır liste, dengeli
  * dağıtım) — eksik olan hakemlerdi.
  *
- * Şifreleri DEV_PASSWORD ile aynı.
+ * Şifreleri demoPassword() ile aynı.
  */
 export const EXTRA_JUDGES = [
   { email: 'hakem2@zema.test', fullName: 'Mehmet Emre Çelebi' },
@@ -66,6 +67,19 @@ export const EXTRA_COMPETITORS = [
   },
 ] as const;
 
-export const DEV_PASSWORD = 'zema-test-2026';
+/**
+ * Demo hesaplarının ortak şifresi — YALNIZCA env'den (.env.local / Vercel).
+ *
+ * Repo herkese açık; şifre koda ya da dokümana yazılırsa salt okunur
+ * vitrinin kilidi anlamsızlaşır: şifreyi bilen, uygulamayı atlayıp
+ * Supabase API'sine doğrudan giriş yapabilir. Eski sabit değer git
+ * geçmişinde kaldığı için prod'daki şifre değiştirildi
+ * (scripts/rotate-demo-password.ts).
+ */
+export function demoPassword(): string {
+  const p = process.env.DEMO_PASSWORD?.trim();
+  if (!p || p.length < 12) throw new Error('DEMO_PASSWORD tanımlı değil (en az 12 karakter).');
+  return p;
+}
 export const DEV_TEAM_NAME = 'GARO';
 export const DEV_COMPETITION_NAME = 'TEKNOFEST 2026 — İnsansız Hava Araçları';

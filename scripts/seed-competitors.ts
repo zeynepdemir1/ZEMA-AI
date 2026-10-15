@@ -11,7 +11,7 @@
  * Çalıştırma:  npx tsx scripts/seed-competitors.ts
  */
 import { createClient } from '@supabase/supabase-js';
-import { DEV_PASSWORD, EXTRA_COMPETITORS } from '../lib/dev-session';
+import { EXTRA_COMPETITORS, demoPassword } from '../lib/dev-session';
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -26,7 +26,7 @@ async function upsertCompetitor(email: string, fullName: string): Promise<string
   if (!user) {
     const { data, error } = await db.auth.admin.createUser({
       email,
-      password: DEV_PASSWORD,
+      password: demoPassword(),
       email_confirm: true,
       user_metadata: { full_name: fullName },
     });
@@ -34,7 +34,7 @@ async function upsertCompetitor(email: string, fullName: string): Promise<string
     user = data.user;
     console.log(`  oluşturuldu: ${email} — ${fullName}`);
   } else {
-    await db.auth.admin.updateUserById(user.id, { password: DEV_PASSWORD });
+    await db.auth.admin.updateUserById(user.id, { password: demoPassword() });
     console.log(`  zaten var:   ${email} (şifre yenilendi)`);
   }
 
@@ -132,7 +132,7 @@ async function main() {
       console.log(`      ${cname.slice(0, 40).padEnd(42)} ${names.join(', ')}${flag}`);
     }
   }
-  console.log(`\n  Giriş: <email> / ${DEV_PASSWORD}`);
+  console.log(`\n  Giriş: <email> / DEMO_PASSWORD (.env.local)`);
 }
 
 main().catch((e) => {

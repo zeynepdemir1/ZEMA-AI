@@ -16,6 +16,12 @@ Proje artık kullanılmıyor; **portfolyo vitrini olarak salt okunur**.
   için RESTRICTIVE RLS + storage yasağı). service_role'ü durdurmaz.
 - `NEXT_PUBLIC_DEMO_MODE` kapalı kalıyor; `/demo` değişmedi.
 
+**Demo şifresi repodan çıkarıldı (15 Ekim):** eski sabit şifre herkese açık
+repoda ve git geçmişindeydi. Şifre artık yalnızca `DEMO_PASSWORD` env
+değişkeninde; prod'daki 10 demo hesabının şifresi `npm run
+rotate:demo-password` ile değiştirildi, böylece geçmişteki değer geçersiz.
+Geçmiş yeniden YAZILMADI (force-push + etiket taşımak gerekirdi).
+
 **Geri almak (projeyi canlandırmak):** Vercel'de `READ_ONLY`'yi sil →
 redeploy; 0018 uygulandıysa `supabase/rollback/0018_rollback.sql`'i SQL
 Editor'de çalıştır.
@@ -533,7 +539,7 @@ Bu, PLAN §1'deki "her AI çıktısı için model ve zaman loglanır"
 iddiasını çürütüyordu. `writeResult` artık `created_at`'i açıkça yazıyor;
 mevcut bayat satır da düzeltildi.
 
-## 🔑 TEST HESAPLARI — hepsinin şifresi `zema-test-2026`
+## 🔑 TEST HESAPLARI — ortak şifre `DEMO_PASSWORD` env değişkeninde (repoda yok)
 
 | e-posta | ad | rol | bağlam |
 |---|---|---|---|
@@ -696,7 +702,7 @@ yükleneceği demo senaryosuna bağlı.
 zaten destekleniyordu (hakem yükü tablosu, rapor başına açılır liste,
 dengeli dağıtım). Eksik olan **hakemdi**: sistemde tek hakem hesabı vardı.
 
-Eklenen hesaplar (`lib/dev-session.ts` → `EXTRA_JUDGES`, şifre `DEV_PASSWORD`):
+Eklenen hesaplar (`lib/dev-session.ts` → `EXTRA_JUDGES`, şifre `DEMO_PASSWORD`):
 
 | e-posta | ad |
 |---|---|
@@ -1484,7 +1490,7 @@ Tam kapsam yapıldı, yedek plana düşülmedi:
 - **`lib/reports/queries.ts` artık oturumlu istemci kullanıyor → RLS gerçekten
   devrede.** Admin istemcisi yalnızca sistem işlerinde (job runner, rol atama,
   seed, storage yazımı).
-- Dört rol de seed'lendi; şifre `zema-test-2026`.
+- Dört rol de seed'lendi; şifre `DEMO_PASSWORD` env değişkeninde.
 
 Gerçek girişlerle doğrulandı:
 

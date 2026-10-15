@@ -9,7 +9,7 @@
  */
 import { supabaseAdmin } from '../lib/supabase/admin';
 import { CARDS, CRITERIA_LIST, DEFAULT_SIMILARITY_THRESHOLD } from '../lib/design/mock-data';
-import { DEV_COMPETITION_NAME, DEV_PASSWORD, DEV_TEAM_NAME, DEV_USERS } from '../lib/dev-session';
+import { DEV_COMPETITION_NAME, DEV_TEAM_NAME, DEV_USERS, demoPassword } from '../lib/dev-session';
 
 const db = supabaseAdmin();
 
@@ -80,7 +80,7 @@ async function upsertUser(email: string, fullName: string, role: Role) {
   if (!user) {
     const { data, error } = await db.auth.admin.createUser({
       email,
-      password: DEV_PASSWORD,
+      password: demoPassword(),
       email_confirm: true,
       user_metadata: { full_name: fullName },
     });
@@ -89,7 +89,7 @@ async function upsertUser(email: string, fullName: string, role: Role) {
     console.log(`  auth kullanıcısı oluşturuldu: ${email}`);
   } else {
     // Şifreyi bilinen değere sabitle — manuel test için.
-    await db.auth.admin.updateUserById(user.id, { password: DEV_PASSWORD });
+    await db.auth.admin.updateUserById(user.id, { password: demoPassword() });
     console.log(`  auth kullanıcısı zaten var: ${email} (şifre yenilendi)`);
   }
 

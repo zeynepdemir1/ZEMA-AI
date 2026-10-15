@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { ROLE_HOME, supabaseServer, type UserRole } from '@/lib/supabase/server';
 import { isReadOnly, READ_ONLY_MESSAGE } from '@/lib/read-only';
-import { DEV_PASSWORD, DEV_USERS } from '@/lib/dev-session';
+import { demoPassword, DEV_USERS } from '@/lib/dev-session';
 
 /**
  * Kayıt kodu ile rol atama + giriş/çıkış (PLAN.md §3.2)
@@ -163,8 +163,16 @@ export async function signInAsDemo(role: string): Promise<AuthResult> {
   if (!Object.hasOwn(DEMO_LOGINS, role)) return { ok: false, error: 'Geçersiz profil.' };
   const key = role as UserRole;
 
+  let password: string;
+  try {
+    password = demoPassword();
+  } catch {
+    console.error('[signInAsDemo] DEMO_PASSWORD tanımlı değil');
+    return { ok: false, error: 'Demo girişi yapılandırılmamış.' };
+  }
+
   const db = await supabaseServer();
-  const { error } = await db.auth.signInWithPassword({ email: DEMO_LOGINS[key], password: DEV_PASSWORD });
+  const { error } = await db.auth.signInWithPassword({ email: DEMO_LOGINS[key], password });
   if (error) return { ok: false, error: 'Demo hesabına giriş yapılamadı.' };
 
   revalidatePath('/', 'layout');

@@ -31,7 +31,9 @@ if (!url || !anonKey || !serviceKey) {
 }
 
 const RUN_ID = `granttest_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-const TEST_PASSWORD = 'Zema-Grant-Test-2026!';
+// Her çalıştırmada rastgele — geçici kullanıcılar sonda siliniyor, şifre
+// hiçbir yerde saklanmaz ve repoya yazılmaz.
+const TEST_PASSWORD = `Gt-${crypto.randomUUID()}`;
 
 const admin: SupabaseClient = createClient(url, serviceKey, {
   auth: { persistSession: false, autoRefreshToken: false },

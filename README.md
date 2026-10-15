@@ -133,6 +133,7 @@ npm run dev
 | `MOCK_AI` | `true` iken gerçek AI çağrılmaz, sabit örnek cevap döner (varsayılan) |
 | `REGISTRATION_CODE_*` | Hakem/yönetici kayıt kodları |
 | `READ_ONLY` | `true` iken site salt okunur vitrine döner |
+| `DEMO_PASSWORD` | Demo hesaplarının ortak şifresi — yalnızca `.env.local` ve Vercel'de, repoda yok |
 
 Hakem veya yönetici hesabı gerekiyorsa proje sahibinden kayıt kodu isteyin.
 

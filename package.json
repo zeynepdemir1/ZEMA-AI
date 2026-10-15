@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "dotenv -e .env.local -- tsx scripts/seed.ts",
+    "rotate:demo-password": "dotenv -e .env.local -- tsx scripts/rotate-demo-password.ts",
     "demo:seed": "dotenv -e .env.local -- tsx scripts/seed-demo.ts",
     "demo:analyze": "dotenv -e .env.local -- tsx scripts/analyze-demo.ts",
     "test:grants": "dotenv -e .env.local -- tsx scripts/test-grants.ts"

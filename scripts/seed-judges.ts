@@ -12,7 +12,7 @@
  * bilinen değere sabitler.
  */
 import { createClient } from '@supabase/supabase-js';
-import { DEV_PASSWORD, EXTRA_JUDGES } from '../lib/dev-session';
+import { EXTRA_JUDGES, demoPassword } from '../lib/dev-session';
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -27,7 +27,7 @@ async function upsertJudge(email: string, fullName: string): Promise<string> {
   if (!user) {
     const { data, error } = await db.auth.admin.createUser({
       email,
-      password: DEV_PASSWORD,
+      password: demoPassword(),
       email_confirm: true,
       user_metadata: { full_name: fullName },
     });
@@ -35,7 +35,7 @@ async function upsertJudge(email: string, fullName: string): Promise<string> {
     user = data.user;
     console.log(`  oluşturuldu: ${email} — ${fullName}`);
   } else {
-    await db.auth.admin.updateUserById(user.id, { password: DEV_PASSWORD });
+    await db.auth.admin.updateUserById(user.id, { password: demoPassword() });
     console.log(`  zaten var:   ${email} (şifre yenilendi)`);
   }
 
@@ -121,7 +121,7 @@ async function main() {
     const n = (final ?? []).filter((a) => a.judge_id === j.id).length;
     console.log(`  ${j.full_name.padEnd(22)} ${n} rapor`);
   }
-  console.log(`\n  Giriş: <email> / ${DEV_PASSWORD}`);
+  console.log(`\n  Giriş: <email> / DEMO_PASSWORD (.env.local)`);
 }
 
 main().catch((e) => {
