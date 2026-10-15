@@ -3,6 +3,16 @@
 **TEKNOFEST rapor değerlendirmelerini destekleyen AI sistemi.**
 T3 Vakfı Bursiyer Yapay Zeka Creathonu — Problem 4.
 
+## Canlı Demo (salt okunur)
+
+**https://zema-ai.vercel.app** — giriş ekranındaki **Profil seç** bölümünden
+Yarışmacı, Hakem, Değerlendirme Yöneticisi veya Yarışma Yöneticisi rolünü
+seçip şifresiz, tek tıkla girebilirsiniz. Her rolün ekranları gezilebilir.
+
+Site bir portfolyo vitrini olarak **salt okunur** çalışıyor: yükleme, onay,
+yayımlama, atama gibi hiçbir işlem kaydedilmez ve yeni kayıt kapalıdır.
+Ekranlardaki yarışmacı, hakem, takım ve rapor verileri **sahtedir**.
+
 > **AI karar vermez, hakemi hızlandırır.**
 > Her AI çıktısı bir *öneri*dir. Hakem onaylar, düzenler veya reddeder.
 > Onaylanmayan hiçbir metin yarışmacıya ulaşmaz.
@@ -342,6 +352,7 @@ npm run dev
 | `MOCK_AI` | **varsayılan `true`** — env unutulursa gerçek API çağrılmaz |
 | `REGISTRATION_CODE_*` | üç rol için kayıt kodu. Gerçek değerler repoya girmez |
 | `NEXT_PUBLIC_DEMO_MODE` | `/demo` rol geçiş ekranını açar. Build anında okunur |
+| `READ_ONLY` | `true` → salt okunur vitrin: yazma yok, kayıt kapalı, `/auth`'ta "Profil seç". **Sunucu tarafı** |
 
 **Hakem veya yönetici hesabı gerekiyorsa proje sahibinden kayıt kodu isteyin.**
 

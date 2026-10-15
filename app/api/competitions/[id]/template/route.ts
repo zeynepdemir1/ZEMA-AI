@@ -12,6 +12,7 @@ import { replaceCriteria } from '@/lib/reports/criteria-writer';
 import { withSource } from '@/lib/reports/spec-sources';
 import { resolveStage } from '@/lib/reports/stage-resolve';
 import { authorize } from '@/lib/supabase/server';
+import { readOnlyResponse } from '@/lib/read-only';
 
 /**
  * POST /api/competitions/[id]/template — şablon PDF'ini template_spec'e çevirir.
@@ -36,6 +37,8 @@ import { authorize } from '@/lib/supabase/server';
  * `sources.<tür>` altında ayrı tutuyor, biri diğerini silmiyor.
  */
 export async function POST(req: Request, ctx: RouteContext<'/api/competitions/[id]/template'>) {
+  const locked = readOnlyResponse();
+  if (locked) return locked;
   const { id } = await ctx.params;
   if (!UUID_RE.test(id)) {
     return NextResponse.json({ error: 'Geçersiz yarışma kimliği.' }, { status: 400 });

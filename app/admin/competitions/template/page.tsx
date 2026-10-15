@@ -11,6 +11,7 @@ import { PublishCard } from '../publish-card';
 import { notSpecifiedLabel } from '../not-specified-labels';
 
 import { requireRole } from '@/lib/supabase/server';
+import { ReadOnlyFieldset } from '@/components/zema/read-only';
 
 export const dynamic = 'force-dynamic';
 
@@ -86,133 +87,135 @@ export default async function TemplateSetupPage({
 
         <StageSwitcher competitionId={competition.id} stages={stages} activeId={activeStageId} />
 
-        <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[1.2fr_.9fr]">
-        <div className="flex flex-col gap-5">
-          {/* 1. Şablon yükleme — SEÇİLİ AŞAMAYA yazılıyor (0010). */}
-          <TemplateCard
-            competitionId={competition.id}
-            stageId={stage.id}
-            hasPrevious={Boolean(spec.previous)}
-          />
+        <ReadOnlyFieldset>
+          <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[1.2fr_.9fr]">
+          <div className="flex flex-col gap-5">
+            {/* 1. Şablon yükleme — SEÇİLİ AŞAMAYA yazılıyor (0010). */}
+            <TemplateCard
+              competitionId={competition.id}
+              stageId={stage.id}
+              hasPrevious={Boolean(spec.previous)}
+            />
 
-          {/* ŞARTNAME — şablonun hemen altında. Rubrik çoğu yarışmada
-              şablonda değil şartnamede; ölçüldü, iki gerçek şablondan da
-              çıkarılan kriter sayısı 0 çıktı. */}
-          <RulebookCard competitionId={competition.id} stageId={stage.id} competitionName={competition.name} />
+            {/* ŞARTNAME — şablonun hemen altında. Rubrik çoğu yarışmada
+                şablonda değil şartnamede; ölçüldü, iki gerçek şablondan da
+                çıkarılan kriter sayısı 0 çıktı. */}
+            <RulebookCard competitionId={competition.id} stageId={stage.id} competitionName={competition.name} />
 
-          {/* 2. Zorunlu bölüm başlıkları — düzenlenebilir.
-              key: yeni bir şablon çözümlendiğinde (ya da geri alındığında,
-              ya da AŞAMA değiştirildiğinde) bileşeni YENİDEN MOUNT ET —
-              yoksa useState ilk yüklemedeki bölümlerde takılı kalır,
-              TemplateCard'ın router.refresh()'i yeni sunucu verisini prop
-              olarak getirir ama iç state'i güncellemez. */}
-          <SectionsCard
-            key={`${stage.id}:${spec.source?.extracted_at ?? 'none'}`}
-            stageId={stage.id}
-            initialSections={spec.required_sections ?? []}
-            format={spec.format ?? {}}
-            citationFormat={spec.citation_format ?? ''}
-          />
+            {/* 2. Zorunlu bölüm başlıkları — düzenlenebilir.
+                key: yeni bir şablon çözümlendiğinde (ya da geri alındığında,
+                ya da AŞAMA değiştirildiğinde) bileşeni YENİDEN MOUNT ET —
+                yoksa useState ilk yüklemedeki bölümlerde takılı kalır,
+                TemplateCard'ın router.refresh()'i yeni sunucu verisini prop
+                olarak getirir ama iç state'i güncellemez. */}
+            <SectionsCard
+              key={`${stage.id}:${spec.source?.extracted_at ?? 'none'}`}
+              stageId={stage.id}
+              initialSections={spec.required_sections ?? []}
+              format={spec.format ?? {}}
+              citationFormat={spec.citation_format ?? ''}
+            />
 
-          {/* Kriterler burada: şablon çıkarımı rubriği bulamayınca yarışma
-              0 kriterle kalıyordu ve elle girecek hiçbir ekran yoktu.
-              SEÇİLİ AŞAMANIN kriterleri (0010). */}
-          <CriteriaCard competitionId={competition.id} stageId={stage.id} criteria={criteria} />
-        </div>
+            {/* Kriterler burada: şablon çıkarımı rubriği bulamayınca yarışma
+                0 kriterle kalıyordu ve elle girecek hiçbir ekran yoktu.
+                SEÇİLİ AŞAMANIN kriterleri (0010). */}
+            <CriteriaCard competitionId={competition.id} stageId={stage.id} criteria={criteria} />
+          </div>
 
-        {/* SAĞ SÜTUN — şablon PDF'inden çıkarıldı · içerik kuralları · benzerlik eşiği */}
-        <div className="flex flex-col gap-5">
-          {wasProcessed && (
-            <div className="border-ink/10 border bg-white p-[26px]">
-              {/* İKİ BELGE, İKİ KÜNYE. Tek bir `source` alanı vardı ve Model
-                  Uydu şablonunun İHA yarışmasına uygulandığı fark edilene
-                  kadar hangi kuralın nereden geldiği anlaşılamıyordu. */}
-              <div className={`${SECTION} mb-2.5`}>KURALLAR HANGİ BELGEDEN GELDİ</div>
-              {[
-                { key: 'sablon' as const, label: 'RAPOR ŞABLONU', s: sablon, quoteIn: 'şablonda' },
-                { key: 'sartname' as const, label: 'ŞARTNAME', s: sartname, quoteIn: 'şartnamede' },
-              ].map(({ key, label, s: src, quoteIn }) => (
-                <div key={key} className="border-ink/[.12] mb-3 border-l-2 pl-3">
-                  <div className="text-ink/75 mb-1.5 font-mono text-[10px] tracking-[.1em]">
-                    {label}
-                  </div>
-                  {src ? (
-                    <ul className="text-ink/75 m-0 list-none p-0 text-[13px] leading-[1.6]">
-                      <li>Model: {src.model ?? '—'}</li>
-                      {src.extracted_at && (
-                        <li>
-                          Tarih:{' '}
-                          {new Date(src.extracted_at).toLocaleString('tr-TR', {
-                            dateStyle: 'medium',
-                            timeStyle: 'short',
-                          })}
-                        </li>
-                      )}
-                      <li>
-                        Alıntı doğrulama: {src.quotes_verified ?? 0}/{src.quotes_total ?? 0} alıntı{' '}
-                        {quoteIn} birebir bulundu
-                      </li>
-                      {(src.fields ?? []).length > 0 && (
-                        <li>Doldurduğu alanlar: {(src.fields ?? []).join(', ')}</li>
-                      )}
-                      {src.declares && <li>Belge kendini tanıtıyor: {src.declares}</li>}
-                    </ul>
-                  ) : (
-                    <div className="text-ink/75 text-[13px] leading-[1.6]">
-                      Henüz yüklenmedi.
-                      {key === 'sartname' &&
-                        ' Değerlendirme kriterleri genellikle bu belgede bulunur.'}
+          {/* SAĞ SÜTUN — şablon PDF'inden çıkarıldı · içerik kuralları · benzerlik eşiği */}
+          <div className="flex flex-col gap-5">
+            {wasProcessed && (
+              <div className="border-ink/10 border bg-white p-[26px]">
+                {/* İKİ BELGE, İKİ KÜNYE. Tek bir `source` alanı vardı ve Model
+                    Uydu şablonunun İHA yarışmasına uygulandığı fark edilene
+                    kadar hangi kuralın nereden geldiği anlaşılamıyordu. */}
+                <div className={`${SECTION} mb-2.5`}>KURALLAR HANGİ BELGEDEN GELDİ</div>
+                {[
+                  { key: 'sablon' as const, label: 'RAPOR ŞABLONU', s: sablon, quoteIn: 'şablonda' },
+                  { key: 'sartname' as const, label: 'ŞARTNAME', s: sartname, quoteIn: 'şartnamede' },
+                ].map(({ key, label, s: src, quoteIn }) => (
+                  <div key={key} className="border-ink/[.12] mb-3 border-l-2 pl-3">
+                    <div className="text-ink/75 mb-1.5 font-mono text-[10px] tracking-[.1em]">
+                      {label}
                     </div>
-                  )}
-                </div>
-              ))}
-
-              {(spec.not_specified ?? []).length > 0 && (
-                <div className="border-gold-ink/40 mt-3 border-l-2 pl-3">
-                  <div className="text-ink/75 mb-1.5 font-mono text-[10px] tracking-[.1em]">
-                    ŞABLONDA BELİRTİLMEMİŞ
+                    {src ? (
+                      <ul className="text-ink/75 m-0 list-none p-0 text-[13px] leading-[1.6]">
+                        <li>Model: {src.model ?? '—'}</li>
+                        {src.extracted_at && (
+                          <li>
+                            Tarih:{' '}
+                            {new Date(src.extracted_at).toLocaleString('tr-TR', {
+                              dateStyle: 'medium',
+                              timeStyle: 'short',
+                            })}
+                          </li>
+                        )}
+                        <li>
+                          Alıntı doğrulama: {src.quotes_verified ?? 0}/{src.quotes_total ?? 0} alıntı{' '}
+                          {quoteIn} birebir bulundu
+                        </li>
+                        {(src.fields ?? []).length > 0 && (
+                          <li>Doldurduğu alanlar: {(src.fields ?? []).join(', ')}</li>
+                        )}
+                        {src.declares && <li>Belge kendini tanıtıyor: {src.declares}</li>}
+                      </ul>
+                    ) : (
+                      <div className="text-ink/75 text-[13px] leading-[1.6]">
+                        Henüz yüklenmedi.
+                        {key === 'sartname' &&
+                          ' Değerlendirme kriterleri genellikle bu belgede bulunur.'}
+                      </div>
+                    )}
                   </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {(spec.not_specified ?? []).map((k) => (
-                      <span
-                        key={k}
-                        className="border-gold-ink/30 text-ink/75 border bg-[rgba(201,138,62,.06)] px-2 py-1 text-[12px]"
-                      >
-                        {notSpecifiedLabel(k)}
-                      </span>
-                    ))}
-                  </div>
-                  <div className="text-ink/75 mt-1.5 text-[12px] leading-[1.5]">
-                    Bu alanlar şablonda bulunamadığı için boş bırakıldı — model uydurmadı.
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {(spec.content_rules ?? []).length > 0 && (
-            <div className="border-ink/10 border bg-white p-[26px]">
-              <div className={`${SECTION} mb-2.5`}>İÇERİK KURALLARI</div>
-              <ul className="text-ink/75 m-0 list-disc pl-4 text-[13px] leading-[1.65]">
-                {(spec.content_rules ?? []).map((r) => (
-                  <li key={r}>{r}</li>
                 ))}
-              </ul>
-            </div>
-          )}
 
-          <ThresholdCard
-            competitionId={competition.id}
-            initial={competition.similarity_threshold}
-            overThresholdPct={overThresholdPct}
-            reportCount={reportCount}
-          />
-        </div>
-        </div>
+                {(spec.not_specified ?? []).length > 0 && (
+                  <div className="border-gold-ink/40 mt-3 border-l-2 pl-3">
+                    <div className="text-ink/75 mb-1.5 font-mono text-[10px] tracking-[.1em]">
+                      ŞABLONDA BELİRTİLMEMİŞ
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(spec.not_specified ?? []).map((k) => (
+                        <span
+                          key={k}
+                          className="border-gold-ink/30 text-ink/75 border bg-[rgba(201,138,62,.06)] px-2 py-1 text-[12px]"
+                        >
+                          {notSpecifiedLabel(k)}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="text-ink/75 mt-1.5 text-[12px] leading-[1.5]">
+                      Bu alanlar şablonda bulunamadığı için boş bırakıldı — model uydurmadı.
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
-        {/* Sayfanın EN ALTI, bilinçli olarak son adım — yönetici şablon/
-            kriterleri gözden geçirmeden yayımlamasın diye buraya konuldu. */}
-        <PublishCard competitionId={competition.id} isPublished={competition.is_published} />
+            {(spec.content_rules ?? []).length > 0 && (
+              <div className="border-ink/10 border bg-white p-[26px]">
+                <div className={`${SECTION} mb-2.5`}>İÇERİK KURALLARI</div>
+                <ul className="text-ink/75 m-0 list-disc pl-4 text-[13px] leading-[1.65]">
+                  {(spec.content_rules ?? []).map((r) => (
+                    <li key={r}>{r}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <ThresholdCard
+              competitionId={competition.id}
+              initial={competition.similarity_threshold}
+              overThresholdPct={overThresholdPct}
+              reportCount={reportCount}
+            />
+          </div>
+          </div>
+
+          {/* Sayfanın EN ALTI, bilinçli olarak son adım — yönetici şablon/
+              kriterleri gözden geçirmeden yayımlamasın diye buraya konuldu. */}
+          <PublishCard competitionId={competition.id} isPublished={competition.is_published} />
+        </ReadOnlyFieldset>
       </div>
     </div>
   );

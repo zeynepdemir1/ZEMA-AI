@@ -10,6 +10,7 @@ function badId(...ids: Array<string | undefined | null>): string | null {
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { assertReportAccess, authorize } from '@/lib/supabase/server';
+import { assertWritable } from '@/lib/read-only';
 
 /**
  * Hakem aksiyonları (PLAN.md §4.5).
@@ -35,6 +36,7 @@ export async function saveCriterionText(
   criterionId: string,
   text: string,
 ): Promise<{ ok: boolean; error?: string }> {
+  assertWritable();
   const auth = await guard(reportId);
   if ('error' in auth) return { ok: false, error: auth.error };
   const badCriterion = badId(criterionId);
@@ -68,6 +70,7 @@ export async function setCriterionApproval(
   criterionId: string,
   approved: boolean,
 ): Promise<{ ok: boolean; error?: string }> {
+  assertWritable();
   const auth = await guard(reportId);
   if ('error' in auth) return { ok: false, error: auth.error };
   const badCriterion = badId(criterionId);
@@ -113,6 +116,7 @@ export async function saveCheckNote(
   checkType: string,
   text: string,
 ): Promise<{ ok: boolean; error?: string }> {
+  assertWritable();
   const auth = await guard(reportId);
   if ('error' in auth) return { ok: false, error: auth.error };
   if (!/^[a-z_]{3,40}$/.test(checkType)) return { ok: false, error: 'Geçersiz kontrol.' };
@@ -153,6 +157,7 @@ export async function submitFeedbackDraft(
     next_steps: string[];
   },
 ): Promise<{ ok: boolean; error?: string }> {
+  assertWritable();
   const auth = await guard(reportId);
   if ('error' in auth) return { ok: false, error: auth.error };
   if (!content.strengths.length && !content.improvements.length) {
@@ -191,6 +196,7 @@ export async function submitFeedbackDraft(
 export async function approveAllCriteria(
   reportId: string,
 ): Promise<{ ok: boolean; count: number; error?: string }> {
+  assertWritable();
   const auth = await guard(reportId);
   if ('error' in auth) return { ok: false, count: 0, error: auth.error };
 
@@ -249,6 +255,7 @@ export async function approveAllCriteria(
 export async function resumeAnalysis(
   reportId: string,
 ): Promise<{ ok: boolean; error?: string; requeued?: number; pending?: number }> {
+  assertWritable();
   const invalid = badId(reportId);
   if (invalid) return { ok: false, error: invalid };
   const auth = await authorize(['judge', 'evaluation_admin', 'competition_admin']);

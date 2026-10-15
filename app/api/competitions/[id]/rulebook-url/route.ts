@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { authorize } from '@/lib/supabase/server';
 import { rulebookStoragePath, UUID_RE } from '@/lib/reports/template';
+import { readOnlyResponse } from '@/lib/read-only';
 
 /**
  * POST /api/competitions/[id]/rulebook-url
@@ -13,6 +14,8 @@ import { rulebookStoragePath, UUID_RE } from '@/lib/reports/template';
  * Yol `_specs/<competition_id>/<uuid>.pdf`; önek yarışmacılara kapalı.
  */
 export async function POST(_req: Request, ctx: RouteContext<'/api/competitions/[id]/rulebook-url'>) {
+  const locked = readOnlyResponse();
+  if (locked) return locked;
   const { id } = await ctx.params;
   if (!UUID_RE.test(id)) {
     return NextResponse.json({ error: 'Geçersiz yarışma kimliği.' }, { status: 400 });

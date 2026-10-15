@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { authorize, supabaseServer } from '@/lib/supabase/server';
+import { assertWritable } from '@/lib/read-only';
 
 /**
  * Hakem ataması (§3.1: assignments → Değ. Yöneticisi CRUD).
@@ -63,6 +64,7 @@ async function logAudit(entry: {
 }
 
 export async function assignReport(reportId: string, judgeId: string): Promise<Result> {
+  assertWritable();
   const auth = await guard();
   if ('error' in auth) return { ok: false, error: auth.error };
   const invalid = badId(reportId, judgeId);
@@ -89,6 +91,7 @@ export async function assignReport(reportId: string, judgeId: string): Promise<R
 }
 
 export async function unassignReport(reportId: string): Promise<Result> {
+  assertWritable();
   const auth = await guard();
   if ('error' in auth) return { ok: false, error: auth.error };
   const invalid = badId(reportId);
@@ -131,6 +134,7 @@ export async function unassignReport(reportId: string): Promise<Result> {
 export async function distributeBalanced(
   mode: 'fill' | 'rebalance' = 'fill',
 ): Promise<Result> {
+  assertWritable();
   const auth = await guard();
   if ('error' in auth) return { ok: false, error: auth.error };
 

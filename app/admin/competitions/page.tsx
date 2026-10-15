@@ -5,6 +5,7 @@ import { InfoCard } from './info-card';
 import { CategoriesCard } from './categories-card';
 
 import { requireRole } from '@/lib/supabase/server';
+import { ReadOnlyFieldset } from '@/components/zema/read-only';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,19 +56,21 @@ export default async function CompetitionInfoPage({
           <span className="font-medium">Şablon ve kriterler</span> sekmesine geçin.
         </p>
 
-        <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[1fr_.9fr]">
-          <InfoCard
-            competitionId={competition.id}
-            initial={{
-              name: competition.name,
-              year: competition.year,
-              language: competition.language,
-              submissionDeadline: competition.submission_deadline,
-            }}
-          />
+        <ReadOnlyFieldset>
+          <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[1fr_.9fr]">
+            <InfoCard
+              competitionId={competition.id}
+              initial={{
+                name: competition.name,
+                year: competition.year,
+                language: competition.language,
+                submissionDeadline: competition.submission_deadline,
+              }}
+            />
 
-          <CategoriesCard competitionId={competition.id} categories={categories} />
-        </div>
+            <CategoriesCard competitionId={competition.id} categories={categories} />
+          </div>
+        </ReadOnlyFieldset>
       </div>
     </div>
   );

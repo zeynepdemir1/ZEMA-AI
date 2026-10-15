@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { runCheck } from '@/lib/ai/run-check';
 import { CheckCallError } from '@/lib/ai/call-claude-for-check';
 import type { CheckType } from '@/lib/ai/config';
+import { isReadOnly } from '@/lib/read-only';
 
 /**
  * POST /api/jobs/tick — analiz kuyruğunu bir tur döndürür (PLAN.md §2.1)
@@ -40,6 +41,13 @@ type Job = {
 };
 
 export async function POST(req?: Request) {
+  // Salt okunur vitrin: iş kapma, AI çağrısı, DB yazması YOK. Hata yerine
+  // "kuyruk boş" döner ki istemci döngüleri (upload-form, review-panel)
+  // ilk turda sessizce dursun.
+  if (isReadOnly()) {
+    return NextResponse.json({ claimed: 0, results: [], pending: 0, reportPending: 0, done: true, readOnly: true });
+  }
+
   const db = supabaseAdmin();
 
   /**

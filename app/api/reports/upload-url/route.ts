@@ -7,6 +7,7 @@ import {
   resolveUploaderTeam,
   storagePathFor,
 } from '@/lib/reports/upload';
+import { readOnlyResponse } from '@/lib/read-only';
 
 /**
  * POST /api/reports/upload-url — tarayıcının doğrudan Storage'a yazması için
@@ -19,6 +20,8 @@ import {
  * Böylece imzalı URL yalnızca o takımın klasörüne yazabilir.
  */
 export async function POST(req: Request) {
+  const locked = readOnlyResponse();
+  if (locked) return locked;
   // Yarışma kimliği gövdeden geliyor: imzalı URL'nin yolu SEÇİLEN yarışmadaki
   // takımın klasörü olmalı, kullanıcının rastgele ilk takımının değil.
   const body = (await req.json().catch(() => null)) as {

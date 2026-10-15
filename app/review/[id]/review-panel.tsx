@@ -10,6 +10,7 @@ import {
   setCriterionApproval,
 } from './actions';
 import { CheckPanels } from './check-panels';
+import { ReadOnlyFieldset } from '@/components/zema/read-only';
 
 /** Yeniden kuyruğa alınan işleri işlemek için kaç tur tick atılacak. */
 const MAX_TICKS = 20;
@@ -75,7 +76,7 @@ function ResumeAnalysis({
         : `ANALİZ ${done}/${total} · SÜRDÜR`;
 
   return (
-    <>
+    <ReadOnlyFieldset>
       <button
         type="button"
         onClick={onResume}
@@ -85,7 +86,7 @@ function ResumeAnalysis({
         {label}
       </button>
       {message && <span className="text-danger text-[13px] leading-[1.6]">{message}</span>}
-    </>
+    </ReadOnlyFieldset>
   );
 }
 
@@ -166,13 +167,15 @@ export function ReviewPanel({
             </div>
           </div>
 
-          <button
-            disabled={pending || cards.length === 0}
-            onClick={() => run(() => approveAllCriteria(report.id))}
-            className="bg-t3-blue cursor-pointer border-none px-5 py-3 font-sans text-[14px] font-semibold text-white disabled:opacity-50"
-          >
-            {pending ? 'Kaydediliyor…' : 'Onayla ve Gönder'}
-          </button>
+          <ReadOnlyFieldset>
+            <button
+              disabled={pending || cards.length === 0}
+              onClick={() => run(() => approveAllCriteria(report.id))}
+              className="bg-t3-blue cursor-pointer border-none px-5 py-3 font-sans text-[14px] font-semibold text-white disabled:opacity-50"
+            >
+              {pending ? 'Kaydediliyor…' : 'Onayla ve Gönder'}
+            </button>
+          </ReadOnlyFieldset>
         </div>
       </div>
 
@@ -397,32 +400,34 @@ function CriterionCard({
       ) : null}
 
       {/* Aksiyon çubuğu */}
-      <footer className="border-ink/10 flex flex-wrap items-center gap-3 border-t pt-4">
-        {!editing && (
-          <button
-            onClick={onStartEdit}
-            className="border-ink/30 text-ink cursor-pointer border bg-white px-4 py-2.5 text-[14px]"
-          >
-            Doğrudan düzenle
-          </button>
-        )}
-        <div className="ml-auto flex flex-wrap items-center gap-4">
-          <span className="text-ink/75 text-[13px]">
-            {approved ? 'Hakem onaylı' : 'Yarışmacıya henüz görünmüyor'}
-          </span>
-          <button
-            disabled={pending}
-            onClick={onToggleApproval}
-            className={`cursor-pointer px-5 py-2.5 text-[14px] font-semibold disabled:opacity-50 ${
-              approved
-                ? 'border-ink/30 text-ink border bg-white'
-                : 'bg-gold-ink border-none text-white'
-            }`}
-          >
-            {approved ? 'Onayı geri al' : 'Onayla ve mühürle'}
-          </button>
-        </div>
-      </footer>
+      <ReadOnlyFieldset>
+        <footer className="border-ink/10 flex flex-wrap items-center gap-3 border-t pt-4">
+          {!editing && (
+            <button
+              onClick={onStartEdit}
+              className="border-ink/30 text-ink cursor-pointer border bg-white px-4 py-2.5 text-[14px]"
+            >
+              Doğrudan düzenle
+            </button>
+          )}
+          <div className="ml-auto flex flex-wrap items-center gap-4">
+            <span className="text-ink/75 text-[13px]">
+              {approved ? 'Hakem onaylı' : 'Yarışmacıya henüz görünmüyor'}
+            </span>
+            <button
+              disabled={pending}
+              onClick={onToggleApproval}
+              className={`cursor-pointer px-5 py-2.5 text-[14px] font-semibold disabled:opacity-50 ${
+                approved
+                  ? 'border-ink/30 text-ink border bg-white'
+                  : 'bg-gold-ink border-none text-white'
+              }`}
+            >
+              {approved ? 'Onayı geri al' : 'Onayla ve mühürle'}
+            </button>
+          </div>
+        </footer>
+      </ReadOnlyFieldset>
     </article>
   );
 }

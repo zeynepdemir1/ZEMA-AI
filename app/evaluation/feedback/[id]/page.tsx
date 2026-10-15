@@ -4,6 +4,7 @@ import { loadFeedbackDraft } from '@/lib/reports/queries';
 import { FeedbackEditor } from './editor';
 
 import { requireRole } from '@/lib/supabase/server';
+import { ReadOnlyFieldset } from '@/components/zema/read-only';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,7 +41,7 @@ export default async function FeedbackPage({ params }: PageProps<'/evaluation/fe
             </div>
           </div>
         ) : (
-          <FeedbackEditor draft={draft} canPublish={user.role === 'evaluation_admin'} />
+          <ReadOnlyFieldset><FeedbackEditor draft={draft} canPublish={user.role === 'evaluation_admin'} /></ReadOnlyFieldset>
         )}
       </div>
     </div>

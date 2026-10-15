@@ -3,6 +3,7 @@ import { loadAllCompetitions, loadAssignments } from '@/lib/reports/queries';
 import { requireRole } from '@/lib/supabase/server';
 import { AssignmentTable } from './assignment-table';
 import { CompetitionPicker } from '../competition-picker';
+import { ReadOnlyFieldset } from '@/components/zema/read-only';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,7 +56,7 @@ export default async function AssignmentsPage({
           </p>
         </div>
 
-        <AssignmentTable rows={data.rows} judges={data.judges} />
+        <ReadOnlyFieldset><AssignmentTable rows={data.rows} judges={data.judges} /></ReadOnlyFieldset>
       </div>
     </div>
   );

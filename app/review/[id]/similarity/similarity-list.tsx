@@ -3,6 +3,7 @@
 import { useTransition } from 'react';
 import type { SimilarityMatch } from '@/lib/reports/queries';
 import { setPairVerdict } from './actions';
+import { useReadOnly } from '@/components/zema/read-only';
 
 /** Ortak pasajı vurgulamak için: b metninin a içindeki karşılığını işaretle. */
 function highlight(text: string, needle: string) {
@@ -25,6 +26,7 @@ export function SimilarityList({
   matches: SimilarityMatch[];
 }) {
   const [pending, startTransition] = useTransition();
+  const readOnly = useReadOnly();
 
   return (
     <div className="flex flex-col gap-4">
@@ -118,7 +120,7 @@ export function SimilarityList({
 
             <div className="border-ink/[.08] flex flex-wrap items-center gap-2.5 border-t pt-[14px]">
               <button
-                disabled={pending}
+                disabled={pending || readOnly}
                 onClick={() => set('confirmed')}
                 className={`cursor-pointer border px-4 py-[9px] font-sans text-[13px] font-semibold disabled:opacity-50 ${
                   m.verdict === 'confirmed'
@@ -129,7 +131,7 @@ export function SimilarityList({
                 Gerçek Benzerlik Olarak İşaretle
               </button>
               <button
-                disabled={pending}
+                disabled={pending || readOnly}
                 onClick={() => set('false_positive')}
                 className={`cursor-pointer border px-4 py-[9px] font-sans text-[13px] font-semibold disabled:opacity-50 ${
                   m.verdict === 'false_positive'

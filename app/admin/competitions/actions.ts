@@ -11,6 +11,7 @@ import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { authorize } from '@/lib/supabase/server';
 import { createStage as insertStage } from '@/lib/reports/stages';
+import { assertWritable } from '@/lib/read-only';
 
 /**
  * YENİ yarışma oluşturur — mevcut tek satırı GÜNCELLEMEZ.
@@ -28,6 +29,7 @@ export async function createCompetition(input: {
   year: number;
   language: string;
 }): Promise<{ ok: boolean; error?: string; id?: string }> {
+  assertWritable();
   const auth = await authorize(['competition_admin']);
   if ('error' in auth) return { ok: false, error: auth.error };
 
@@ -85,6 +87,7 @@ export async function createStage(
   competitionId: string,
   name: string,
 ): Promise<{ ok: boolean; error?: string; id?: string }> {
+  assertWritable();
   const invalid = badId(competitionId);
   if (invalid) return { ok: false, error: invalid };
   const auth = await authorize(['competition_admin']);
@@ -125,6 +128,7 @@ export async function updateRequiredSections(
   stageId: string,
   sections: string[],
 ): Promise<{ ok: boolean; error?: string }> {
+  assertWritable();
   const invalid = badId(stageId);
   if (invalid) return { ok: false, error: invalid };
   const auth = await authorize(['competition_admin']);
@@ -171,6 +175,7 @@ export async function createCategory(
   competitionId: string,
   input: { name: string; description: string },
 ): Promise<{ ok: boolean; error?: string }> {
+  assertWritable();
   const invalid = badId(competitionId);
   if (invalid) return { ok: false, error: invalid };
   const auth = await authorize(['competition_admin']);
@@ -204,6 +209,7 @@ export async function updateCategory(
   categoryId: string,
   input: { name: string; description: string },
 ): Promise<{ ok: boolean; error?: string }> {
+  assertWritable();
   const invalid = badId(categoryId);
   if (invalid) return { ok: false, error: invalid };
   const auth = await authorize(['competition_admin']);
@@ -238,6 +244,7 @@ export async function updateCategory(
  * Türkçe mesaj veriyoruz; DB kısıtı yine de son savunma hattı olarak duruyor.
  */
 export async function deleteCategory(categoryId: string): Promise<{ ok: boolean; error?: string }> {
+  assertWritable();
   const invalid = badId(categoryId);
   if (invalid) return { ok: false, error: invalid };
   const auth = await authorize(['competition_admin']);
@@ -282,6 +289,7 @@ export async function saveCompetitionInfo(
   competitionId: string,
   input: { name: string; year: number; language: string; submissionDeadline: string | null },
 ): Promise<{ ok: boolean; error?: string }> {
+  assertWritable();
   const invalid = badId(competitionId);
   if (invalid) return { ok: false, error: invalid };
   const auth = await authorize(['competition_admin']);
@@ -326,6 +334,7 @@ export async function saveSimilarityThreshold(
   competitionId: string,
   value: number,
 ): Promise<{ ok: boolean; error?: string }> {
+  assertWritable();
   // Yarışma yapılandırması yalnızca Yarışma Yöneticisinde (§3.1).
   const invalid = badId(competitionId);
   if (invalid) return { ok: false, error: invalid };
@@ -367,6 +376,7 @@ export async function setCompetitionPublished(
   competitionId: string,
   published: boolean,
 ): Promise<{ ok: boolean; error?: string }> {
+  assertWritable();
   const invalid = badId(competitionId);
   if (invalid) return { ok: false, error: invalid };
   const auth = await authorize(['competition_admin']);
@@ -402,6 +412,7 @@ export async function setCompetitionPublished(
 export async function revertTemplateSpec(
   stageId: string,
 ): Promise<{ ok: boolean; error?: string }> {
+  assertWritable();
   const invalid = badId(stageId);
   if (invalid) return { ok: false, error: invalid };
   const auth = await authorize(['competition_admin']);
@@ -460,6 +471,7 @@ export async function saveCriterion(input: {
   maxScore: number;
   weightPct: number;
 }): Promise<{ ok: boolean; error?: string }> {
+  assertWritable();
   const invalid = badId(input.competitionId, input.stageId);
   if (invalid) return { ok: false, error: invalid };
   if (input.criterionId) {
@@ -532,6 +544,7 @@ export async function saveCriterion(input: {
 export async function deleteCriterion(
   criterionId: string,
 ): Promise<{ ok: boolean; error?: string }> {
+  assertWritable();
   const invalid = badId(criterionId);
   if (invalid) return { ok: false, error: invalid };
   const auth = await authorize(['competition_admin']);

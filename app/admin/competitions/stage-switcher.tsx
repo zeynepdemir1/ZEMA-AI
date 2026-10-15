@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { createStage } from './actions';
+import { ReadOnlyFieldset } from '@/components/zema/read-only';
 
 /**
  * Rapor aşaması seçici + "yeni aşama ekle".
@@ -71,15 +72,17 @@ export function StageSwitcher({
         ))}
       </select>
 
-      {!adding && (
-        <button
-          type="button"
-          onClick={() => setAdding(true)}
-          className="border-ink/[.22] text-ink/75 cursor-pointer border bg-white px-3 py-1.5 font-mono text-[11px]"
-        >
-          + YENİ AŞAMA
-        </button>
-      )}
+      <ReadOnlyFieldset>
+        {!adding && (
+          <button
+            type="button"
+            onClick={() => setAdding(true)}
+            className="border-ink/[.22] text-ink/75 cursor-pointer border bg-white px-3 py-1.5 font-mono text-[11px]"
+          >
+            + YENİ AŞAMA
+          </button>
+        )}
+      </ReadOnlyFieldset>
 
       {adding && (
         <div className="border-ink/[.22] flex flex-wrap items-center gap-2 border border-dashed bg-white px-3 py-2">

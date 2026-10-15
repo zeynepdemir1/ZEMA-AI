@@ -1,5 +1,25 @@
 # ZEMA — Yapılacaklar / Bilinen Eksikler
 
+## 🔒 Salt okunur vitrin (12 Ekim 2026)
+
+Proje artık kullanılmıyor; **portfolyo vitrini olarak salt okunur**.
+
+- `READ_ONLY=true` (sunucu tarafı, `NEXT_PUBLIC_` değil): her server action
+  `assertWritable()` ile, her yazan route handler `readOnlyResponse()` ile
+  duruyor (`lib/read-only.ts`). `/api/jobs/tick` iş kapmadan "kuyruk boş"
+  döner, AI çağrısı yapılmaz. Kayıt kapalı; `/auth`'ta "Profil seç" ile dört
+  ana demo hesabına şifresiz tek tıkla giriş (`signInAsDemo`, sabit liste).
+  Arayüzde mutasyon kontrolleri `ReadOnlyFieldset` ile pasif, üstte şerit.
+- `/api/ping` (keepalive) bilerek kilitlenmedi: service_role upsert'ü
+  Supabase'in pause olmasını önlüyor.
+- Yedek kilit: `supabase/migrations/0018_read_only.sql` (anon/authenticated
+  için RESTRICTIVE RLS + storage yasağı). service_role'ü durdurmaz.
+- `NEXT_PUBLIC_DEMO_MODE` kapalı kalıyor; `/demo` değişmedi.
+
+**Geri almak (projeyi canlandırmak):** Vercel'de `READ_ONLY`'yi sil →
+redeploy; 0018 uygulandıysa `supabase/rollback/0018_rollback.sql`'i SQL
+Editor'de çalıştır.
+
 ## 🔑 Anahtar sağlık kontrolü — `/api/diagnostics/keys` (26 Ağustos)
 
 **Neden var:** Vercel ortam değişkenlerinin DEĞERLERİ panelde
@@ -521,7 +541,7 @@ mevcut bayat satır da düzeltildi.
 | `yarismaci2@zema.test` | Burak Deniz Aslan | yarışmacı | VEGA_2026 · 2026 İHA (raporsuz) |
 | `yarismaci3@zema.test` | Selin Aydın | yarışmacı | ORION_2025 · 2025 Model Uydu (raporsuz) |
 | `yarismaci4@zema.test` | Kerem Doğan | yarışmacı | LYRA_2025 · 2025 Model Uydu (raporsuz) |
-| `hakem@zema.test` | Zeynep Demir | hakem | atanmış raporlar |
+| `hakem@zema.test` | Ece Tunalı | hakem | atanmış raporlar |
 | `hakem2@zema.test` | Mehmet Emre Çelebi | hakem | atanmış raporlar |
 | `hakem3@zema.test` | Adem Coşar | hakem | R-798F26 burada |
 | `hakem4@zema.test` | Elif Naz Bozkurt | hakem | atanmış raporlar |
@@ -672,7 +692,7 @@ yükleneceği demo senaryosuna bağlı.
 ## 👨‍⚖️ Dört hakem + yeniden dağıtım (25 Ağustos)
 
 **Sorun:** Değerlendirme Yöneticisi ekranında 13 raporun hepsi tek hakeme
-(Zeynep Demir) atanmış görünüyordu. Ekranda bir hata YOKTU — çoklu hakem
+(Ece Tunalı) atanmış görünüyordu. Ekranda bir hata YOKTU — çoklu hakem
 zaten destekleniyordu (hakem yükü tablosu, rapor başına açılır liste,
 dengeli dağıtım). Eksik olan **hakemdi**: sistemde tek hakem hesabı vardı.
 
@@ -680,7 +700,7 @@ Eklenen hesaplar (`lib/dev-session.ts` → `EXTRA_JUDGES`, şifre `DEV_PASSWORD`
 
 | e-posta | ad |
 |---|---|
-| `hakem@zema.test` | Zeynep Demir *(mevcut)* |
+| `hakem@zema.test` | Ece Tunalı *(mevcut)* |
 | `hakem2@zema.test` | Mehmet Emre Çelebi |
 | `hakem3@zema.test` | Adem Coşar |
 | `hakem4@zema.test` | Elif Naz Bozkurt |

@@ -12,6 +12,7 @@ import {
 } from '@/lib/reports/template';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { authorize } from '@/lib/supabase/server';
+import { readOnlyResponse } from '@/lib/read-only';
 
 /**
  * POST /api/competitions/[id]/rulebook — şartnameden RUBRİK çıkarır.
@@ -32,6 +33,8 @@ import { authorize } from '@/lib/supabase/server';
  * cevaplanamaz kalmasın.
  */
 export async function POST(req: Request, ctx: RouteContext<'/api/competitions/[id]/rulebook'>) {
+  const locked = readOnlyResponse();
+  if (locked) return locked;
   const { id } = await ctx.params;
   if (!UUID_RE.test(id)) {
     return NextResponse.json({ error: 'Geçersiz yarışma kimliği.' }, { status: 400 });

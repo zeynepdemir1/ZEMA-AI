@@ -11,6 +11,7 @@ import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { authorize } from '@/lib/supabase/server';
 import type { FeedbackContent } from '@/lib/reports/queries';
+import { assertWritable } from '@/lib/read-only';
 
 /**
  * §4.6 yayımlama akışı: AI taslağı `is_published=false` yazılır,
@@ -35,6 +36,7 @@ export async function saveFeedbackDraft(
   reportId: string,
   content: FeedbackContent,
 ): Promise<{ ok: boolean; error?: string }> {
+  assertWritable();
   const invalid = badId(reportId);
   if (invalid) return { ok: false, error: invalid };
   const auth = await authorize([...PUBLISHERS]);
@@ -65,6 +67,7 @@ export async function publishFeedback(
   reportId: string,
   content: FeedbackContent,
 ): Promise<{ ok: boolean; error?: string }> {
+  assertWritable();
   const invalid = badId(reportId);
   if (invalid) return { ok: false, error: invalid };
   const auth = await authorize([...PUBLISHERS]);
@@ -111,6 +114,7 @@ export async function publishFeedback(
 export async function unpublishFeedback(
   reportId: string,
 ): Promise<{ ok: boolean; error?: string }> {
+  assertWritable();
   const invalid = badId(reportId);
   if (invalid) return { ok: false, error: invalid };
   const auth = await authorize([...PUBLISHERS]);

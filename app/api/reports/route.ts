@@ -8,6 +8,7 @@ import {
   pathBelongsToTeam,
   resolveUploaderTeam,
 } from '@/lib/reports/upload';
+import { readOnlyResponse } from '@/lib/read-only';
 
 /**
  * POST /api/reports — rapor yükleme (PLAN.md §2)
@@ -39,6 +40,8 @@ const MAX_BYTES = 20 * 1024 * 1024; // 20 MB
 const MIN_TEXT_CHARS = 200;
 
 export async function POST(req: Request) {
+  const locked = readOnlyResponse();
+  if (locked) return locked;
   const db = supabaseAdmin();
 
   // Boyut kontrolü formData() AYRIŞTIRMASINDAN ÖNCE: büyük gövdede

@@ -3,19 +3,21 @@
 import { useEffect, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { checkRegistrationCode, signIn, signUp, type CodeCheck } from './actions';
+import { checkRegistrationCode, signIn, signInAsDemo, signUp, type CodeCheck } from './actions';
+import { useReadOnly } from '@/components/zema/read-only';
 
 const LABEL = 'text-ink/75 mb-[7px] block font-mono text-[10.5px] tracking-[.12em]';
 /**
  * placeholder:text-ink/40 — Tailwind v4 preflight placeholder'ı currentColor'ın
  * %50'si yapıyor; Ink Navy üzerinde bu fazla koyu kalıyor ve ipucu metni dolu
- * bir DEĞER gibi okunuyordu ("Zeynep Demir" örneği). Açıkça soluklaştırıldı.
+ * bir DEĞER gibi okunuyordu ("Ece Tunalı" örneği). Açıkça soluklaştırıldı.
  */
 const INPUT =
   'border-ink/[.18] text-ink placeholder:text-ink/75 mb-[18px] w-full border bg-white px-[14px] py-3 font-sans text-[14.5px]';
 
 export function AuthPanel() {
   const [tab, setTab] = useState<'login' | 'register'>('login');
+  const readOnly = useReadOnly();
 
   const tabClass = (on: boolean) =>
     `cursor-pointer border-none p-[13px] font-sans text-[14px] font-semibold ${
@@ -24,6 +26,8 @@ export function AuthPanel() {
 
   return (
     <div className="w-full max-w-[430px]">
+      {readOnly && <DemoProfiles />}
+
       <div className="border-ink/[.14] mb-[26px] grid grid-cols-2 border">
         <button onClick={() => setTab('login')} className={tabClass(tab === 'login')}>
           Giriş
@@ -33,7 +37,83 @@ export function AuthPanel() {
         </button>
       </div>
 
-      {tab === 'login' ? <LoginForm /> : <RegisterForm />}
+      {tab === 'login' ? <LoginForm /> : readOnly ? <RegisterClosed /> : <RegisterForm />}
+    </div>
+  );
+}
+
+/**
+ * Salt okunur vitrin: dört rolden birine tek tıkla giriş. Buton yalnızca
+ * rol anahtarını gönderir; hesap bilgisi sunucuda (signInAsDemo).
+ */
+const DEMO_PROFILES = [
+  { role: 'competitor', label: 'Yarışmacı', sub: 'Rapor yükleme ve geri bildirim' },
+  { role: 'judge', label: 'Hakem', sub: 'AI önerilerini inceleme' },
+  { role: 'evaluation_admin', label: 'Değerlendirme Yöneticisi', sub: 'Atama ve yayımlama' },
+  { role: 'competition_admin', label: 'Yarışma Yöneticisi', sub: 'Şablon, kriter, kategori' },
+] as const;
+
+function DemoProfiles() {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [active, setActive] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  function choose(role: string) {
+    setError(null);
+    setActive(role);
+    startTransition(async () => {
+      const r = await signInAsDemo(role);
+      if (!r.ok) {
+        setError(r.error);
+        setActive(null);
+      } else router.push(r.redirectTo);
+    });
+  }
+
+  return (
+    <section className="border-ink/[.14] mb-[30px] border-b pb-[26px]" aria-labelledby="demo-profiles">
+      <h3 id="demo-profiles" className="font-heading m-0 mb-1.5 text-[23px] font-semibold">
+        Profil seç
+      </h3>
+      <p className="text-ink/75 m-0 mb-[18px] text-[13.5px]">
+        Bu site salt okunur bir vitrin. Bir rol seçin, şifresiz girip o rolün ekranlarını gezin.
+        Veriler sahtedir; hiçbir işlem kaydedilmez.
+      </p>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {DEMO_PROFILES.map((p) => (
+          <button
+            key={p.role}
+            type="button"
+            disabled={pending}
+            onClick={() => choose(p.role)}
+            className="border-ink/[.18] hover:border-t3-blue cursor-pointer border bg-white px-[14px] py-3 text-left font-sans disabled:opacity-50"
+          >
+            <span className="text-ink block text-[14px] font-semibold">
+              {active === p.role ? 'Giriş yapılıyor…' : p.label}
+            </span>
+            <span className="text-ink/75 mt-[3px] block font-mono text-[10.5px]">{p.sub}</span>
+          </button>
+        ))}
+      </div>
+      {error && (
+        <div className="border-danger text-danger mt-3 border bg-[rgba(180,72,63,.06)] px-3 py-2 text-[12.5px]">
+          {error}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function RegisterClosed() {
+  return (
+    <div>
+      <h3 className="font-heading m-0 mb-1.5 text-[23px] font-semibold">Kayıt kapalı</h3>
+      <p className="text-ink/75 m-0 text-[13.5px] leading-[1.6]">
+        ZEMA artık yeni kullanıcı kabul etmiyor; site bir portfolyo vitrini olarak salt okunur
+        çalışıyor. Ekranları görmek için yukarıdaki <strong className="text-ink">Profil seç</strong>{' '}
+        bölümünden bir rol seçebilirsiniz.
+      </p>
     </div>
   );
 }

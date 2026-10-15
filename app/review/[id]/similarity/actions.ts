@@ -10,6 +10,7 @@ function badId(...ids: Array<string | undefined | null>): string | null {
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { assertReportAccess, authorize } from '@/lib/supabase/server';
+import { assertWritable } from '@/lib/read-only';
 
 /** §4.4: hakem HER eşleşmeyi bağımsız değerlendirir. */
 export async function setPairVerdict(
@@ -17,6 +18,7 @@ export async function setPairVerdict(
   pairId: string,
   verdict: 'pending' | 'confirmed' | 'false_positive',
 ): Promise<{ ok: boolean; error?: string }> {
+  assertWritable();
   const invalid = badId(reportId, pairId);
   if (invalid) return { ok: false, error: invalid };
   const auth = await authorize(['judge']);

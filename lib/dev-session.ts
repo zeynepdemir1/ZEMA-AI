@@ -9,7 +9,7 @@
  */
 export const DEV_USERS = {
   competitor: { email: 'yarismaci@zema.test', fullName: 'Mehmet Şahin', role: 'competitor' },
-  judge: { email: 'hakem@zema.test', fullName: 'Zeynep Demir', role: 'judge' },
+  judge: { email: 'hakem@zema.test', fullName: 'Ece Tunalı', role: 'judge' },
   evaluationAdmin: { email: 'degerlendirme@zema.test', fullName: 'Ayşe Yılmaz', role: 'evaluation_admin' },
   competitionAdmin: { email: 'yarisma@zema.test', fullName: 'Mert Kaya', role: 'competition_admin' },
 } as const;

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { loadMySubmissions } from '@/lib/reports/queries';
 import { UploadForm } from './upload-form';
+import { ReadOnlyFieldset } from '@/components/zema/read-only';
 
 import { requireRole } from '@/lib/supabase/server';
 
@@ -37,11 +38,13 @@ export default async function NewSubmissionPage() {
           Yükledikten sonra altı AI kontrolü otomatik çalışır. Sonuçlar önce hakeme gider;
           size yalnızca hakemin onayladığı geri bildirim ulaşır.
         </p>
-        <UploadForm
-          competitions={data.competitions}
-          initialCompetitionId={data.activeCompetitionId ?? data.competitions[0]?.id ?? ''}
-          teamCompetitionIds={data.teamCompetitionIds}
-        />
+        <ReadOnlyFieldset>
+          <UploadForm
+            competitions={data.competitions}
+            initialCompetitionId={data.activeCompetitionId ?? data.competitions[0]?.id ?? ''}
+            teamCompetitionIds={data.teamCompetitionIds}
+          />
+        </ReadOnlyFieldset>
       </div>
     </div>
   );

@@ -7,6 +7,7 @@ import { compileFeedback } from '@/lib/reports/compile-feedback';
 import type { CheckResultView, CriterionCardData, SimilarityMatch } from '@/lib/reports/queries';
 import { saveCheckNote, submitFeedbackDraft } from './actions';
 import { SimilarityList } from './similarity/similarity-list';
+import { ReadOnlyFieldset } from '@/components/zema/read-only';
 
 /**
  * Sekiz AI kontrolünün hakem ekranındaki gösterimi (PLAN.md §6) — yedisi
@@ -147,40 +148,42 @@ function JudgeNote({
   const dirty = text !== initial;
 
   return (
-    <section className="border-gold border-ink/10 border border-l-[3px] bg-[rgba(201,138,62,.06)] px-4 py-4">
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <h4 className="text-gold-ink m-0 font-mono text-[11px] tracking-[.1em]">
-          HAKEM GERİ BİLDİRİMİ · YARIŞMACIYA GİDECEK
-        </h4>
-        {saved && !dirty && (
-          <span className="text-success font-mono text-[11px]">✓ kaydedildi</span>
+    <ReadOnlyFieldset>
+      <section className="border-gold border-ink/10 border border-l-[3px] bg-[rgba(201,138,62,.06)] px-4 py-4">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <h4 className="text-gold-ink m-0 font-mono text-[11px] tracking-[.1em]">
+            HAKEM GERİ BİLDİRİMİ · YARIŞMACIYA GİDECEK
+          </h4>
+          {saved && !dirty && (
+            <span className="text-success font-mono text-[11px]">✓ kaydedildi</span>
+          )}
+        </div>
+        <p className="text-ink/75 m-0 mb-3 text-[13px] leading-[1.6]">
+          AI önerisi ön dolu geldi. Serbestçe değiştirebilirsiniz; bu metin nihai geri
+          bildirim taslağına girer.
+        </p>
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          rows={3}
+          className="border-ink/30 text-ink w-full resize-y border bg-white px-4 py-3 text-[14px] leading-[1.7]"
+        />
+        {dirty && (
+          <button
+            disabled={pending}
+            onClick={() =>
+              start(async () => {
+                const r = await saveCheckNote(reportId, checkType, text);
+                if (r.ok) setSaved(true);
+              })
+            }
+            className="bg-gold-ink mt-3 cursor-pointer border-none px-5 py-2.5 text-[14px] font-semibold text-white disabled:opacity-50"
+          >
+            {pending ? 'Kaydediliyor…' : 'Metni kaydet'}
+          </button>
         )}
-      </div>
-      <p className="text-ink/75 m-0 mb-3 text-[13px] leading-[1.6]">
-        AI önerisi ön dolu geldi. Serbestçe değiştirebilirsiniz; bu metin nihai geri
-        bildirim taslağına girer.
-      </p>
-      <textarea
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        rows={3}
-        className="border-ink/30 text-ink w-full resize-y border bg-white px-4 py-3 text-[14px] leading-[1.7]"
-      />
-      {dirty && (
-        <button
-          disabled={pending}
-          onClick={() =>
-            start(async () => {
-              const r = await saveCheckNote(reportId, checkType, text);
-              if (r.ok) setSaved(true);
-            })
-          }
-          className="bg-gold-ink mt-3 cursor-pointer border-none px-5 py-2.5 text-[14px] font-semibold text-white disabled:opacity-50"
-        >
-          {pending ? 'Kaydediliyor…' : 'Metni kaydet'}
-        </button>
-      )}
-    </section>
+      </section>
+    </ReadOnlyFieldset>
   );
 }
 
@@ -850,7 +853,7 @@ function FeedbackCompiler({
 
 
   return (
-    <>
+    <ReadOnlyFieldset>
       <div className="border-l-gold border-ink/10 border border-l-[3px] bg-[rgba(201,138,62,.07)] px-4 py-3">
         <div className="text-ink text-[14px] leading-[1.7]">
           Aşağıdaki taslak, kontroller için yazdığınız metinler ve kriter kartlarından
@@ -915,6 +918,6 @@ function FeedbackCompiler({
           Yarışmacının göreceği hali →
         </Link>
       </div>
-    </>
+    </ReadOnlyFieldset>
   );
 }

@@ -193,3 +193,11 @@
     outline-offset: 2px;
   }
 }
+/* Salt okunur vitrin: ReadOnlyFieldset içindeki pasif kontroller. Butonlar
+   soluklaşır; giriş alanları okunur kalsın diye yalnızca imleç değişir. */
+fieldset[data-read-only] :is(button, input, select, textarea, label) {
+  cursor: not-allowed;
+}
+fieldset[data-read-only] button {
+  opacity: 0.45;
+}

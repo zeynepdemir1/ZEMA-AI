@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { ROLE_HOME, supabaseServer, type UserRole } from '@/lib/supabase/server';
+import { isReadOnly, READ_ONLY_MESSAGE } from '@/lib/read-only';
+import { DEV_PASSWORD, DEV_USERS } from '@/lib/dev-session';
 
 /**
  * Kayıt kodu ile rol atama + giriş/çıkış (PLAN.md §3.2)
@@ -48,6 +50,10 @@ export async function checkRegistrationCode(raw: string): Promise<CodeCheck> {
 export type AuthResult = { ok: false; error: string } | { ok: true; redirectTo: string };
 
 export async function signUp(formData: FormData): Promise<AuthResult> {
+  // Salt okunur vitrinde yeni hesap açılmaz. assertWritable() yerine hata
+  // DÖNDÜRÜLÜYOR: fırlatılan hata üretimde genel bir mesaja dönüşür, bu
+  // ise kayıt formunda okunur kalıyor.
+  if (isReadOnly()) return { ok: false, error: READ_ONLY_MESSAGE };
   const fullName = String(formData.get('full_name') ?? '').trim();
   const email = String(formData.get('email') ?? '').trim().toLowerCase();
   const password = String(formData.get('password') ?? '');
@@ -135,6 +141,34 @@ export async function signIn(formData: FormData): Promise<AuthResult> {
   // `next` yalnızca uygulama içi bir yol olabilir (open redirect koruması).
   const target = next.startsWith('/') && !next.startsWith('//') ? next : ROLE_HOME[role];
   return { ok: true, redirectTo: target };
+}
+
+/**
+ * Salt okunur vitrin: "Profil seç" ile tek tıkla giriş.
+ *
+ * İstemci yalnızca ROL ANAHTARINI gönderir; e-posta ve şifre bu dosyada,
+ * sunucuda kalır. Eşleme sabit ve 4 ana demo hesabıyla sınırlı — hakem2-4
+ * ve yarismaci2-4 bilerek dışarıda. Yalnızca READ_ONLY=true iken çalışır:
+ * canlı modda ortak şifreli hesaplara kapı açmasın.
+ */
+const DEMO_LOGINS = {
+  competitor: DEV_USERS.competitor.email,
+  judge: DEV_USERS.judge.email,
+  evaluation_admin: DEV_USERS.evaluationAdmin.email,
+  competition_admin: DEV_USERS.competitionAdmin.email,
+} as const satisfies Record<UserRole, string>;
+
+export async function signInAsDemo(role: string): Promise<AuthResult> {
+  if (!isReadOnly()) return { ok: false, error: 'Profil seçimi yalnızca vitrin modunda açık.' };
+  if (!Object.hasOwn(DEMO_LOGINS, role)) return { ok: false, error: 'Geçersiz profil.' };
+  const key = role as UserRole;
+
+  const db = await supabaseServer();
+  const { error } = await db.auth.signInWithPassword({ email: DEMO_LOGINS[key], password: DEV_PASSWORD });
+  if (error) return { ok: false, error: 'Demo hesabına giriş yapılamadı.' };
+
+  revalidatePath('/', 'layout');
+  return { ok: true, redirectTo: ROLE_HOME[key] };
 }
 
 export async function signOut() {

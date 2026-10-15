@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { authorize } from '@/lib/supabase/server';
+import { assertWritable } from '@/lib/read-only';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -57,6 +58,7 @@ export async function createTeam(input: {
   name: string;
   foundedYear: number;
 }): Promise<{ ok: boolean; error?: string; teamId?: string }> {
+  assertWritable();
   if (!input.competitionId || !UUID.test(input.competitionId)) {
     return { ok: false, error: 'Geçersiz yarışma kimliği.' };
   }

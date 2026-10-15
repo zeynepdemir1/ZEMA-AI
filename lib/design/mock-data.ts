@@ -225,7 +225,7 @@ export const CARDS: CriterionCard[] = [
 
 
 /** Şu an giriş yapmış hakem — auth gelene kadar sabit. */
-export const CURRENT_JUDGE = { name: 'Zeynep Demir', initials: 'ZD', role: 'HAKEM', stampedAt: '11:24' };
+export const CURRENT_JUDGE = { name: 'Ece Tunalı', initials: 'ET', role: 'HAKEM', stampedAt: '11:24' };
 
 // ─────────────────────────────────────────────────────────────
 // Yarışmacı geri bildirimi (PLAN.md §4.6 — feedback.content)
@@ -299,7 +299,7 @@ export const DASH_QUEUE: QueueRow[] = [
 ];
 
 export const DASH_WORKLOAD = [
-  { name: 'Zeynep Demir', count: '18 / 24', pct: 75 },
+  { name: 'Ece Tunalı', count: '18 / 24', pct: 75 },
   { name: 'Mert Kaya', count: '22 / 24', pct: 92 },
   { name: 'Ayşe Yılmaz', count: '9 / 24', pct: 38 },
   { name: 'Baran Öztürk', count: '4 / 24', pct: 17 },

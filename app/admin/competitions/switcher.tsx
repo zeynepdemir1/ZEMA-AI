@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { createCompetition } from './actions';
+import { ReadOnlyFieldset } from '@/components/zema/read-only';
 
 const LANGUAGES = [
   { value: 'tr', label: 'Türkçe' },
@@ -67,15 +68,17 @@ export function CompetitionSwitcher({
         ))}
       </select>
 
-      {!adding && (
-        <button
-          type="button"
-          onClick={() => setAdding(true)}
-          className="border-ink/[.22] text-ink/75 cursor-pointer border bg-white px-3 py-1.5 font-mono text-[11px]"
-        >
-          + YENİ YARIŞMA
-        </button>
-      )}
+      <ReadOnlyFieldset>
+        {!adding && (
+          <button
+            type="button"
+            onClick={() => setAdding(true)}
+            className="border-ink/[.22] text-ink/75 cursor-pointer border bg-white px-3 py-1.5 font-mono text-[11px]"
+          >
+            + YENİ YARIŞMA
+          </button>
+        )}
+      </ReadOnlyFieldset>
 
       {adding && (
         <div className="border-ink/[.22] flex flex-wrap items-center gap-2 border border-dashed bg-white px-3 py-2">

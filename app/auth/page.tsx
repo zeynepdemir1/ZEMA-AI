@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import { GridTexture } from '@/components/zema/brand';
 import { AuthPanel } from './auth-panel';
+import { isReadOnly } from '@/lib/read-only';
 
 // AuthPanel `next` parametresini okuyor (useSearchParams) → statik üretim
 // Suspense sınırı istiyor. Sayfa zaten etkileşimli, dinamik olması sorun değil.
@@ -76,13 +77,21 @@ export default function AuthPage() {
 
         <div className="relative">
           <h2 className="font-heading m-0 mb-3 text-[26px] leading-[1.2] font-semibold text-pretty">
-            Rolünüzü seçmenize gerek yok.
+            {isReadOnly() ? 'Bir rol seçin, ekranları gezin.' : 'Rolünüzü seçmenize gerek yok.'}
           </h2>
-          <p className="m-0 mb-6 max-w-[380px] text-[14.5px] leading-[1.68] text-white/70">
-            Kod girmezseniz <strong className="font-semibold text-white">Yarışmacı</strong> olarak
-            kaydedilirsiniz. Hakem ve yönetici hesapları yalnızca T3 Vakfı&apos;nın verdiği kayıt
-            koduyla açılır.
-          </p>
+          {isReadOnly() ? (
+            <p className="m-0 mb-6 max-w-[380px] text-[14.5px] leading-[1.68] text-white/70">
+              Vitrin modunda <strong className="font-semibold text-white">Profil seç</strong>{' '}
+              bölümünden dört rolün her birine tek tıkla girebilirsiniz. Canlı sistemde hakem ve
+              yönetici hesapları yalnızca kayıt koduyla açılır.
+            </p>
+          ) : (
+            <p className="m-0 mb-6 max-w-[380px] text-[14.5px] leading-[1.68] text-white/70">
+              Kod girmezseniz <strong className="font-semibold text-white">Yarışmacı</strong> olarak
+              kaydedilirsiniz. Hakem ve yönetici hesapları yalnızca T3 Vakfı&apos;nın verdiği kayıt
+              koduyla açılır.
+            </p>
+          )}
           <div className="font-mono text-[10.5px] leading-[1.9] tracking-[.12em] text-white/[.62]">
             <div>4 ROL · TEK KAYIT AKIŞI</div>
             <div>KVKK AYDINLATMA METNİ ONAYI ZORUNLU</div>
