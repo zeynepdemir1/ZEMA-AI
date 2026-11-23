@@ -3,6 +3,7 @@ import { ApiError } from '@google/genai';
 import { apiKeys, genai, keyLabel } from '@/lib/ai/client';
 import { MOCK_AI, MODEL_CHAIN } from '@/lib/ai/config';
 import { authorize } from '@/lib/supabase/server';
+import { isReadOnly } from '@/lib/read-only';
 
 /**
  * GET /api/diagnostics/keys — anahtar havuzunun SAĞLIK KONTROLÜ.
@@ -26,6 +27,10 @@ import { authorize } from '@/lib/supabase/server';
  * yaptırdığı için açık bırakılamaz.
  */
 export async function GET() {
+  // Salt okunur vitrinde HERKES tek tıkla Yarışma Yöneticisi olabiliyor —
+  // rol kontrolü orada koruma sağlamaz. Bu uç harici servise (Google)
+  // anahtarlarımızla istek attırdığı için vitrinde tamamen kapalı.
+  if (isReadOnly()) return NextResponse.json({ error: 'Bu uç vitrin modunda kapalı.' }, { status: 403 });
   const auth = await authorize(['competition_admin']);
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: 403 });
 

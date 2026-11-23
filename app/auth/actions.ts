@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { ROLE_HOME, supabaseServer, type UserRole } from '@/lib/supabase/server';
 import { isReadOnly, READ_ONLY_MESSAGE } from '@/lib/read-only';
-import { demoPassword, DEV_USERS } from '@/lib/dev-session';
+import { DEV_USERS } from '@/lib/dev-session';
 
 /**
  * Kayıt kodu ile rol atama + giriş/çıkış (PLAN.md §3.2)
@@ -163,16 +163,27 @@ export async function signInAsDemo(role: string): Promise<AuthResult> {
   if (!Object.hasOwn(DEMO_LOGINS, role)) return { ok: false, error: 'Geçersiz profil.' };
   const key = role as UserRole;
 
-  let password: string;
-  try {
-    password = demoPassword();
-  } catch {
-    console.error('[signInAsDemo] DEMO_PASSWORD tanımlı değil');
-    return { ok: false, error: 'Demo girişi yapılandırılmamış.' };
+  // GÜVENLİK: demo hesaplarına herkes girebildiği için ziyaretçi, tarayıcıdaki
+  // oturum token'ıyla Supabase Auth API'sine doğrudan gidip
+  // `auth.updateUser({ password })` ile demo hesabın ŞİFRESİNİ değiştirebilir
+  // (bu çağrı RLS'e tabi değil, 0018 kilidi onu durdurmaz). Şifreyle giriş
+  // yapılsaydı demo o andan itibaren herkese kapanırdı. Bu yüzden giriş
+  // şifreye BAĞLI DEĞİL: sunucu, service_role ile tek kullanımlık bir giriş
+  // bağlantısı üretip (e-posta GÖNDERMEZ) onu hemen doğruluyor. Şifre
+  // değiştirilse bile "Profil seç" çalışmaya devam eder.
+  const admin = supabaseAdmin();
+  const { data: link, error: le } = await admin.auth.admin.generateLink({
+    type: 'magiclink',
+    email: DEMO_LOGINS[key],
+  });
+  const tokenHash = link?.properties?.hashed_token;
+  if (le || !tokenHash) {
+    console.error('[signInAsDemo] giriş bağlantısı üretilemedi:', le?.message);
+    return { ok: false, error: 'Demo hesabına giriş yapılamadı.' };
   }
 
   const db = await supabaseServer();
-  const { error } = await db.auth.signInWithPassword({ email: DEMO_LOGINS[key], password });
+  const { error } = await db.auth.verifyOtp({ type: 'email', token_hash: tokenHash });
   if (error) return { ok: false, error: 'Demo hesabına giriş yapılamadı.' };
 
   revalidatePath('/', 'layout');
